@@ -75,6 +75,9 @@ button:disabled {
 .metric,
 .result,
 .song-list,
+.ai-panel,
+.ai-form,
+.ai-result,
 .generator form {
   border: 1px solid #d7d8d2;
   border-radius: 8px;
@@ -112,6 +115,49 @@ button:disabled {
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
   gap: 16px;
   margin-bottom: 20px;
+}
+
+.ai-panel {
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.ai-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+}
+
+.ai-form,
+.ai-result {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ai-result pre {
+  min-height: 120px;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #4c595d;
+  font: inherit;
+}
+
+.ai-result a,
+.ai-result p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #4c595d;
 }
 
 .generator form {
@@ -195,6 +241,7 @@ textarea {
   }
 
   .status-grid,
+  .ai-grid,
   .generator,
   .table-row {
     grid-template-columns: 1fr;

@@ -22,6 +22,20 @@ type GeneratedSong = Song & {
   createdAt: string
 }
 
+type AiLyrics = {
+  title: string
+  style: string
+  lyrics: string
+  rawText: string
+}
+
+type AiMusic = {
+  status: string
+  title: string
+  style: string
+  audioUrl: string | null
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
 function App() {
@@ -30,8 +44,13 @@ function App() {
   const [prompt, setPrompt] = useState('校园毕业季，温暖流行')
   const [style, setStyle] = useState('pop')
   const [generated, setGenerated] = useState<GeneratedSong | null>(null)
+  const [idea, setIdea] = useState('夏天、校园、毕业季，温暖流行')
+  const [aiLyrics, setAiLyrics] = useState<AiLyrics | null>(null)
+  const [aiMusic, setAiMusic] = useState<AiMusic | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [lyricsLoading, setLyricsLoading] = useState(false)
+  const [musicLoading, setMusicLoading] = useState(false)
 
   const healthLabel = useMemo(() => {
     if (!health) return '未连接'
@@ -78,6 +97,54 @@ function App() {
     }
   }
 
+  async function handleGenerateLyrics() {
+    setLyricsLoading(true)
+    setError('')
+    setAiMusic(null)
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/ai/lyrics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: idea }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message ?? '歌词生成失败')
+      }
+      setAiLyrics(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '未知错误')
+    } finally {
+      setLyricsLoading(false)
+    }
+  }
+
+  async function handleGenerateMusic() {
+    if (!aiLyrics) return
+    setMusicLoading(true)
+    setError('')
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/ai/music`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: aiLyrics.title,
+          style: aiLyrics.style,
+          lyrics: aiLyrics.lyrics,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message ?? '音乐生成失败')
+      }
+      setAiMusic(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '未知错误')
+    } finally {
+      setMusicLoading(false)
+    }
+  }
+
   useEffect(() => {
     void loadData()
   }, [])
@@ -111,6 +178,49 @@ function App() {
         </div>
 
         {error ? <p className="error">{error}</p> : null}
+
+        <section className="ai-panel">
+          <div className="section-title">
+            <h2>真实 AI 体验</h2>
+            <span>POST /api/ai/lyrics · POST /api/ai/music</span>
+          </div>
+          <div className="ai-grid">
+            <div className="ai-form">
+              <label>
+                音乐灵感
+                <textarea value={idea} onChange={(event) => setIdea(event.target.value)} />
+              </label>
+              <div className="button-row">
+                <button type="button" onClick={handleGenerateLyrics} disabled={lyricsLoading}>
+                  {lyricsLoading ? '生成歌词中' : '生成歌词'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateMusic}
+                  disabled={!aiLyrics || musicLoading}
+                >
+                  {musicLoading ? '生成音乐中' : '生成音乐'}
+                </button>
+              </div>
+            </div>
+
+            <div className="ai-result">
+              <span>标题</span>
+              <strong>{aiLyrics?.title ?? '暂无'}</strong>
+              <span>风格</span>
+              <p>{aiLyrics?.style ?? '生成歌词后展示风格。'}</p>
+              <span>歌词</span>
+              <pre>{aiLyrics?.lyrics ?? '输入一句音乐灵感后点击生成歌词。'}</pre>
+              <span>音乐结果</span>
+              <p>{aiMusic ? `状态：${aiMusic.status}` : '生成歌词后可继续生成音乐。'}</p>
+              {aiMusic?.audioUrl ? (
+                <a href={aiMusic.audioUrl} target="_blank" rel="noreferrer">
+                  {aiMusic.audioUrl}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </section>
 
         <section className="generator">
           <form onSubmit={handleGenerate}>
