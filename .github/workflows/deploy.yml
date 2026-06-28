@@ -1,0 +1,35 @@
+name: Deploy web
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy static files
+        run: |
+          tar -czf web.tar.gz -C dist .
+          ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "mkdir -p '${{ secrets.WEB_DEPLOY_PATH }}/current'"
+          scp -i ~/.ssh/deploy_key web.tar.gz "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.WEB_DEPLOY_PATH }}/"
+          ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "rm -rf '${{ secrets.WEB_DEPLOY_PATH }}/current'/* && tar -xzf '${{ secrets.WEB_DEPLOY_PATH }}/web.tar.gz' -C '${{ secrets.WEB_DEPLOY_PATH }}/current' && rm '${{ secrets.WEB_DEPLOY_PATH }}/web.tar.gz'"
