@@ -73,12 +73,10 @@ button:disabled {
 }
 
 .metric,
-.result,
 .song-list,
 .ai-panel,
 .ai-form,
-.ai-result,
-.generator form {
+.ai-result {
   border: 1px solid #d7d8d2;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.82);
@@ -92,7 +90,6 @@ button:disabled {
 }
 
 .metric span,
-.result span,
 .section-title span {
   color: #657175;
   font-size: 13px;
@@ -108,13 +105,6 @@ button:disabled {
   border-radius: 6px;
   color: #8b1e1e;
   background: #ffe8e1;
-}
-
-.generator {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
-  gap: 16px;
-  margin-bottom: 20px;
 }
 
 .ai-panel {
@@ -160,12 +150,6 @@ button:disabled {
   color: #4c595d;
 }
 
-.generator form {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
 label {
   display: grid;
   gap: 8px;
@@ -187,18 +171,6 @@ select {
 textarea {
   min-height: 96px;
   resize: vertical;
-}
-
-.result {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  padding: 18px;
-}
-
-.result p {
-  margin: 0;
-  color: #4c595d;
 }
 
 .song-list {
@@ -242,7 +214,6 @@ textarea {
 
   .status-grid,
   .ai-grid,
-  .generator,
   .table-row {
     grid-template-columns: 1fr;
   }
