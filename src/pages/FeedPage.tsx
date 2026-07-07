@@ -24,22 +24,15 @@ export function FeedPage({ activeTab, songs, onChangeTab, onOpenSong, onCreate }
         <div className="create-hero__copy">
           <span>Echo AI Music Community</span>
           <h1>把灵感变成 AI 音乐作品</h1>
-          <p>发现社区创作，输入一句话开始生成旋律、歌词和封面。</p>
+          <p>输入一句灵感，生成旋律、歌词和封面；也可以先逛逛社区里的新作品。</p>
         </div>
         <div className="prompt-box">
-          <textarea placeholder="写下你的音乐灵感，例如：夏天、校园、毕业季，温暖流行" />
+          <input placeholder="写下你的音乐灵感，例如：夏天、校园、毕业季，温暖流行" />
           <div className="prompt-box__footer">
-            <span>AI 创作 · 歌词 · 纯音乐</span>
             <button type="button" onClick={onCreate}>
               开始创作
             </button>
           </div>
-        </div>
-        <div className="quick-prompts" aria-label="快捷灵感">
-          <button type="button">夏夜</button>
-          <button type="button">毕业季</button>
-          <button type="button">City Pop</button>
-          <button type="button">治愈民谣</button>
         </div>
       </section>
 
@@ -55,7 +48,7 @@ export function FeedPage({ activeTab, songs, onChangeTab, onOpenSong, onCreate }
       </div>
 
       <section className="feed-controls">
-        <button className="filter-button" type="button">Popular</button>
+        <button className="filter-button" type="button">精选</button>
         <div className="segment-tabs">
           {feedTabs.map((tab) => (
             <button
@@ -68,7 +61,7 @@ export function FeedPage({ activeTab, songs, onChangeTab, onOpenSong, onCreate }
             </button>
           ))}
         </div>
-        <button className="filter-button" type="button">Filters</button>
+        <button className="filter-button" type="button">筛选</button>
       </section>
       {songs.length ? (
         <div className="card-list">

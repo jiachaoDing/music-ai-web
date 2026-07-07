@@ -15,7 +15,7 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
           type="button"
           onClick={() => onNavigate(item.key)}
         >
-          <span>{item.key === 'create' ? '+' : item.label.slice(0, 1)}</span>
+          <span className={`bottom-nav__icon bottom-nav__icon--${item.key}`} aria-hidden="true" />
           <strong>{item.label}</strong>
         </button>
       ))}
