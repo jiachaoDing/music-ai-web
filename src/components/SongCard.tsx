@@ -22,7 +22,6 @@ export function SongCard({ song, onOpen }: SongCardProps) {
         onClick={() => onOpen?.(song.id)}
       >
         <span className="song-cover__eyebrow">{song.mode}</span>
-        <strong>{song.title}</strong>
         <i aria-hidden="true" />
       </button>
       <div className="song-card__body">
@@ -31,13 +30,9 @@ export function SongCard({ song, onOpen }: SongCardProps) {
           <span>{formatDuration(song.duration)}</span>
         </div>
         <p>{song.description ?? '暂无简介'}</p>
-        <div className="chip-row">
-          <span>{song.style}</span>
-          <span>{song.mode}</span>
-          <span>{song.status}</span>
-        </div>
-        <div className="song-card__meta">
-          <span>{song.author.nickname}</span>
+        <div className="song-card__meta" style={coverStyle}>
+          <span className="author-dot" />
+          <strong>{song.author.nickname}</strong>
           <span>{formatCount(song.playCount)} 播放</span>
           <span>{formatCount(song.likeCount)} 喜欢</span>
         </div>

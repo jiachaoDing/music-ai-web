@@ -14,8 +14,7 @@ export function Topbar({ active, user, onNavigate }: TopbarProps) {
         <strong>Echo AI</strong>
       </div>
       <label className="topbar-search">
-        <span>搜索</span>
-        <input placeholder="搜索歌曲、作者、风格" />
+        <input aria-label="搜索" placeholder="搜索歌曲、作者、风格" />
       </label>
       <nav className="topbar-nav" aria-label="主导航">
         {NAV_ITEMS.map((item) => (
@@ -30,7 +29,6 @@ export function Topbar({ active, user, onNavigate }: TopbarProps) {
         ))}
       </nav>
       <div className="user-pill">
-        <span>{user.echoPoints} 分</span>
         <strong>{user.nickname}</strong>
       </div>
     </header>
