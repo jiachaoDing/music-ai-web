@@ -30,6 +30,7 @@ export function FortunePage({
   const audioContextRef = useRef<AudioContext | null>(null)
   const timersRef = useRef<number[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
+  const [showShareCard, setShowShareCard] = useState(false)
 
   function buildFortuneSong(mode: FortuneMode) {
     const isInstrumental = mode === 'instrumental'
@@ -174,9 +175,28 @@ export function FortunePage({
           <span>今日提示</span>
           <strong>{selectedFortune.mood.name} · 幸运数字 {selectedFortune.luckyNumber}</strong>
           <p>宜：{selectedFortune.dos?.join('、')}。忌：{selectedFortune.donts?.join('、')}。</p>
-          <button type="button" onClick={() => onCheckin('时运分享卡已生成。')}>生成分享卡</button>
+          <button type="button" onClick={() => setShowShareCard(true)}>生成分享卡</button>
         </aside>
       </section>
+
+      {showShareCard ? (
+        <section className="share-card-panel">
+          <article className="share-card-preview" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
+            <span>Echo Fortune</span>
+            <h2>{selectedFortune.keyword}日签</h2>
+            <p>{selectedFortune.encourage}</p>
+            <div>
+              <strong>{selectedFortune.mood.name}</strong>
+              <strong>幸运数字 {selectedFortune.luckyNumber}</strong>
+              <strong>{selectedFortune.luckyColor.name}</strong>
+            </div>
+          </article>
+          <div className="share-card-actions">
+            <button type="button" onClick={() => onCheckin('分享卡已生成，可以截图保存。')}>提示保存</button>
+            <button type="button" onClick={() => setShowShareCard(false)}>收起分享卡</button>
+          </div>
+        </section>
+      ) : null}
 
       {latestSong ? (
         <article className="generated-song" style={{ '--feature-color': latestSong.author.color } as CSSProperties}>
