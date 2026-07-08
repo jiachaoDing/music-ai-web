@@ -212,14 +212,97 @@ textarea:focus {
 }
 
 .user-pill {
+  position: relative;
   gap: 0;
   border: 0;
   border-radius: 999px;
-  padding: 0 18px;
+  padding: 0;
   min-height: 42px;
   color: #ffffff;
+}
+
+.user-pill__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 18px;
+  color: inherit;
   background: var(--theme);
   box-shadow: 0 12px 28px var(--theme-shadow);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.user-pill__trigger::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid rgba(255, 255, 255, 0.78);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.78);
+  opacity: 0;
+  transform: translateY(-2px) rotate(45deg);
+  transition: opacity 160ms ease;
+}
+
+.user-pill__trigger:hover {
+  transform: none;
+  background: var(--theme-dark);
+  box-shadow: 0 12px 28px var(--theme-shadow);
+}
+
+.user-pill:hover .user-pill__trigger::after,
+.user-pill:focus-within .user-pill__trigger::after {
+  opacity: 1;
+}
+
+.user-pill::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 10px;
+}
+
+.user-pill__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  display: none;
+  min-width: 180px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+  z-index: 10;
+}
+
+.user-pill:hover .user-pill__menu,
+.user-pill:focus-within .user-pill__menu {
+  display: block;
+}
+
+.user-pill__logout {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #111827;
+  background: #f7f7f9;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.user-pill__logout:hover {
+  transform: none;
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.1);
+  box-shadow: none;
 }
 
 .user-pill span {
@@ -1339,8 +1422,13 @@ textarea:focus {
 
   .user-pill {
     min-height: 38px;
-    padding: 0 13px;
+    padding: 0;
     font-size: 13px;
+  }
+
+  .user-pill__trigger {
+    min-height: 38px;
+    padding: 0 13px;
   }
 
   .page-shell {

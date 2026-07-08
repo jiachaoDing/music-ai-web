@@ -12,6 +12,7 @@ type AppLayoutProps = {
   children: React.ReactNode
   onNavigate: (key: NavKey) => void
   onOpenPlayer: () => void
+  onLogout: () => void
 }
 
 export function AppLayout({
@@ -21,10 +22,11 @@ export function AppLayout({
   children,
   onNavigate,
   onOpenPlayer,
+  onLogout,
 }: AppLayoutProps) {
   return (
     <div className="app-shell">
-      <Topbar active={active} user={user} onNavigate={onNavigate} />
+      <Topbar active={active} user={user} onNavigate={onNavigate} onLogout={onLogout} />
       <main className="page-shell">{children}</main>
       <MiniPlayer song={currentSong} onOpenPlayer={onOpenPlayer} />
       <BottomNav active={active} onNavigate={onNavigate} />

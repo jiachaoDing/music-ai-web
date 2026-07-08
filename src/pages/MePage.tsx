@@ -1,5 +1,6 @@
 import { EmptyState } from '../components/EmptyState'
 import { SongCard } from '../components/SongCard'
+import { mockInviteCodes } from '../mock/users'
 import type { Song } from '../types/song'
 import type { User } from '../types/user'
 
@@ -10,13 +11,19 @@ type MePageProps = {
 }
 
 export function MePage({ user, songs, onOpenSong }: MePageProps) {
+  const inviteCode = mockInviteCodes.find(
+    (code) => code.createdBy === user.id && code.status === 'unused',
+  )?.code
+
   return (
     <section className="page-stack">
       <div className="profile-panel">
         <div className="avatar">{user.nickname.slice(0, 1)}</div>
         <div>
           <h1>{user.nickname}</h1>
-          <p>回声积分 {user.echoPoints} · 邀请码 {user.inviteCodes?.[0] ?? '暂无'}</p>
+          <p>
+            回声积分 {user.echoPoints} · 连续打卡 {user.streak} 天 · 邀请码 {inviteCode ?? '暂无'}
+          </p>
         </div>
       </div>
       <div className="segment-tabs">
