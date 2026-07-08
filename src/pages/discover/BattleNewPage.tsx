@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { Song } from '../../types/song'
 import { BattlePreviewSong } from './DiscoverShared'
 
@@ -13,6 +14,16 @@ type BattleNewPageProps = {
   onBack: () => void
 }
 
+const topicSeeds = [
+  '哪首歌更适合深夜循环？',
+  '哪首歌更像夏天快结束时的心情？',
+  '哪首歌更适合送给很久没见的朋友？',
+  '哪首歌更适合雨后一个人散步？',
+  '哪首歌更适合放在毕业短片结尾？',
+  '哪首歌更适合通勤路上的第一首？',
+  '哪首歌更能把坏心情唱轻一点？',
+]
+
 export function BattleNewPage({
   songs,
   topic,
@@ -24,8 +35,15 @@ export function BattleNewPage({
   onCreate,
   onBack,
 }: BattleNewPageProps) {
+  const randomTopic = useMemo(() => topicSeeds[Math.floor(Math.random() * topicSeeds.length)], [])
+
   function songById(songId: string) {
     return songs.find((song) => song.id === songId) ?? songs[0]
+  }
+
+  function rollTopic() {
+    const nextTopic = topicSeeds[(topicSeeds.findIndex((item) => item === topic) + 1 + Math.floor(Math.random() * (topicSeeds.length - 1))) % topicSeeds.length]
+    onChangeTopic(nextTopic || randomTopic)
   }
 
   return (
@@ -44,7 +62,10 @@ export function BattleNewPage({
           <h3>选择对决内容</h3>
           <label>
             对决主题
-            <input value={topic} onChange={(event) => onChangeTopic(event.target.value)} />
+            <div className="topic-input-row">
+              <input value={topic} onChange={(event) => onChangeTopic(event.target.value)} />
+              <button type="button" aria-label="随机生成对决主题" onClick={rollTopic}>骰子</button>
+            </div>
           </label>
           <label>
             A 方歌曲
