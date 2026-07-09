@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
 import type { Song } from '../../types/song'
 import { BattleSong, songStyle } from './DiscoverShared'
 import type { BattleRecord, BattleVoteRecord, VoteSide } from './types'
@@ -13,12 +12,20 @@ type BattlesPageProps = {
   onCreate: () => void
 }
 
-const genreColors = ['#ff8fab', '#7dd3fc', '#86efac', '#fde68a', '#c4b5fd', '#fca5a5']
-
 export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote, onCreate }: BattlesPageProps) {
   const [selectedBattleId, setSelectedBattleId] = useState(battles[0]?.id ?? '')
-  const genres = useMemo(() => Array.from(new Set(songs.flatMap((song) => song.tags.slice(0, 1)))).slice(0, 6), [songs])
   const selectedBattle = battles.find((battle) => battle.id === selectedBattleId) ?? battles[0]
+
+  const insights = useMemo(() => {
+    const sorted = [...battles].sort((a, b) => b.aVotes + b.bVotes - (a.aVotes + a.bVotes))
+    const closest = [...battles].sort((a, b) => Math.abs(a.aVotes - a.bVotes) - Math.abs(b.aVotes - b.bVotes))[0]
+    const latest = [...battles].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+    return [
+      { label: '高票擂台', value: sorted[0] ? `${sorted[0].aVotes + sorted[0].bVotes} 票` : '暂无', battleId: sorted[0]?.id },
+      { label: '胶着对决', value: closest ? `差 ${Math.abs(closest.aVotes - closest.bVotes)} 票` : '暂无', battleId: closest?.id },
+      { label: '最新开放', value: latest ? latest.topic : '暂无新擂台', battleId: latest?.id },
+    ]
+  }, [battles])
 
   function songById(songId: string) {
     return songs.find((song) => song.id === songId) ?? songs[0]
@@ -42,7 +49,7 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
 
   return (
     <section className="playground-shell battle-playground">
-      <aside className="playground-rail battle-rail-left" aria-label="擂台列表">
+      <aside className="playground-rail battle-rail-left rail-scroll" aria-label="擂台列表">
         <div className="rail-title">PK</div>
         {battles.map((battle) => {
           const coverSong = songById(battle.aId)
@@ -89,17 +96,23 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
         </label>
       </main>
 
-      <aside className="playground-rail genre-rail" aria-label="热门风格">
-        <div className="rail-title">Genre</div>
-        {genres.map((genre, index) => (
-          <button className="rail-card genre-card" key={genre} type="button">
-            <span
-              className="rail-cover genre-cover"
-              style={{ '--cover-color': genreColors[index % genreColors.length] } as CSSProperties}
-            />
-            <strong>{genre}</strong>
+      <aside className="playground-rail insight-rail" aria-label="擂台看点">
+        <div className="rail-title">看点</div>
+        {insights.map((item) => (
+          <button
+            className="insight-card"
+            key={item.label}
+            type="button"
+            onClick={() => item.battleId && setSelectedBattleId(item.battleId)}
+          >
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
           </button>
         ))}
+        <button className="insight-card insight-card--create" type="button" onClick={onCreate}>
+          <span>新擂台</span>
+          <strong>选择两首歌发起对决</strong>
+        </button>
       </aside>
     </section>
   )

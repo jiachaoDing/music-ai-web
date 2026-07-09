@@ -177,8 +177,6 @@ export function DiscoverPage() {
         ))}
       </nav>
 
-      {message ? <p className="form-note">{message}</p> : null}
-
       {view === 'home' ? (
         <DiscoverHomePage
           battles={battles}
@@ -240,6 +238,17 @@ export function DiscoverPage() {
           onGenerateSong={addFortuneSong}
           onSelectDate={setSelectedDate}
         />
+      ) : null}
+
+      {message ? (
+        <div className="discover-modal-backdrop" role="presentation" onClick={() => setMessage('')}>
+          <section className="discover-modal" role="dialog" aria-modal="true" aria-label="操作提示" onClick={(event) => event.stopPropagation()}>
+            <span>Echo Notice</span>
+            <h2>操作完成</h2>
+            <p>{message}</p>
+            <button type="button" onClick={() => setMessage('')}>知道了</button>
+          </section>
+        </div>
       ) : null}
     </section>
   )

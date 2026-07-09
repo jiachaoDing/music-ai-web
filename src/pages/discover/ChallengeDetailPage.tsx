@@ -33,8 +33,8 @@ export function ChallengeDetailPage({
   }
 
   return (
-    <section className="playground-shell challenge-playground">
-      <aside className="playground-rail challenge-rail" aria-label="挑战主题列表">
+    <section className="challenge-lab">
+      <aside className="playground-rail challenge-rail rail-scroll" aria-label="挑战主题列表">
         <div className="rail-title">Topic</div>
         {challenges.map((challenge) => (
           <button
@@ -44,7 +44,7 @@ export function ChallengeDetailPage({
             onClick={() => onOpenChallenge(challenge.id)}
           >
             <span className="rail-cover" style={{ '--cover-color': challenge.color } as CSSProperties}>
-              {challenge.emoji ?? '♪'}
+              {challenge.emoji ?? '音'}
             </span>
             <strong>{challenge.title}</strong>
             <small>{challenge.desc}</small>
@@ -52,14 +52,23 @@ export function ChallengeDetailPage({
         ))}
       </aside>
 
-      <main className="playground-stage">
-        <article className="stage-hero" style={{ '--feature-color': selectedChallenge.color } as CSSProperties}>
-          <span>Topic Challenge</span>
-          <h2>{selectedChallenge.title}</h2>
-          <p>{selectedChallenge.desc ?? '围绕这个主题创作一首属于你的歌。'}</p>
+      <main className="challenge-main-stage">
+        <article className="challenge-banner" style={{ '--feature-color': selectedChallenge.color } as CSSProperties}>
+          <div>
+            <span>Topic Challenge</span>
+            <h2>{selectedChallenge.title}</h2>
+            <p>{selectedChallenge.desc ?? '围绕这个主题创作一首属于你的歌。'}</p>
+          </div>
+          <div className="challenge-badge" aria-hidden="true">{selectedChallenge.emoji ?? '音'}</div>
         </article>
 
-        <div className="dual-box">
+        <section className="challenge-flow">
+          <div className="challenge-prompt-card">
+            <span>创作提示</span>
+            <strong>先选一首已有作品，再给它一个适合本话题的投稿标题。</strong>
+            <p>提交后作品会进入右侧列表，后续接入后端后可以按热度、时间和作者筛选。</p>
+          </div>
+
           <section className="dashed-box dashed-box--pink challenge-form-panel">
             <span>Join</span>
             <h3>参与创作</h3>
@@ -77,33 +86,34 @@ export function ChallengeDetailPage({
             </label>
             <button type="button" onClick={onSubmit}>提交到挑战</button>
           </section>
+        </section>
 
-          <div className="axis-node" aria-hidden="true">
-            <span>♪</span>
-          </div>
-
-          <section className="dashed-box dashed-box--orange challenge-work-panel">
-            <span>Works</span>
-            <h3>参与作品</h3>
-            <div className="work-list">
-              {selectedChallengeSongs.map((ref) => {
-                const song = songById(ref.songId)
-                return (
-                  <article className="compact-song" key={ref.id}>
-                    <button className="mini-cover" style={songStyle(song)} type="button" aria-label={`试听 ${song.title}`}>
-                      <span>#{ref.rank}</span>
-                    </button>
-                    <div>
-                      <strong>{song.title}</strong>
-                      <span>{song.author.nickname} · {song.style}</span>
-                      <p>{ref.note}</p>
-                    </div>
-                  </article>
-                )
-              })}
+        <section className="challenge-work-panel">
+          <div className="section-title">
+            <div>
+              <span>Works</span>
+              <h2>参与作品</h2>
             </div>
-          </section>
-        </div>
+            <strong>{selectedChallengeSongs.length} 首</strong>
+          </div>
+          <div className="work-list work-list--masonry">
+            {selectedChallengeSongs.map((ref) => {
+              const song = songById(ref.songId)
+              return (
+                <article className="compact-song" key={ref.id}>
+                  <button className="mini-cover" style={songStyle(song)} type="button" aria-label={`试听 ${song.title}`}>
+                    <span>#{ref.rank}</span>
+                  </button>
+                  <div>
+                    <strong>{song.title}</strong>
+                    <span>{song.author.nickname} · {song.style}</span>
+                    <p>{ref.note}</p>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
       </main>
     </section>
   )
