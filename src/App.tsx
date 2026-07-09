@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import type { FeedTab } from './api/song'
-import { signIn, signUp } from './api/auth'
+import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getFeed, getMySongs } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
@@ -76,24 +76,40 @@ function App() {
 
   useEffect(() => {
     async function bootstrap() {
-      const savedUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
-
-      if (!savedUser) {
+      const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+      if (!savedToken) {
         setUser(null)
         setActiveView('auth')
         setLoading(false)
         return
       }
 
-      const nextUser = JSON.parse(savedUser) as User
-      setUser(nextUser)
-      setActiveView('feed')
+      try {
+        const nextUser = await getCurrentUser()
+        setUser(nextUser)
+        window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+        setActiveView('feed')
 
-      const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
-      setFeedSongs(nextFeedSongs)
-      setMySongs(nextMySongs)
-      setCurrentSongId(nextFeedSongs[0]?.id)
-      setLoading(false)
+        try {
+          const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
+          setFeedSongs(nextFeedSongs)
+          setMySongs(nextMySongs)
+          setCurrentSongId(nextFeedSongs[0]?.id)
+        } catch (error) {
+          console.error(error)
+          setFeedSongs([])
+          setMySongs([])
+          setCurrentSongId(undefined)
+        }
+      } catch (error) {
+        console.error(error)
+        clearToken()
+        window.localStorage.removeItem(AUTH_STORAGE_KEY)
+        setUser(null)
+        setActiveView('auth')
+      } finally {
+        setLoading(false)
+      }
     }
 
     void bootstrap()
@@ -122,12 +138,14 @@ function App() {
       setCurrentSongId(nextFeedSongs[0]?.id)
     } catch (error) {
       console.error(error)
+      window.alert(error instanceof Error ? error.message : '认证失败，请稍后重试')
     } finally {
       setAuthLoading(false)
     }
   }
 
   function handleLogout() {
+    clearToken()
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     setUser(null)
     setActiveView('auth')
