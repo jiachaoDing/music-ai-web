@@ -5,9 +5,10 @@ type TopbarProps = {
   active: NavKey
   user: User
   onNavigate: (key: NavKey) => void
+  onLogout: () => void
 }
 
-export function Topbar({ active, user, onNavigate }: TopbarProps) {
+export function Topbar({ active, user, onNavigate, onLogout }: TopbarProps) {
   return (
     <header className="topbar">
       <div className="brand-lockup">
@@ -29,7 +30,14 @@ export function Topbar({ active, user, onNavigate }: TopbarProps) {
         ))}
       </nav>
       <div className="user-pill">
-        <strong>{user.nickname}</strong>
+        <button type="button" className="user-pill__trigger" aria-haspopup="menu">
+          <strong>{user.nickname}</strong>
+        </button>
+        <div className="user-pill__menu" role="menu">
+          <button type="button" className="user-pill__logout" onClick={onLogout}>
+            退出登录
+          </button>
+        </div>
       </div>
     </header>
   )

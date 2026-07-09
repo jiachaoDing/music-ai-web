@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import type { FeedTab } from './api/song'
-import { getCurrentUser } from './api/auth'
+import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getFeed, getMySongs } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
 import { mockTask } from './mock/tasks'
-import { AuthPage } from './pages/AuthPage'
+import { AuthPage } from './pages/auth/AuthPage'
 import { CreateFormPage } from './pages/CreateFormPage'
 import { CreatePage } from './pages/CreatePage'
 import { DiscoverPage } from './pages/DiscoverPage'
@@ -24,8 +24,19 @@ import type { NavKey } from './utils/constants'
 
 type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player'
 
+type AuthMode = 'login' | 'register'
+
+type AuthValues = {
+  identifier?: string
+  password?: string
+  nickname?: string
+  inviteCode?: string
+}
+
+const AUTH_STORAGE_KEY = 'echo-auth-user'
+
 function App() {
-  const [activeView, setActiveView] = useState<AppView>('feed')
+  const [activeView, setActiveView] = useState<AppView>('auth')
   const [user, setUser] = useState<User | null>(null)
   const [feedSongs, setFeedSongs] = useState<Song[]>([])
   const [mySongs, setMySongs] = useState<Song[]>([])
@@ -34,6 +45,7 @@ function App() {
   const [currentSongId, setCurrentSongId] = useState<string>()
   const [posterOpen, setPosterOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(false)
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -64,23 +76,86 @@ function App() {
 
   useEffect(() => {
     async function bootstrap() {
-      const [nextUser, nextFeedSongs, nextMySongs] = await Promise.all([
-        getCurrentUser(),
-        getFeed(feedTab),
-        getMySongs(),
-      ])
+      const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+      if (!savedToken) {
+        setUser(null)
+        setActiveView('auth')
+        setLoading(false)
+        return
+      }
 
-      setUser(nextUser)
-      setFeedSongs(nextFeedSongs)
-      setMySongs(nextMySongs)
-      setCurrentSongId(nextFeedSongs[0]?.id)
-      setLoading(false)
+      try {
+        const nextUser = await getCurrentUser()
+        setUser(nextUser)
+        window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+        setActiveView('feed')
+
+        try {
+          const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
+          setFeedSongs(nextFeedSongs)
+          setMySongs(nextMySongs)
+          setCurrentSongId(nextFeedSongs[0]?.id)
+        } catch (error) {
+          console.error(error)
+          setFeedSongs([])
+          setMySongs([])
+          setCurrentSongId(undefined)
+        }
+      } catch (error) {
+        console.error(error)
+        clearToken()
+        window.localStorage.removeItem(AUTH_STORAGE_KEY)
+        setUser(null)
+        setActiveView('auth')
+      } finally {
+        setLoading(false)
+      }
     }
 
     void bootstrap()
   }, [feedTab])
 
-  if (loading || !user) {
+  async function handleAuthenticate(mode: AuthMode, values: AuthValues) {
+    setAuthLoading(true)
+
+    try {
+      const nextUser =
+        mode === 'login'
+          ? await signIn({ identifier: values.identifier ?? '', password: values.password ?? '' })
+          : await signUp({
+              nickname: values.nickname ?? '',
+              password: values.password ?? '',
+              inviteCode: values.inviteCode,
+            })
+
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      setUser(nextUser)
+      setActiveView('feed')
+
+      const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
+      setFeedSongs(nextFeedSongs)
+      setMySongs(nextMySongs)
+      setCurrentSongId(nextFeedSongs[0]?.id)
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '认证失败，请稍后重试')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  function handleLogout() {
+    clearToken()
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    setUser(null)
+    setActiveView('auth')
+    setFeedSongs([])
+    setMySongs([])
+    setCurrentSongId(undefined)
+    setPosterOpen(false)
+  }
+
+  if (loading) {
     return (
       <main className="standalone-shell">
         <LoadingState title="正在进入 Echo" description="准备用户、作品和页面骨架" />
@@ -88,27 +163,31 @@ function App() {
     )
   }
 
-  if (activeView === 'auth') {
+  if (!user) {
     return (
       <main className="standalone-shell">
-        <AuthPage />
+        <AuthPage onAuthenticate={handleAuthenticate} loading={authLoading} />
       </main>
     )
   }
 
+  const activeNavKey =
+    activeView === 'player' || activeView === 'songDetail'
+      ? 'feed'
+      : activeView === 'task' || activeView === 'createForm'
+        ? 'create'
+        : activeView === 'auth'
+          ? 'feed'
+          : activeView
+
   return (
     <AppLayout
-      active={
-        activeView === 'player' || activeView === 'songDetail'
-          ? 'feed'
-          : activeView === 'task' || activeView === 'createForm'
-            ? 'create'
-            : activeView
-      }
+      active={activeNavKey as Exclude<NavKey, 'auth'>}
       currentSong={currentSong}
       user={user}
       onNavigate={navigate}
       onOpenPlayer={() => setActiveView('player')}
+      onLogout={handleLogout}
     >
       {activeView === 'feed' ? (
         <FeedPage
