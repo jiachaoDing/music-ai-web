@@ -30,20 +30,35 @@ function formatDate(value?: string) {
 export function MeHero({ user }: MeHeroProps) {
   return (
     <div className="me-hero">
+      <div className="me-hero__glow" aria-hidden="true" />
       <div className="me-hero__identity">
-        <div className="avatar me-hero__avatar">{user.nickname.slice(0, 1)}</div>
         <div className="me-hero__copy">
           <span>Profile</span>
-          <h1>{user.nickname}</h1>
+          <div className="me-hero__headline">
+            <div className="avatar me-hero__avatar">{user.nickname.slice(0, 1)}</div>
+            <h1>{user.nickname}</h1>
+          </div>
           <p>
-            这里会沉淀你的 AI 音乐作品、创作状态和邀请码信息，后面也会继续接入收藏、
-            草稿和播放记录。
+            这周你已经完成 6 首作品创作，累计获得 128 次喜欢和 960 次播放。
+            最近常用风格是流行、治愈和 City Pop。
           </p>
+          <div className="me-hero__tags">
+            <i>创作中</i>
+            <i>个人中心</i>
+            <i>AI Music</i>
+          </div>
         </div>
       </div>
-      <div className="me-hero__aside">
-        <strong>{user.echoPoints}</strong>
-        <span>Echo Points</span>
+      <div className="me-hero__spotlight">
+        <div className="me-hero__badge">Echo Creator</div>
+        <div className="me-hero__disc" aria-hidden="true">
+          <b />
+        </div>
+        <div className="me-hero__score">
+          <strong>{user.echoPoints}</strong>
+          <span>Echo Points</span>
+          <small>本周创作状态稳定上升</small>
+        </div>
       </div>
     </div>
   )
@@ -96,34 +111,6 @@ export function MeAccountPanel({ user, inviteCode }: MeAccountProps) {
           <span>可用邀请码</span>
           <strong>{inviteCode ?? '暂无可用邀请码'}</strong>
         </div>
-      </div>
-    </section>
-  )
-}
-
-export function MeStudioPanel() {
-  return (
-    <section className="me-panel">
-      <div className="me-panel__heading">
-        <div>
-          <span>Studio</span>
-          <h2>创作工作台</h2>
-        </div>
-        <p>先把个人中心骨架搭起来，后面可以继续接入真实统计、草稿和收藏数据。</p>
-      </div>
-      <div className="me-quick-grid">
-        <article className="me-quick-card">
-          <strong>我的作品</strong>
-          <p>查看已发布和已生成的作品，后续接入筛选和状态管理。</p>
-        </article>
-        <article className="me-quick-card">
-          <strong>草稿箱</strong>
-          <p>存放未完成创作和待补充信息的内容，现在先保留展示位。</p>
-        </article>
-        <article className="me-quick-card">
-          <strong>收藏与喜欢</strong>
-          <p>后续可串联社区作品、个人偏好和推荐逻辑。</p>
-        </article>
       </div>
     </section>
   )
