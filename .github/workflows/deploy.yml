@@ -20,7 +20,7 @@ jobs:
       - run: npm run build
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-
+          VITE_USE_MOCK: ${{ secrets.VITE_USE_MOCK }}
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
