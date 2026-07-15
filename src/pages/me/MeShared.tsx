@@ -2,6 +2,12 @@ import type { User } from '../../types/user'
 
 type MeHeroProps = {
   user: User
+  summary: {
+    songCount: number
+    likeCount: number
+    playCount: number
+    topStyles: string[]
+  }
 }
 
 type MeStatsProps = {
@@ -27,7 +33,9 @@ function formatDate(value?: string) {
   }).format(new Date(value))
 }
 
-export function MeHero({ user }: MeHeroProps) {
+export function MeHero({ user, summary }: MeHeroProps) {
+  const topStylesText = summary.topStyles.length ? summary.topStyles.join('、') : '等待新的创作风格出现'
+
   return (
     <div className="me-hero">
       <div className="me-hero__glow" aria-hidden="true" />
@@ -39,8 +47,8 @@ export function MeHero({ user }: MeHeroProps) {
             <h1>{user.nickname}</h1>
           </div>
           <p>
-            这周你已经完成 6 首作品创作，累计获得 128 次喜欢和 960 次播放。
-            最近常用风格是流行、治愈和 City Pop。
+            目前共整理了 {summary.songCount} 首作品，累计获得 {summary.likeCount} 次喜欢和{' '}
+            {summary.playCount} 次播放。最近常用风格是 {topStylesText}。
           </p>
           <div className="me-hero__tags">
             <i>创作中</i>
@@ -57,7 +65,7 @@ export function MeHero({ user }: MeHeroProps) {
         <div className="me-hero__score">
           <strong>{user.echoPoints}</strong>
           <span>Echo Points</span>
-          <small>本周创作状态稳定上升</small>
+          <small>{summary.songCount ? '作品库正在持续扩充' : '完成第一首作品后这里会更新'}</small>
         </div>
       </div>
     </div>

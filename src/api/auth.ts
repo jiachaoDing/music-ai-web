@@ -7,11 +7,11 @@ export const TOKEN_STORAGE_KEY = 'echo_token'
 
 type BackendUser = {
   id: string
-  name: string
+  nickname: string
   avatarUrl?: string | null
   color?: string | null
   role: 'user' | 'admin'
-  points: number
+  echoPoints: number
   invitedBy?: string | null
   lastCheckin?: string | null
   streak: number
@@ -26,11 +26,11 @@ type AuthResponse = {
 function mapUser(user: BackendUser): User {
   return {
     id: user.id,
-    nickname: user.name,
+    nickname: user.nickname,
     avatarUrl: user.avatarUrl ?? undefined,
     color: user.color ?? undefined,
     role: user.role,
-    echoPoints: user.points,
+    echoPoints: user.echoPoints,
     invitedBy: user.invitedBy ?? undefined,
     lastCheckin: user.lastCheckin ?? undefined,
     streak: user.streak,
@@ -71,7 +71,7 @@ export async function signIn({ identifier, password }: LoginFormValues): Promise
 
   const result = await request<AuthResponse>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ name: identifier.trim(), password }),
+    body: JSON.stringify({ nickname: identifier.trim(), password }),
   })
 
   persistToken(result.token)
@@ -112,7 +112,7 @@ export async function signUp({ nickname, password, inviteCode }: RegisterFormVal
 
   const result = await request<AuthResponse>('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ name: nickname.trim(), password, inviteCode }),
+    body: JSON.stringify({ nickname: nickname.trim(), password, inviteCode }),
   })
 
   persistToken(result.token)

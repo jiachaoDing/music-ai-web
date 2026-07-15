@@ -6,6 +6,41 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
 export type FeedTab = 'resonance' | 'recommend' | 'hot'
 
+export type GenerateSongInput = {
+  title: string
+  style: string
+  lyrics: string
+  mode?: Song['mode']
+  prompt?: string
+  isInstrumental?: boolean
+  originId?: string | null
+  forWho?: string
+}
+
+export type PublishSongInput = {
+  published?: boolean
+  copyrightConfirmed?: boolean
+}
+
+export type UpdateSongInput = {
+  title?: string
+  description?: string
+  lyrics?: string
+  tags?: string[]
+  coverUrl?: string
+}
+
+type ResonanceFeedResponse = {
+  intro?: string
+  moodTags?: string[]
+  list?: Song[]
+}
+
+type SongListResponse = {
+  list?: Song[]
+  items?: Song[]
+}
+
 function getMockFeed(tab: FeedTab = 'resonance'): Song[] {
   const publishedSongs = mockSongs.filter((song) => song.published)
 
@@ -20,12 +55,22 @@ function getMockFeed(tab: FeedTab = 'resonance'): Song[] {
   return publishedSongs
 }
 
+function ensureSongArray(value: unknown): Song[] {
+  return Array.isArray(value) ? (value as Song[]) : []
+}
+
 export async function getFeed(tab: FeedTab = 'resonance'): Promise<Song[]> {
   if (USE_MOCK) return getMockFeed(tab)
 
   try {
-    if (tab === 'resonance') return await request<Song[]>('/api/resonance')
-    return await request<Song[]>(`/api/feed?sort=${tab === 'hot' ? 'hot' : 'new'}`)
+    if (tab === 'resonance') {
+      const result = await request<ResonanceFeedResponse | Song[]>('/api/resonance')
+      return Array.isArray(result) ? result : ensureSongArray(result.list)
+    }
+
+    const result = await request<SongListResponse | Song[]>(`/api/feed?sort=${tab === 'hot' ? 'hot' : 'new'}`)
+    if (Array.isArray(result)) return result
+    return ensureSongArray(result.list ?? result.items)
   } catch (error) {
     console.warn('Feed API unavailable, fallback to mock feed.', error)
     return getMockFeed(tab)
@@ -36,9 +81,46 @@ export async function getMySongs(): Promise<Song[]> {
   if (USE_MOCK) return mockSongs
 
   try {
-    return await request<Song[]>('/api/me/songs')
+    const result = await request<SongListResponse | Song[]>('/api/me/songs')
+    if (Array.isArray(result)) return result
+    return ensureSongArray(result.list ?? result.items)
   } catch (error) {
     console.warn('My songs API unavailable, fallback to mock songs.', error)
     return mockSongs
   }
+}
+
+export async function generateSong(input: GenerateSongInput): Promise<Song> {
+  return request<Song>('/api/songs/generate', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function getSongDetail(songId: string): Promise<Song> {
+  const result = await request<{ song: Song }>(`/api/song/${songId}`)
+  return result.song
+}
+
+export async function publishSong(songId: string, input: PublishSongInput): Promise<Song> {
+  const result = await request<{ song: Song }>(`/api/publish/${songId}`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return result.song
+}
+
+export async function updateSong(songId: string, input: UpdateSongInput): Promise<Song> {
+  const result = await request<{ song: Song }>(`/api/song/${songId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+  return result.song
+}
+
+export async function recordSongPlay(songId: string): Promise<number> {
+  const result = await request<{ playCount: number }>(`/api/play/${songId}`, {
+    method: 'POST',
+  })
+  return result.playCount
 }

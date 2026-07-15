@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import type { FeedTab } from './api/song'
+import { generateCover } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
-import { getFeed, getMySongs } from './api/song'
+import type { FeedTab } from './api/song'
+import { generateSong, getFeed, getMySongs, publishSong, recordSongPlay, updateSong } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
-import { mockTask } from './mock/tasks'
 import { AuthPage } from './pages/auth/AuthPage'
+import type { CreateSubmission } from './pages/create/CreateFormPage'
 import { CreateFormPage } from './pages/create/CreateFormPage'
 import { CreatePage } from './pages/create/CreatePage'
 import { DiscoverPage } from './pages/DiscoverPage'
@@ -17,8 +18,7 @@ import { PlayerPage } from './pages/PlayerPage'
 import { RadioPage } from './pages/RadioPage'
 import { SongDetailPage } from './pages/SongDetailPage'
 import { TaskPage } from './pages/TaskPage'
-import type { Song } from './types/song'
-import type { SongMode } from './types/song'
+import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
 import type { NavKey } from './utils/constants'
 
@@ -31,6 +31,14 @@ type AuthValues = {
   password?: string
   nickname?: string
   inviteCode?: string
+}
+
+type CreateTaskState = {
+  status: 'running' | 'done' | 'error'
+  stage: string
+  description: string
+  progress: number
+  canOpenSong: boolean
 }
 
 const AUTH_STORAGE_KEY = 'echo-auth-user'
@@ -46,6 +54,9 @@ function App() {
   const [posterOpen, setPosterOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [authLoading, setAuthLoading] = useState(false)
+  const [createSubmitting, setCreateSubmitting] = useState(false)
+  const [publishSubmitting, setPublishSubmitting] = useState(false)
+  const [createTask, setCreateTask] = useState<CreateTaskState | null>(null)
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -60,6 +71,21 @@ function App() {
     setActiveView('songDetail')
   }
 
+  function replaceSongInList(list: Song[], nextSong: Song) {
+    const filteredSongs = list.filter((song) => song.id !== nextSong.id)
+    return [nextSong, ...filteredSongs]
+  }
+
+  function syncSong(nextSong: Song) {
+    setMySongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
+    setFeedSongs((currentSongs) => {
+      const exists = currentSongs.some((song) => song.id === nextSong.id)
+      if (!exists) return currentSongs
+      return replaceSongInList(currentSongs, nextSong)
+    })
+    setCurrentSongId(nextSong.id)
+  }
+
   function navigate(key: NavKey) {
     setActiveView(key)
   }
@@ -72,6 +98,118 @@ function App() {
   function openCreateForm(mode: SongMode) {
     setCreateMode(mode)
     setActiveView('createForm')
+  }
+
+  async function handleCreateSubmit(payload: CreateSubmission) {
+    setCreateSubmitting(true)
+    setCreateTask({
+      status: 'running',
+      stage: '正在生成中',
+      description: '正在整理歌词、旋律和音频结果，完成后会继续生成封面。',
+      progress: 24,
+      canOpenSong: false,
+    })
+    setActiveView('task')
+
+    try {
+      const createdSong = await generateSong(payload)
+      syncSong(createdSong)
+      setCreateTask({
+        status: 'running',
+        stage: '正在生成中',
+        description: '歌曲已经生成完成，正在继续生成封面，请再稍等一下。',
+        progress: 76,
+        canOpenSong: false,
+      })
+
+      try {
+        const coverResult = await generateCover({
+          title: createdSong.title,
+          style: createdSong.style,
+          prompt: payload.prompt,
+        })
+
+        if (coverResult.imageUrl) {
+          const songWithCover = await updateSong(createdSong.id, {
+            coverUrl: coverResult.imageUrl,
+          })
+          syncSong(songWithCover)
+        }
+
+        setCreateTask({
+          status: 'done',
+          stage: '生成完成',
+          description: '歌曲和封面都已经准备好了，现在可以查看详情或继续发布。',
+          progress: 100,
+          canOpenSong: true,
+        })
+      } catch (coverError) {
+        console.error(coverError)
+        setCreateTask({
+          status: 'done',
+          stage: '生成完成',
+          description: '歌曲已经生成完成，但封面暂时没有成功生成，可以先查看详情。',
+          progress: 100,
+          canOpenSong: true,
+        })
+      }
+    } catch (error) {
+      console.error(error)
+      setCreateTask({
+        status: 'error',
+        stage: '生成失败',
+        description: error instanceof Error ? error.message : '提交生成失败，请稍后重试。',
+        progress: 100,
+        canOpenSong: false,
+      })
+    } finally {
+      setCreateSubmitting(false)
+    }
+  }
+
+  async function handlePlaySong(songId: string) {
+    setCurrentSongId(songId)
+    setActiveView('player')
+
+    try {
+      const nextPlayCount = await recordSongPlay(songId)
+      const applyPlayCount = (list: Song[]) =>
+        list.map((song) => (song.id === songId ? { ...song, playCount: nextPlayCount } : song))
+
+      setFeedSongs((currentSongs) => applyPlayCount(currentSongs))
+      setMySongs((currentSongs) => applyPlayCount(currentSongs))
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  async function handlePublishSong(published: boolean) {
+    if (!currentSong) return
+
+    setPublishSubmitting(true)
+
+    try {
+      const nextSong = await publishSong(currentSong.id, {
+        published,
+        copyrightConfirmed: published ? true : undefined,
+      })
+
+      setMySongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
+      setFeedSongs((currentSongs) => {
+        const nextSongs = currentSongs.filter((song) => song.id !== nextSong.id)
+        return nextSong.published ? [nextSong, ...nextSongs] : nextSongs
+      })
+      setCurrentSongId(nextSong.id)
+
+      window.alert(
+        published ? '作品已发布，可以继续去首页或我的作品里查看。' : '作品已设为仅自己可见。'
+      )
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '作品状态更新失败，请稍后重试')
+    } finally {
+      setPublishSubmitting(false)
+    }
   }
 
   useEffect(() => {
@@ -153,6 +291,7 @@ function App() {
     setMySongs([])
     setCurrentSongId(undefined)
     setPosterOpen(false)
+    setCreateTask(null)
   }
 
   if (loading) {
@@ -201,15 +340,27 @@ function App() {
       {activeView === 'discover' ? <DiscoverPage /> : null}
       {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
       {activeView === 'createForm' ? (
-        <CreateFormPage mode={createMode} onSubmit={() => setActiveView('task')} />
+        <CreateFormPage
+          mode={createMode}
+          onSubmit={handleCreateSubmit}
+          submitting={createSubmitting}
+        />
       ) : null}
       {activeView === 'radio' ? <RadioPage /> : null}
       {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
-      {activeView === 'task' ? (
-        <TaskPage task={mockTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
+      {activeView === 'task' && createTask ? (
+        <TaskPage task={createTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
       ) : null}
       {activeView === 'songDetail' && currentSong ? (
-        <SongDetailPage song={currentSong} onOpenPoster={() => setPosterOpen(true)} />
+        <SongDetailPage
+          song={currentSong}
+          canManage={currentSong.author.id === user.id}
+          publishing={publishSubmitting}
+          onPlay={() => void handlePlaySong(currentSong.id)}
+          onOpenPoster={() => setPosterOpen(true)}
+          onPublish={() => void handlePublishSong(true)}
+          onSetPrivate={() => void handlePublishSong(false)}
+        />
       ) : null}
       {activeView === 'player' ? <PlayerPage song={currentSong} /> : null}
       {posterOpen && currentSong ? (

@@ -1,10 +1,10 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { createPlaylist, getMeProfile } from '../../api/me'
 import { EmptyState } from '../../components/EmptyState'
 import { SongCard } from '../../components/SongCard'
-import { mockInviteCodes } from '../../mock/users'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
-import type { User } from '../../types/user'
+import type { InviteCode, User } from '../../types/user'
 import { MeAccountPanel, MeHero, MeStatsPanel } from './MeShared'
 import { meStyles } from './meStyles'
 
@@ -18,91 +18,112 @@ type MeTabKey = 'profile' | 'drafts' | 'works' | 'playlists'
 
 const PLAYLIST_COLORS = ['#9ed9cc', '#a8c7f0', '#f5cfae', '#c9b8f2', '#f4b7c6']
 
-function buildMockPlaylists(songs: Song[]): Playlist[] {
-  return [
-    {
-      id: 'playlist_001',
-      name: '毕业季循环播放',
-      color: '#ea4c89',
-      type: 'custom',
-      isSystem: false,
-      songCount: 4,
-      songs: songs.slice(0, 4),
-      createdAt: '2026-07-05T20:00:00.000Z',
-    },
-    {
-      id: 'playlist_002',
-      name: '深夜耳机模式',
-      color: '#f58ab6',
-      type: 'custom',
-      isSystem: false,
-      songCount: 3,
-      songs: songs.slice(1, 4),
-      createdAt: '2026-07-04T22:30:00.000Z',
-    },
-    {
-      id: 'playlist_003',
-      name: '我喜欢的回声',
-      color: '#ffb1d0',
-      type: 'liked',
-      isSystem: true,
-      songCount: 12,
-      songs: songs.slice(0, 3),
-      createdAt: '2026-07-03T18:40:00.000Z',
-    },
-  ]
+function formatDuration(duration?: number) {
+  if (!duration) return '--:--'
+  return `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`
+}
+
+function formatPlaylistType(playlist: Playlist) {
+  return playlist.type === 'liked' ? '喜欢列表' : playlist.isSystem ? '系统歌单' : '自建歌单'
 }
 
 export function MePage({ user, songs, onOpenSong }: MePageProps) {
   const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
-  const [playlists, setPlaylists] = useState<Playlist[]>(() => buildMockPlaylists(songs))
+  const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
   const [playlistName, setPlaylistName] = useState('')
+  const [playlistSubmitting, setPlaylistSubmitting] = useState(false)
 
-  const inviteCode = mockInviteCodes.find(
-    (code) => code.createdBy === user.id && code.status === 'unused',
-  )?.code
+  useEffect(() => {
+    async function hydrateMePage() {
+      try {
+        const profile = await getMeProfile()
+        setInviteCodes(profile.inviteCodes)
+        setPlaylists(profile.playlists)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    void hydrateMePage()
+  }, [])
+
+  const totalPlayCount = songs.reduce((sum, song) => sum + song.playCount, 0)
+  const totalLikeCount = songs.reduce((sum, song) => sum + song.likeCount, 0)
+  const styleCounts = songs.reduce<Record<string, number>>((currentMap, song) => {
+    song.style
+      .split(/[\/、,，]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((item) => {
+        currentMap[item] = (currentMap[item] ?? 0) + 1
+      })
+    return currentMap
+  }, {})
+
+  const topStyles = Object.entries(styleCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([style]) => style)
+
+  const inviteCode = inviteCodes.find((code) => code.status === 'unused')?.code
 
   const stats = [
-    { label: '累计作品', value: user.stats?.songCount ?? songs.length },
-    { label: '总播放', value: user.stats?.playCount ?? 0 },
-    { label: '收到喜欢', value: user.stats?.likedCount ?? 0 },
+    { label: '累计作品', value: songs.length },
+    { label: '总播放', value: totalPlayCount },
+    { label: '收到喜欢', value: totalLikeCount },
     { label: '连续打卡', value: `${user.streak} 天` },
   ]
 
-  const draftSongs = songs.filter((song) => song.status === 'draft' || !song.published)
+  const draftSongs = songs.filter((song) => !song.published || song.status === 'draft')
+  const publishedSongs = songs.filter(
+    (song) => song.published || song.status === 'published',
+  )
   const latestSong = songs[0]
 
-  function handleCreatePlaylist() {
+  const profileSummary = useMemo(
+    () => ({
+      songCount: songs.length,
+      likeCount: totalLikeCount,
+      playCount: totalPlayCount,
+      topStyles,
+    }),
+    [songs, totalLikeCount, totalPlayCount, topStyles],
+  )
+
+  async function handleCreatePlaylist() {
     const nextName = playlistName.trim()
     if (!nextName) {
       window.alert('请先输入歌单名称')
       return
     }
 
-    const nextPlaylist: Playlist = {
-      id: `playlist_${Date.now()}`,
-      name: nextName,
-      color: PLAYLIST_COLORS[playlists.length % PLAYLIST_COLORS.length],
-      type: 'custom',
-      isSystem: false,
-      songCount: 0,
-      songs: [],
-      createdAt: new Date().toISOString(),
-    }
+    setPlaylistSubmitting(true)
 
-    setPlaylists((current) => [nextPlaylist, ...current])
-    setPlaylistName('')
-    setPlaylistModalOpen(false)
+    try {
+      const nextPlaylist = await createPlaylist(
+        nextName,
+        PLAYLIST_COLORS[playlists.length % PLAYLIST_COLORS.length],
+      )
+      setPlaylists((current) => [nextPlaylist, ...current])
+      setPlaylistName('')
+      setPlaylistModalOpen(false)
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '新建歌单失败，请稍后重试')
+    } finally {
+      setPlaylistSubmitting(false)
+    }
   }
 
   return (
     <section className="page-stack me-page">
       <style>{meStyles}</style>
 
-      <MeHero user={user} />
+      <MeHero user={user} summary={profileSummary} />
 
-      <div className="me-tabs" role="tablist" aria-label="个人页内容切换">
+      <div className="me-tabs" role="tablist" aria-label="个人页面内容切换">
         <button
           type="button"
           className={activeTab === 'profile' ? 'is-active' : ''}
@@ -170,7 +191,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
                   <div className="me-highlight__details">
                     <p>
                       {latestSong.description ??
-                        '这首作品已经进入个人作品库，可以继续查看详情、歌词和播放表现。'}
+                        '这首作品已经进入你的个人作品库，可以继续查看详情、歌词和播放表现。'}
                     </p>
                     <div className="me-highlight__stats">
                       <span>{latestSong.playCount} 播放</span>
@@ -184,13 +205,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
                       </div>
                       <div>
                         <span>时长</span>
-                        <strong>
-                          {latestSong.duration
-                            ? `${Math.floor(latestSong.duration / 60)}:${String(
-                                latestSong.duration % 60,
-                              ).padStart(2, '0')}`
-                            : '--:--'}
-                        </strong>
+                        <strong>{formatDuration(latestSong.duration)}</strong>
                       </div>
                       <div>
                         <span>风格</span>
@@ -215,7 +230,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
             ) : (
               <EmptyState
                 title="还没有最近作品"
-                description="目前作品库还是空的，完成一次创作后这里会优先展示最近发布的作品。"
+                description="目前作品库还是空的，完成一次创作后这里会优先展示最近生成的作品。"
               />
             )}
           </section>
@@ -238,7 +253,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
           {draftSongs.length ? (
             <div className="card-list">
               {draftSongs.map((song) => (
-                <SongCard key={song.id} song={song} onOpen={onOpenSong} />
+                <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
               ))}
             </div>
           ) : (
@@ -257,12 +272,16 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
               <span>Works</span>
               <h2>我的作品</h2>
             </div>
-            <p>{songs.length ? `当前已展示 ${songs.length} 个作品` : '你的作品发布后会出现在这里'}</p>
+            <p>
+              {publishedSongs.length
+                ? `当前已展示 ${publishedSongs.length} 个已发布作品。`
+                : '你的作品正式发布后会出现在这里。'}
+            </p>
           </div>
-          {songs.length ? (
+          {publishedSongs.length ? (
             <div className="card-list">
-              {songs.map((song) => (
-                <SongCard key={song.id} song={song} onOpen={onOpenSong} />
+              {publishedSongs.map((song) => (
+                <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
               ))}
             </div>
           ) : (
@@ -283,8 +302,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
             </div>
             <div className="me-playlist-actions">
               <p>
-                当前共整理了 {playlists.length} 个歌单，包含自建歌单和喜欢的内容列表，
-                方便按场景和情绪去管理作品。
+                当前共整理了 {playlists.length} 个歌单，已经切换为真实数据展示，新建歌单也会直接写入后端。
               </p>
               <button
                 type="button"
@@ -300,22 +318,18 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
               <article key={playlist.id} className="me-playlist-card">
                 <div
                   className="me-playlist-cover"
-                  style={{ '--playlist-color': playlist.color ?? '#ea4c89' } as CSSProperties}
+                  style={{ '--playlist-color': playlist.color ?? '#9ed9cc' } as CSSProperties}
                 >
                   <span>{playlist.type === 'liked' ? 'liked' : 'playlist'}</span>
                 </div>
                 <div className="me-playlist-body">
                   <strong>{playlist.name}</strong>
                   <p>
-                    {playlist.songCount} 首歌曲
-                    {playlist.isSystem ? ' · 系统歌单' : ' · 自建歌单'}
+                    {playlist.songCount} 首歌曲 · {formatPlaylistType(playlist)}
                   </p>
                   <div className="me-playlist-meta">
-                    {playlist.songs?.length ? (
-                      playlist.songs.slice(0, 3).map((song) => <span key={song.id}>{song.title}</span>)
-                    ) : (
-                      <span>等待加入歌曲</span>
-                    )}
+                    <span>{playlist.isSystem ? '默认整理常用内容' : '可继续添加作品'}</span>
+                    <span>{new Date(playlist.createdAt).toLocaleDateString('zh-CN')}</span>
                   </div>
                 </div>
               </article>
@@ -351,11 +365,16 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
             </label>
 
             <div className="me-modal__actions">
-              <button type="button" className="me-modal__ghost" onClick={() => setPlaylistModalOpen(false)}>
+              <button
+                type="button"
+                className="me-modal__ghost"
+                disabled={playlistSubmitting}
+                onClick={() => setPlaylistModalOpen(false)}
+              >
                 取消
               </button>
-              <button type="button" onClick={handleCreatePlaylist}>
-                创建歌单
+              <button type="button" disabled={playlistSubmitting} onClick={() => void handleCreatePlaylist()}>
+                {playlistSubmitting ? '创建中...' : '创建歌单'}
               </button>
             </div>
           </div>

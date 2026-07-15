@@ -5,9 +5,10 @@ import { formatCount, formatDuration } from '../utils/format'
 type SongCardProps = {
   song: Song
   onOpen?: (songId: string) => void
+  coverAspect?: 'default' | 'portrait'
 }
 
-export function SongCard({ song, onOpen }: SongCardProps) {
+export function SongCard({ song, onOpen, coverAspect = 'default' }: SongCardProps) {
   const coverStyle = {
     '--cover-color': song.author.color,
   } as CSSProperties
@@ -16,11 +17,12 @@ export function SongCard({ song, onOpen }: SongCardProps) {
     <article className="song-card">
       <button
         aria-label={`打开作品 ${song.title}`}
-        className="song-cover"
+        className={`song-cover${coverAspect === 'portrait' ? ' song-cover--portrait' : ''}`}
         style={coverStyle}
         type="button"
         onClick={() => onOpen?.(song.id)}
       >
+        {song.coverUrl ? <img className="song-cover__image" src={song.coverUrl} alt={`${song.title} 封面`} /> : null}
         <span className="song-cover__eyebrow">{song.mode}</span>
         <i aria-hidden="true" />
       </button>
