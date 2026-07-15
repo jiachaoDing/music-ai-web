@@ -17,53 +17,65 @@ const modeCopy: Record<SongMode, { title: string; description: string; placehold
   emotion: {
     title: '情绪炼歌',
     description: '把心情、日记或经历整理成旋律。',
-    placeholder: '例如：今天有点累，但还是想往前走',
+    placeholder: '例如：今天有点累，但还是想继续往前走',
   },
   photo: {
     title: '看图写歌',
-    description: '上传图片并补充文字要求，生成画面感歌曲。',
-    placeholder: '例如：一张雨天街角照片，想要电子民谣风',
+    description: '围绕画面和补充文字，生成更有场景感的作品。',
+    placeholder: '例如：雨天街角、冷色路灯、电子民谣氛围',
   },
   foryou: {
     title: '为 TA 写歌',
-    description: '写给一个具体的人，保留故事和称呼。',
+    description: '写给一个具体的人，保留称呼和故事。',
     placeholder: '例如：写给朋友小林，感谢一起熬过考试周',
   },
   radio: {
     title: '电台纯音乐',
-    description: '选择场景并生成适合此刻的纯音乐。',
+    description: '选择场景后生成适合此刻的纯音乐。',
     placeholder: '例如：深夜自习，安静但不困',
   },
   remix: {
     title: '翻唱 / 二创',
-    description: '基于已有作品生成新版本。',
+    description: '基于已有作品生成新的版本。',
     placeholder: '例如：把原曲改成 City Pop 风格',
   },
   fortune: {
-    title: '时运曲',
-    description: '根据今日时运生成专属歌曲。',
+    title: '时运歌',
+    description: '根据今日关键词生成专属歌曲。',
     placeholder: '例如：今日关键词是回声，想要治愈感',
   },
   album: {
     title: 'AI 音乐制作人',
-    description: '围绕专辑主题生成概念 EP 草稿。',
-    placeholder: '例如：关于夏夜、操场和告别的概念 EP',
+    description: '围绕一个专辑主题生成概念 EP 草稿。',
+    placeholder: '例如：关于夏天、操场和告别的概念 EP',
   },
 }
 
 const styleTags = ['流行', '治愈', '电子', '民谣', 'Lo-Fi', 'City Pop']
 
-type CreateFormPageProps = {
+export type CreateSubmission = {
+  title: string
+  style: string
+  lyrics: string
   mode: SongMode
-  onSubmit: () => void
+  prompt: string
+  isInstrumental: boolean
+  forWho?: string
 }
 
-export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
+type CreateFormPageProps = {
+  mode: SongMode
+  onSubmit: (payload: CreateSubmission) => Promise<void> | void
+  submitting?: boolean
+}
+
+export function CreateFormPage({ mode, onSubmit, submitting = false }: CreateFormPageProps) {
   const current = modeCopy[mode]
   const [prompt, setPrompt] = useState('')
   const [style, setStyle] = useState('')
   const [lyrics, setLyrics] = useState('')
   const [generatedTitle, setGeneratedTitle] = useState('')
+  const [forWho, setForWho] = useState('')
   const [loadingLyrics, setLoadingLyrics] = useState(false)
   const [error, setError] = useState('')
 
@@ -76,10 +88,12 @@ export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
   }
 
   async function handleGenerateLyrics() {
-    const nextPrompt = [prompt, style ? `风格：${style}` : ''].filter(Boolean).join('，')
+    const nextPrompt = [prompt.trim(), style ? `风格：${style.trim()}` : '']
+      .filter(Boolean)
+      .join('；')
 
     if (nextPrompt.trim().length < 2) {
-      setError('请先输入至少 2 个字的灵感内容。')
+      setError('请先输入至少 2 个字的创作灵感。')
       return
     }
 
@@ -97,6 +111,51 @@ export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
     }
   }
 
+  async function handleSubmit() {
+    const nextTitle = generatedTitle.trim()
+    const nextStyle = style.trim()
+    const nextLyrics = lyrics.trim()
+    const nextPrompt = prompt.trim()
+    const nextForWho = forWho.trim()
+
+    if (!nextPrompt) {
+      setError('请先输入创作灵感。')
+      return
+    }
+
+    if (!nextStyle) {
+      setError('请补充风格标签。')
+      return
+    }
+
+    if (!nextTitle) {
+      setError('请输入歌名或先使用 AI 写词。')
+      return
+    }
+
+    if (!nextLyrics) {
+      setError('请先生成或输入歌词。')
+      return
+    }
+
+    if (mode === 'foryou' && !nextForWho) {
+      setError('请输入写给的对象。')
+      return
+    }
+
+    setError('')
+
+    await onSubmit({
+      title: nextTitle,
+      style: nextStyle,
+      lyrics: nextLyrics,
+      mode,
+      prompt: nextPrompt,
+      isInstrumental: mode === 'radio',
+      forWho: mode === 'foryou' ? nextForWho : undefined,
+    })
+  }
+
   return (
     <section className="page-stack create-suite create-form-page">
       <style>{createStyles}</style>
@@ -111,7 +170,7 @@ export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
         <section className="create-form-panel">
           <div className="create-panel-heading">
             <span>输入信息</span>
-            <h2>先写下创作材料</h2>
+            <h2>先写下创作素材</h2>
           </div>
 
           <label className="create-field">
@@ -143,14 +202,18 @@ export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
           {mode === 'foryou' ? (
             <label className="create-field">
               写给谁
-              <input placeholder="请输入对象昵称" />
+              <input
+                placeholder="请输入对象昵称"
+                value={forWho}
+                onChange={(event) => setForWho(event.target.value)}
+              />
             </label>
           ) : null}
 
           {mode === 'photo' ? (
             <label className="create-field">
-              图片说明
-              <input placeholder="先保留上传入口，后续接文件上传" />
+              画面补充
+              <input placeholder="目前先保留文案输入，后续再接图片上传" />
             </label>
           ) : null}
         </section>
@@ -164,7 +227,7 @@ export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
           <label className="create-field">
             歌名
             <input
-              placeholder="AI 写词后会回填歌名，也可以手动输入"
+              placeholder="AI 写词后会自动回填，也可以手动输入"
               value={generatedTitle}
               onChange={(event) => setGeneratedTitle(event.target.value)}
             />
@@ -188,11 +251,11 @@ export function CreateFormPage({ mode, onSubmit }: CreateFormPageProps) {
           {error ? <p className="create-form-error">{error}</p> : null}
 
           <div className="create-form-actions">
-            <button type="button" disabled={loadingLyrics} onClick={handleGenerateLyrics}>
+            <button type="button" disabled={loadingLyrics || submitting} onClick={handleGenerateLyrics}>
               {loadingLyrics ? '生成中...' : 'AI 写词'}
             </button>
-            <button type="button" onClick={onSubmit}>
-              提交生成
+            <button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
+              {submitting ? '生成中...' : '提交生成'}
             </button>
           </div>
         </section>

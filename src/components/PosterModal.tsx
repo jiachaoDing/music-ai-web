@@ -10,6 +10,7 @@ export function PosterModal({ song, onClose }: PosterModalProps) {
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <section className="poster-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <div className="poster-preview">
+          {song.coverUrl ? <img className="poster-preview__image" src={song.coverUrl} alt={`${song.title} 海报封面`} /> : null}
           <span>Echo AI</span>
           <strong>{song.title}</strong>
           <p>{song.aiReview ?? song.description ?? '把灵感唱成回声'}</p>
