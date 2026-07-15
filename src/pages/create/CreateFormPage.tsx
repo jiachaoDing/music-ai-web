@@ -67,12 +67,14 @@ type CreateFormPageProps = {
   mode: SongMode
   onSubmit: (payload: CreateSubmission) => Promise<void> | void
   submitting?: boolean
+  initialPrompt?: string
+  initialStyle?: string
 }
 
-export function CreateFormPage({ mode, onSubmit, submitting = false }: CreateFormPageProps) {
+export function CreateFormPage({ mode, onSubmit, submitting = false, initialPrompt = '', initialStyle = '' }: CreateFormPageProps) {
   const current = modeCopy[mode]
-  const [prompt, setPrompt] = useState('')
-  const [style, setStyle] = useState('')
+  const [prompt, setPrompt] = useState(initialPrompt)
+  const [style, setStyle] = useState(initialStyle)
   const [lyrics, setLyrics] = useState('')
   const [generatedTitle, setGeneratedTitle] = useState('')
   const [forWho, setForWho] = useState('')

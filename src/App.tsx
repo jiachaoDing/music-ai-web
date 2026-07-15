@@ -15,7 +15,7 @@ import { DiscoverPage } from './pages/DiscoverPage'
 import { FeedPage } from './pages/FeedPage'
 import { MePage } from './pages/me/MePage'
 import { PlayerPage } from './pages/PlayerPage'
-import { RadioPage } from './pages/RadioPage'
+import { RadioPage } from './pages/radio/RadioPage'
 import { SongDetailPage } from './pages/SongDetailPage'
 import { TaskPage } from './pages/TaskPage'
 import type { Song, SongMode } from './types/song'
@@ -50,6 +50,7 @@ function App() {
   const [mySongs, setMySongs] = useState<Song[]>([])
   const [feedTab, setFeedTab] = useState<FeedTab>('resonance')
   const [createMode, setCreateMode] = useState<SongMode>('song')
+  const [radioPreset, setRadioPreset] = useState({ prompt: '', style: '' })
   const [currentSongId, setCurrentSongId] = useState<string>()
   const [posterOpen, setPosterOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -344,9 +345,18 @@ function App() {
           mode={createMode}
           onSubmit={handleCreateSubmit}
           submitting={createSubmitting}
+          initialPrompt={createMode === 'radio' ? radioPreset.prompt : ''}
+          initialStyle={createMode === 'radio' ? radioPreset.style : ''}
         />
       ) : null}
-      {activeView === 'radio' ? <RadioPage /> : null}
+      {activeView === 'radio' ? (
+        <RadioPage
+          onGenerate={(preset) => {
+            setRadioPreset(preset)
+            openCreateForm('radio')
+          }}
+        />
+      ) : null}
       {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
       {activeView === 'task' && createTask ? (
         <TaskPage task={createTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
