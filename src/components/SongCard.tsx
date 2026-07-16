@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { Song } from '../types/song'
+import { resolveAssetUrl } from '../utils/asset'
 import { formatCount, formatDuration } from '../utils/format'
 
 type SongCardProps = {
@@ -9,6 +10,7 @@ type SongCardProps = {
 }
 
 export function SongCard({ song, onOpen, coverAspect = 'default' }: SongCardProps) {
+  const coverUrl = resolveAssetUrl(song.coverUrl)
   const coverStyle = {
     '--cover-color': song.author.color,
   } as CSSProperties
@@ -22,7 +24,7 @@ export function SongCard({ song, onOpen, coverAspect = 'default' }: SongCardProp
         type="button"
         onClick={() => onOpen?.(song.id)}
       >
-        {song.coverUrl ? <img className="song-cover__image" src={song.coverUrl} alt={`${song.title} 封面`} /> : null}
+        {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
         <span className="song-cover__eyebrow">{song.mode}</span>
         <i aria-hidden="true" />
       </button>

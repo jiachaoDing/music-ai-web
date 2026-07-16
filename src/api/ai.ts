@@ -7,16 +7,24 @@ export type LyricsResult = {
   rawText?: string
 }
 
+export type LyricsRequestInput = {
+  prompt: string
+  mode?: string
+  styles?: string[]
+  forWho?: string
+  image?: string
+}
+
 export type CoverResult = {
   status: string
   imageUrl: string | null
   providerResponse?: unknown
 }
 
-export function generateLyrics(prompt: string) {
+export function generateLyrics(input: string | LyricsRequestInput) {
   return request<LyricsResult>('/api/ai/lyrics', {
     method: 'POST',
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify(typeof input === 'string' ? { prompt: input } : input),
   })
 }
 

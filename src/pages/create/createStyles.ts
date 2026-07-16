@@ -443,6 +443,37 @@ export const createStyles = `
   box-shadow: none;
 }
 
+.create-upload-box {
+  display: grid;
+  gap: 10px;
+  border: 1px dashed rgba(234, 76, 137, 0.28);
+  border-radius: 20px;
+  padding: 14px 16px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+}
+
+.create-upload-box input {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.create-photo-preview {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.create-photo-preview img {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+}
+
 .create-result-panel {
   background:
     linear-gradient(#ffffff 31px, rgba(234, 76, 137, 0.08) 32px),
