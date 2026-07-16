@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { generateCover } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
@@ -20,6 +20,7 @@ import { SongDetailPage } from './pages/SongDetailPage'
 import { TaskPage } from './pages/TaskPage'
 import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
+import { resolveAssetUrl } from './utils/asset'
 import type { NavKey } from './utils/constants'
 
 type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player'
@@ -57,6 +58,11 @@ function App() {
   const [createSubmitting, setCreateSubmitting] = useState(false)
   const [publishSubmitting, setPublishSubmitting] = useState(false)
   const [createTask, setCreateTask] = useState<CreateTaskState | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [playbackDuration, setPlaybackDuration] = useState(0)
+  const [pendingPlaySongId, setPendingPlaySongId] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -65,6 +71,8 @@ function App() {
   }, [feedSongs, mySongs])
 
   const currentSong = allSongs.find((song) => song.id === currentSongId) ?? allSongs[0]
+  const currentSongIndex = currentSong ? allSongs.findIndex((song) => song.id === currentSong.id) : -1
+  const playbackProgress = playbackDuration > 0 ? (currentTime / playbackDuration) * 100 : 0
 
   function openSong(songId: string) {
     setCurrentSongId(songId)
@@ -88,6 +96,72 @@ function App() {
 
   function navigate(key: NavKey) {
     setActiveView(key)
+  }
+
+  function syncPlayCount(songId: string, nextPlayCount: number) {
+    const applyPlayCount = (list: Song[]) =>
+      list.map((song) => (song.id === songId ? { ...song, playCount: nextPlayCount } : song))
+
+    setFeedSongs((currentSongs) => applyPlayCount(currentSongs))
+    setMySongs((currentSongs) => applyPlayCount(currentSongs))
+  }
+
+  async function startPlayback(songId?: string) {
+    const nextSongId = songId ?? currentSong?.id
+    if (!nextSongId) return
+
+    if (songId && songId !== currentSongId) {
+      setCurrentSongId(songId)
+      setPendingPlaySongId(songId)
+    } else if (currentSong?.audioUrl) {
+      try {
+        await audioRef.current?.play()
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    if (songId) {
+      try {
+        const nextPlayCount = await recordSongPlay(songId)
+        syncPlayCount(songId, nextPlayCount)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  }
+
+  function pausePlayback() {
+    audioRef.current?.pause()
+  }
+
+  function togglePlayback() {
+    if (!currentSong) return
+    if (isPlaying) {
+      pausePlayback()
+      return
+    }
+    void startPlayback()
+  }
+
+  function playAdjacentSong(direction: 'prev' | 'next') {
+    if (!allSongs.length) return
+
+    const baseIndex = currentSongIndex >= 0 ? currentSongIndex : 0
+    const step = direction === 'next' ? 1 : -1
+    const nextIndex = (baseIndex + step + allSongs.length) % allSongs.length
+    const nextSong = allSongs[nextIndex]
+
+    if (!nextSong) return
+    setActiveView('player')
+    void startPlayback(nextSong.id)
+  }
+
+  function seekPlayback(progress: number) {
+    const audio = audioRef.current
+    if (!audio || !playbackDuration) return
+    const boundedProgress = Math.max(0, Math.min(progress, 100))
+    audio.currentTime = (boundedProgress / 100) * playbackDuration
   }
 
   async function changeFeedTab(tab: FeedTab) {
@@ -170,17 +244,7 @@ function App() {
   async function handlePlaySong(songId: string) {
     setCurrentSongId(songId)
     setActiveView('player')
-
-    try {
-      const nextPlayCount = await recordSongPlay(songId)
-      const applyPlayCount = (list: Song[]) =>
-        list.map((song) => (song.id === songId ? { ...song, playCount: nextPlayCount } : song))
-
-      setFeedSongs((currentSongs) => applyPlayCount(currentSongs))
-      setMySongs((currentSongs) => applyPlayCount(currentSongs))
-    } catch (error) {
-      console.error(error)
-    }
+    void startPlayback(songId)
   }
 
   async function handlePublishSong(published: boolean) {
@@ -253,6 +317,54 @@ function App() {
     void bootstrap()
   }, [feedTab])
 
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleLoadedMetadata = () => setPlaybackDuration(audio.duration || currentSong?.duration || 0)
+    const handleEnded = () => {
+      setIsPlaying(false)
+      playAdjacentSong('next')
+    }
+
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('ended', handleEnded)
+
+    return () => {
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('ended', handleEnded)
+    }
+  }, [currentSong?.duration])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || !currentSong?.audioUrl) return
+
+    const nextAudioUrl = resolveAssetUrl(currentSong.audioUrl)
+    if (audio.src !== nextAudioUrl) {
+      audio.src = nextAudioUrl
+      audio.load()
+      setCurrentTime(0)
+      setPlaybackDuration(currentSong.duration ?? 0)
+    }
+
+    if (pendingPlaySongId === currentSong.id) {
+      void audio.play().catch((error) => {
+        console.error(error)
+      })
+      setPendingPlaySongId(null)
+    }
+  }, [currentSong?.id, currentSong?.audioUrl, currentSong?.duration, pendingPlaySongId])
+
   async function handleAuthenticate(mode: AuthMode, values: AuthValues) {
     setAuthLoading(true)
 
@@ -323,11 +435,17 @@ function App() {
     <AppLayout
       active={activeNavKey as Exclude<NavKey, 'auth'>}
       currentSong={currentSong}
+      isPlaying={isPlaying}
+      progress={playbackProgress}
       user={user}
       onNavigate={navigate}
       onOpenPlayer={() => setActiveView('player')}
+      onTogglePlay={togglePlayback}
+      onPlayPrev={() => playAdjacentSong('prev')}
+      onPlayNext={() => playAdjacentSong('next')}
       onLogout={handleLogout}
     >
+      <audio ref={audioRef} hidden preload="metadata" />
       {activeView === 'feed' ? (
         <FeedPage
           activeTab={feedTab}
@@ -362,7 +480,18 @@ function App() {
           onSetPrivate={() => void handlePublishSong(false)}
         />
       ) : null}
-      {activeView === 'player' ? <PlayerPage song={currentSong} /> : null}
+      {activeView === 'player' ? (
+        <PlayerPage
+          song={currentSong}
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          duration={playbackDuration || currentSong?.duration || 0}
+          onTogglePlay={togglePlayback}
+          onPlayPrev={() => playAdjacentSong('prev')}
+          onPlayNext={() => playAdjacentSong('next')}
+          onSeek={seekPlayback}
+        />
+      ) : null}
       {posterOpen && currentSong ? (
         <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />
       ) : null}

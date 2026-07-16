@@ -1,4 +1,5 @@
 import type { Song } from '../types/song'
+import { resolveAssetUrl } from '../utils/asset'
 import { formatCount, formatDuration } from '../utils/format'
 
 type SongDetailPageProps = {
@@ -42,13 +43,14 @@ export function SongDetailPage({
   onSetPrivate,
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
+  const coverUrl = resolveAssetUrl(song.coverUrl)
 
   return (
     <section className="page-stack">
       <div className="detail-hero">
         <div className="detail-cover">
-          {song.coverUrl ? (
-            <img className="detail-cover__image" src={song.coverUrl} alt={`${song.title} 封面`} />
+          {coverUrl ? (
+            <img className="detail-cover__image" src={coverUrl} alt={`${song.title} 封面`} />
           ) : (
             song.title.slice(0, 1)
           )}
@@ -75,12 +77,7 @@ export function SongDetailPage({
           </div>
           <div className="action-grid">
             {!song.published || song.status !== 'published' ? (
-              <button
-                type="button"
-                className="is-primary"
-                disabled={publishing}
-                onClick={onPublish}
-              >
+              <button type="button" className="is-primary" disabled={publishing} onClick={onPublish}>
                 {publishing ? '发布中...' : '发布作品'}
               </button>
             ) : (
@@ -111,8 +108,8 @@ export function SongDetailPage({
       <section className="content-panel">
         <h2>作品概览</h2>
         <p>
-          当前播放 {formatCount(song.playCount)} 次，收到 {formatCount(song.likeCount)} 次点赞，
-          已被收藏 {formatCount(song.collectCount)} 次。
+          当前播放 {formatCount(song.playCount)} 次，收到 {formatCount(song.likeCount)} 次点赞，已被收藏{' '}
+          {formatCount(song.collectCount)} 次。
         </p>
       </section>
 
