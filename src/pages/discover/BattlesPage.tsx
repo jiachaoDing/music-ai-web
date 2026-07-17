@@ -10,9 +10,11 @@ type BattlesPageProps = {
   songs: Song[]
   onVote: (battleId: string, side: VoteSide) => void
   onCreate: () => void
+  onOpenSong: (songId: string) => void
+  onPlaySong: (songId: string) => void
 }
 
-export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote, onCreate }: BattlesPageProps) {
+export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote, onCreate, onOpenSong, onPlaySong }: BattlesPageProps) {
   const [selectedBattleId, setSelectedBattleId] = useState(battles[0]?.id ?? '')
   const selectedBattle = battles.find((battle) => battle.id === selectedBattleId) ?? battles[0]
 
@@ -45,7 +47,9 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
   const total = Math.max(1, selectedBattle.aVotes + selectedBattle.bVotes)
   const percentA = Math.round((selectedBattle.aVotes / total) * 100)
   const percentB = 100 - percentA
-  const votedSide = battleVotes.find((vote) => vote.battleId === selectedBattle.id && vote.userId === currentUserId)?.side
+  const votedSide =
+    selectedBattle.votedSide ??
+    battleVotes.find((vote) => vote.battleId === selectedBattle.id && vote.userId === currentUserId)?.side
 
   return (
     <section className="playground-shell battle-playground">
@@ -78,11 +82,11 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
         </div>
 
         <div className="battle-duel-frame">
-          <BattleSong song={songA} votes={selectedBattle.aVotes} side="A" voted={votedSide === 'A'} onVote={() => onVote(selectedBattle.id, 'A')} />
+          <BattleSong song={songA} votes={selectedBattle.aVotes} side="A" voted={votedSide === 'A'} onVote={() => onVote(selectedBattle.id, 'A')} onOpen={() => onOpenSong(songA.id)} onPlay={() => onPlaySong(songA.id)} />
           <div className="battle-divider">
             <strong>VS</strong>
           </div>
-          <BattleSong song={songB} votes={selectedBattle.bVotes} side="B" voted={votedSide === 'B'} onVote={() => onVote(selectedBattle.id, 'B')} />
+          <BattleSong song={songB} votes={selectedBattle.bVotes} side="B" voted={votedSide === 'B'} onVote={() => onVote(selectedBattle.id, 'B')} onOpen={() => onOpenSong(songB.id)} onPlay={() => onPlaySong(songB.id)} />
           <div className="battle-progress" aria-label={`A 方 ${percentA}%，B 方 ${percentB}%`}>
             <span style={{ width: `${percentA}%` }} />
             <strong>{percentA}%</strong>

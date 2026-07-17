@@ -3,7 +3,7 @@ import './App.css'
 import { generateCover } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import type { FeedTab } from './api/song'
-import { generateSong, getFeed, getMySongs, publishSong, recordSongPlay, updateSong } from './api/song'
+import { generateSong, getFeed, getGenerateTaskStatus, getMySongs, publishSong, recordSongPlay, submitGenerateTask, updateSong } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
@@ -246,7 +246,35 @@ function App() {
     setActiveView('task')
 
     try {
-      const createdSong = await generateSong(payload)
+      let createdSong: Song
+      if (payload.mode === 'radio') {
+        const task = await submitGenerateTask(payload)
+        if (!task.taskId) throw new Error('后端没有返回电台生成任务 ID。')
+
+        let taskSong: Song | undefined
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          const status = await getGenerateTaskStatus(task.taskId)
+          setCreateTask({
+            status: status.status === 'error' || status.status === 'failed' ? 'error' : 'running',
+            stage: status.stage || '正在生成电台音乐',
+            description: status.status === 'queued' ? '任务正在排队，请稍等。' : '后端正在生成纯音乐和音频。',
+            progress: status.progress ?? Math.min(90, 12 + attempt * 2),
+            canOpenSong: false,
+          })
+          if (status.status === 'done') {
+            taskSong = status.result?.song
+            break
+          }
+          if (status.status === 'error' || status.status === 'failed') {
+            throw new Error(status.error || '电台音乐生成失败。')
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 2000))
+        }
+        if (!taskSong) throw new Error('电台音乐仍在生成，请稍后在我的作品中查看。')
+        createdSong = taskSong
+      } else {
+        createdSong = await generateSong(payload)
+      }
       syncSong(createdSong)
       setCreateTask({
         status: 'running',
@@ -625,7 +653,14 @@ function App() {
             onOpenSong={openSong}
           />
         ) : null}
-        {activeView === 'discover' ? <DiscoverPage /> : null}
+        {activeView === 'discover' ? (
+          <DiscoverPage
+            user={user}
+            songs={mySongs}
+            onOpenSong={openSong}
+            onPlaySong={(songId) => void handlePlaySong(songId)}
+          />
+        ) : null}
         {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
         {activeView === 'createForm' ? (
           <CreateFormPage
@@ -638,6 +673,9 @@ function App() {
         ) : null}
         {activeView === 'radio' ? (
           <RadioPage
+            songs={mySongs}
+            onOpenSong={openSong}
+            onPlaySong={(songId) => void handlePlaySong(songId)}
             onGenerate={(preset) => {
               setRadioPreset(preset)
               openCreateForm('radio')

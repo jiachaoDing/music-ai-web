@@ -17,6 +17,22 @@ export type GenerateSongInput = {
   forWho?: string
 }
 
+export type GenerateTask = {
+  taskId: string
+}
+
+export type GenerateTaskStatus = {
+  taskId?: string
+  id?: string
+  status: 'queued' | 'running' | 'done' | 'error' | 'failed'
+  stage?: string
+  progress?: number
+  result?: {
+    song?: Song
+  }
+  error?: string | null
+}
+
 export type PublishSongInput = {
   published?: boolean
   copyrightConfirmed?: boolean
@@ -95,6 +111,17 @@ export async function generateSong(input: GenerateSongInput): Promise<Song> {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export function submitGenerateTask(input: GenerateSongInput) {
+  return request<GenerateTask>('/api/generate', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function getGenerateTaskStatus(taskId: string) {
+  return request<GenerateTaskStatus>(`/api/task/${encodeURIComponent(taskId)}`)
 }
 
 export async function getSongDetail(songId: string): Promise<Song> {
