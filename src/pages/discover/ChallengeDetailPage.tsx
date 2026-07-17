@@ -11,6 +11,8 @@ type ChallengeDetailPageProps = {
   selectedSongId: string
   creationTitle: string
   onOpenChallenge: (challengeId: string) => void
+  onOpenSong: (songId: string) => void
+  onPlaySong: (songId: string) => void
   onChangeSelectedSongId: (songId: string) => void
   onChangeCreationTitle: (title: string) => void
   onSubmit: () => void
@@ -24,6 +26,8 @@ export function ChallengeDetailPage({
   selectedSongId,
   creationTitle,
   onOpenChallenge,
+  onOpenSong,
+  onPlaySong,
   onChangeSelectedSongId,
   onChangeCreationTitle,
   onSubmit,
@@ -101,11 +105,11 @@ export function ChallengeDetailPage({
               const song = songById(ref.songId)
               return (
                 <article className="compact-song" key={ref.id}>
-                  <button className="mini-cover" style={songStyle(song)} type="button" aria-label={`试听 ${song.title}`}>
+                  <button className="mini-cover" style={songStyle(song)} type="button" aria-label={`试听 ${song.title}`} onClick={() => onPlaySong(song.id)}>
                     <span>#{ref.rank}</span>
                   </button>
                   <div>
-                    <strong>{song.title}</strong>
+                    <button className="compact-song__title" type="button" onClick={() => onOpenSong(song.id)}>{song.title}</button>
                     <span>{song.author.nickname} · {song.style}</span>
                     <p>{ref.note}</p>
                   </div>

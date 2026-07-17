@@ -1,16 +1,19 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { Song } from '../../types/song'
+import { getQrCode } from '../../api/discovery'
+import { resolveAssetUrl } from '../../utils/asset'
 import type { FortuneRecord, FortuneSongDraft } from './types'
 
 type FortuneMode = 'vocal' | 'instrumental'
 
 type FortunePageProps = {
   fortunes: FortuneRecord[]
+  month: string
   selectedDate: string
   generatedSongs: FortuneSongDraft[]
+  generating: boolean
   onSelectDate: (date: string) => void
-  onGenerateSong: (draft: FortuneSongDraft) => void
+  onGenerateSong: (mode: FortuneMode) => void
   onCheckin: (message: string) => void
 }
 
@@ -18,8 +21,10 @@ const scale = [261.63, 293.66, 329.63, 392, 440, 493.88, 523.25, 587.33]
 
 export function FortunePage({
   fortunes,
+  month,
   selectedDate,
   generatedSongs,
+  generating,
   onSelectDate,
   onGenerateSong,
   onCheckin,
@@ -31,45 +36,22 @@ export function FortunePage({
   const timersRef = useRef<number[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
+  const [shareQrUrl, setShareQrUrl] = useState('')
+  const [sharing, setSharing] = useState(false)
+  const [shareError, setShareError] = useState('')
 
-  function buildFortuneSong(mode: FortuneMode) {
-    const isInstrumental = mode === 'instrumental'
-    const now = new Date().toISOString()
-    const lyrics = isInstrumental
-      ? ''
-      : `[Verse]\n今天的电量是 ${selectedFortune.battery} 分\n把心事折成节拍慢慢听\n\n[Chorus]\n让${selectedFortune.keyword}落在旋律里\n晚一点也没关系`
-
-    const song: Song = {
-      id: `song_fortune_${selectedFortune.date.replaceAll('-', '')}_${Date.now()}`,
-      title: isInstrumental ? `${selectedFortune.keyword}纯音乐日签` : `${selectedFortune.keyword}时运曲`,
-      description: `来自 ${selectedFortune.date} 的时运记录，关键词是 ${selectedFortune.keyword}，基调是 ${selectedFortune.mood.name}。`,
-      mode: 'fortune',
-      style: isInstrumental ? 'Lo-fi / 纯音乐 / 治愈' : '治愈流行 / Lo-fi',
-      tags: ['时运曲', selectedFortune.keyword, selectedFortune.mood.name],
-      lyrics,
-      audioUrl: '',
-      coverUrl: '',
-      duration: isInstrumental ? 24 : 32,
-      status: 'draft',
-      published: false,
-      isInstrumental,
-      originId: null,
-      aiReview: `这首歌根据今日关键词生成，适合在 ${selectedFortune.peak ?? '夜晚'} 听。`,
-      author: {
-        id: selectedFortune.userId,
-        nickname: 'Echo Creator',
-        color: selectedFortune.luckyColor.hex,
-      },
-      likeCount: 0,
-      collectCount: 0,
-      commentCount: 0,
-      playCount: 0,
-      remixCount: 0,
-      createdAt: now,
-      publishedAt: null,
+  async function openShareCard() {
+    setShowShareCard(true)
+    setShareError('')
+    setSharing(true)
+    try {
+      const qrUrl = await getQrCode(`${selectedFortune.keyword}日签`, window.location.href)
+      setShareQrUrl(qrUrl)
+    } catch (error) {
+      setShareError(error instanceof Error ? error.message : '二维码生成失败')
+    } finally {
+      setSharing(false)
     }
-
-    onGenerateSong({ song, fortuneDate: selectedFortune.date })
   }
 
   function stopMelody() {
@@ -122,6 +104,9 @@ export function FortunePage({
     <section className="fortune-dashboard">
       <div className="fortune-top-grid">
         <article className="dashed-box dashed-box--yellow fortune-daily" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
+          {selectedFortune.img ? (
+            <img className="fortune-daily__art" src={resolveAssetUrl(selectedFortune.img)} alt={`${selectedFortune.date} 每日治愈插画`} />
+          ) : null}
           <span>{selectedFortune.date}</span>
           <h2>{selectedFortune.keyword}日卡</h2>
           <p>{selectedFortune.encourage}</p>
@@ -132,8 +117,12 @@ export function FortunePage({
           </div>
           <div className="fortune-actions">
             <button type="button" onClick={() => onCheckin('今日已打卡，连续签到已更新。')}>今日打卡</button>
-            <button type="button" onClick={() => buildFortuneSong('vocal')}>生成演唱版</button>
-            <button type="button" onClick={() => buildFortuneSong('instrumental')}>生成纯音乐版</button>
+            <button type="button" disabled={generating} onClick={() => onGenerateSong('vocal')}>
+              {generating ? '正在生成…' : '生成演唱版'}
+            </button>
+            <button type="button" disabled={generating} onClick={() => onGenerateSong('instrumental')}>
+              {generating ? '正在生成…' : '生成纯音乐版'}
+            </button>
           </div>
         </article>
 
@@ -141,7 +130,7 @@ export function FortunePage({
           <div className="section-title">
             <div>
               <span>Calendar</span>
-              <h2>7 月时运日历</h2>
+              <h2>{Number(month.slice(5, 7))} 月时运日历</h2>
             </div>
           </div>
           <div className="calendar-grid">
@@ -175,13 +164,16 @@ export function FortunePage({
           <span>今日提示</span>
           <strong>{selectedFortune.mood.name} · 幸运数字 {selectedFortune.luckyNumber}</strong>
           <p>宜：{selectedFortune.dos?.join('、')}。忌：{selectedFortune.donts?.join('、')}。</p>
-          <button type="button" onClick={() => setShowShareCard(true)}>生成分享卡</button>
+          <button type="button" onClick={() => void openShareCard()}>生成分享卡</button>
         </aside>
       </section>
 
       {showShareCard ? (
         <section className="share-card-panel">
           <article className="share-card-preview" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
+            {selectedFortune.img ? (
+              <img className="share-card-preview__art" src={resolveAssetUrl(selectedFortune.img)} alt="今日治愈插画" />
+            ) : null}
             <span>Echo Fortune</span>
             <h2>{selectedFortune.keyword}日签</h2>
             <p>{selectedFortune.encourage}</p>
@@ -190,6 +182,9 @@ export function FortunePage({
               <strong>幸运数字 {selectedFortune.luckyNumber}</strong>
               <strong>{selectedFortune.luckyColor.name}</strong>
             </div>
+            {sharing ? <small>正在生成二维码…</small> : null}
+            {shareQrUrl ? <img className="share-card-preview__qr" src={resolveAssetUrl(shareQrUrl)} alt="时运分享二维码" /> : null}
+            {shareError ? <small>{shareError}</small> : null}
           </article>
           <div className="share-card-actions">
             <button type="button" onClick={() => onCheckin('分享卡已生成，可以截图保存。')}>提示保存</button>

@@ -9,6 +9,8 @@ export type ChallengeRecord = {
   id: string
   title: string
   desc?: string
+  prompt?: string
+  style?: string
   emoji?: string
   color?: string
   createdBy?: string
@@ -29,6 +31,7 @@ export type BattleRecord = {
   status: BattleStatus
   createdAt: string
   updatedAt: string
+  votedSide?: VoteSide
 }
 
 export type BattleVoteRecord = {

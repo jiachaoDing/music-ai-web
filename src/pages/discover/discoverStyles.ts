@@ -910,6 +910,51 @@ export const discoverStyles = `
   line-height: 1.62;
 }
 
+.compact-song__title,
+.battle-song__title,
+.battle-preview__title {
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-weight: 800;
+}
+
+.compact-song__title:hover,
+.battle-song__title:hover,
+.battle-preview__title:hover {
+  color: var(--pink);
+  transform: none;
+  box-shadow: none;
+}
+
+.fortune-daily__art {
+  width: 100%;
+  max-height: 190px;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+.share-card-preview__art {
+  width: 100%;
+  max-height: 180px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.share-card-preview__qr {
+  width: 86px;
+  height: 86px;
+  margin-top: 12px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: white;
+}
+
 .share-card-panel {
   display: grid;
   grid-template-columns: minmax(0, 360px) minmax(180px, 1fr);
