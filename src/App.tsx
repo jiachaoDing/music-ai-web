@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { generateCover } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
@@ -14,9 +14,9 @@ import { CreatePage } from './pages/create/CreatePage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { FeedPage } from './pages/FeedPage'
 import { MePage } from './pages/me/MePage'
-import { PlayerPage } from './pages/PlayerPage'
+import { PlayerPage } from './pages/player/PlayerPage'
 import { RadioPage } from './pages/radio/RadioPage'
-import { SongDetailPage } from './pages/SongDetailPage'
+import { SongDetailPage } from './pages/song-detail/SongDetailPage'
 import { TaskPage } from './pages/TaskPage'
 import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
@@ -43,6 +43,10 @@ type CreateTaskState = {
 }
 
 const AUTH_STORAGE_KEY = 'echo-auth-user'
+const VISUALIZER_BAR_COUNT = 48
+const IDLE_VISUALIZER_BARS = Array.from({ length: VISUALIZER_BAR_COUNT }, (_, index) =>
+  0.18 + ((index * 7) % 9) * 0.018
+)
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>('auth')
@@ -63,7 +67,13 @@ function App() {
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackDuration, setPlaybackDuration] = useState(0)
   const [pendingPlaySongId, setPendingPlaySongId] = useState<string | null>(null)
+  const [visualizerBars, setVisualizerBars] = useState<number[]>(IDLE_VISUALIZER_BARS)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const analyserDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -71,9 +81,54 @@ function App() {
     return [...songMap.values()]
   }, [feedSongs, mySongs])
 
-  const currentSong = allSongs.find((song) => song.id === currentSongId) ?? allSongs[0]
+  const currentSong = currentSongId
+    ? allSongs.find((song) => song.id === currentSongId)
+    : undefined
   const currentSongIndex = currentSong ? allSongs.findIndex((song) => song.id === currentSong.id) : -1
   const playbackProgress = playbackDuration > 0 ? (currentTime / playbackDuration) * 100 : 0
+  const audioElement = <audio ref={audioRef} hidden preload="metadata" />
+
+  function ensureAudioAnalyser() {
+    const audio = audioRef.current
+    if (!audio) return null
+    if (!audio.src) return null
+
+    const audioUrl = new URL(audio.src, window.location.href)
+    const canUseAnalyser =
+      audioUrl.origin === window.location.origin ||
+      audioUrl.protocol === 'blob:' ||
+      audioUrl.protocol === 'data:'
+
+    if (!canUseAnalyser) {
+      return null
+    }
+
+    if (!audioContextRef.current) {
+      try {
+        const AudioContextClass = window.AudioContext
+        if (!AudioContextClass) return null
+
+        const context = new AudioContextClass()
+        const analyser = context.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.86
+
+        const source = context.createMediaElementSource(audio)
+        source.connect(analyser)
+        analyser.connect(context.destination)
+
+        audioContextRef.current = context
+        analyserRef.current = analyser
+        sourceNodeRef.current = source
+        analyserDataRef.current = new Uint8Array(analyser.frequencyBinCount)
+      } catch (error) {
+        console.error('failed to initialize audio analyser', error)
+        return null
+      }
+    }
+
+    return analyserRef.current
+  }
 
   function openSong(songId: string) {
     setCurrentSongId(songId)
@@ -117,6 +172,10 @@ function App() {
     } else if (currentSong?.audioUrl) {
       try {
         await audioRef.current?.play()
+        const audioContext = ensureAudioAnalyser() ? audioContextRef.current : null
+        if (audioContext?.state === 'suspended') {
+          await audioContext.resume()
+        }
       } catch (error) {
         console.error(error)
       }
@@ -299,7 +358,7 @@ function App() {
       )
     } catch (error) {
       console.error(error)
-      window.alert(error instanceof Error ? error.message : '作品状态更新失败，请稍后重试')
+      window.alert(error instanceof Error ? error.message : '作品状态更新失败，请稍后重试。')
     } finally {
       setPublishSubmitting(false)
     }
@@ -325,7 +384,7 @@ function App() {
           const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
           setFeedSongs(nextFeedSongs)
           setMySongs(nextMySongs)
-          setCurrentSongId(nextFeedSongs[0]?.id)
+          setCurrentSongId(undefined)
         } catch (error) {
           console.error(error)
           setFeedSongs([])
@@ -345,6 +404,18 @@ function App() {
 
     void bootstrap()
   }, [feedTab])
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        window.cancelAnimationFrame(animationFrameRef.current)
+      }
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        void audioContextRef.current.close()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -376,7 +447,17 @@ function App() {
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio || !currentSong?.audioUrl) return
+    if (!audio) return
+
+    if (!currentSong?.audioUrl) {
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+      setIsPlaying(false)
+      setCurrentTime(0)
+      setPlaybackDuration(0)
+      return
+    }
 
     const nextAudioUrl = resolveAssetUrl(currentSong.audioUrl)
     if (audio.src !== nextAudioUrl) {
@@ -387,12 +468,69 @@ function App() {
     }
 
     if (pendingPlaySongId === currentSong.id) {
-      void audio.play().catch((error) => {
-        console.error(error)
-      })
+      void audio
+        .play()
+        .then(() => {
+          const audioContext = ensureAudioAnalyser() ? audioContextRef.current : null
+          if (audioContext?.state === 'suspended') {
+            void audioContext.resume()
+          }
+        })
+        .catch((error) => {
+          console.error(error)
+        })
       setPendingPlaySongId(null)
     }
   }, [currentSong?.id, currentSong?.audioUrl, currentSong?.duration, pendingPlaySongId])
+
+  useEffect(() => {
+    const analyser = ensureAudioAnalyser()
+    if (!analyser || !analyserDataRef.current) return
+
+    if (animationFrameRef.current) {
+      window.cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+
+    if (!isPlaying) {
+      setVisualizerBars((currentBars) =>
+        currentBars.map((value, index) => Math.max(IDLE_VISUALIZER_BARS[index] ?? 0.16, value * 0.72))
+      )
+      return
+    }
+
+    const frameData = analyserDataRef.current
+
+    const updateBars = () => {
+      analyser.getByteFrequencyData(frameData)
+
+      const bucketSize = Math.max(1, Math.floor(frameData.length / VISUALIZER_BAR_COUNT))
+      const nextBars = Array.from({ length: VISUALIZER_BAR_COUNT }, (_, index) => {
+        const start = index * bucketSize
+        const end = Math.min(frameData.length, start + bucketSize)
+        let total = 0
+
+        for (let pointer = start; pointer < end; pointer += 1) {
+          total += frameData[pointer]
+        }
+
+        const average = end > start ? total / (end - start) : 0
+        return Math.max(0.08, Math.min(1, average / 180))
+      })
+
+      setVisualizerBars(nextBars)
+      animationFrameRef.current = window.requestAnimationFrame(updateBars)
+    }
+
+    animationFrameRef.current = window.requestAnimationFrame(updateBars)
+
+    return () => {
+      if (animationFrameRef.current) {
+        window.cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+    }
+  }, [isPlaying, currentSong?.id])
 
   async function handleAuthenticate(mode: AuthMode, values: AuthValues) {
     setAuthLoading(true)
@@ -417,7 +555,7 @@ function App() {
       setCurrentSongId(nextFeedSongs[0]?.id)
     } catch (error) {
       console.error(error)
-      window.alert(error instanceof Error ? error.message : '认证失败，请稍后重试')
+      window.alert(error instanceof Error ? error.message : '璁よ瘉澶辫触锛岃绋嶅悗閲嶈瘯')
     } finally {
       setAuthLoading(false)
     }
@@ -437,17 +575,23 @@ function App() {
 
   if (loading) {
     return (
-      <main className="standalone-shell">
-        <LoadingState title="正在进入 Echo" description="准备用户、作品和页面骨架" />
-      </main>
+      <>
+        {audioElement}
+        <main className="standalone-shell">
+          <LoadingState title="正在进入 Echo" description="准备用户、作品和页面骨架" />
+        </main>
+      </>
     )
   }
 
   if (!user) {
     return (
-      <main className="standalone-shell">
-        <AuthPage onAuthenticate={handleAuthenticate} loading={authLoading} />
-      </main>
+      <>
+        {audioElement}
+        <main className="standalone-shell">
+          <AuthPage onAuthenticate={handleAuthenticate} loading={authLoading} />
+        </main>
+      </>
     )
   }
 
@@ -460,90 +604,104 @@ function App() {
           ? 'feed'
           : activeView
 
-  return (
-    <AppLayout
-      active={activeNavKey as Exclude<NavKey, 'auth'>}
-      currentSong={currentSong}
-      isPlaying={isPlaying}
-      progress={playbackProgress}
-      user={user}
-      onNavigate={navigate}
-      onOpenPlayer={() => setActiveView('player')}
-      onTogglePlay={togglePlayback}
-      onPlayPrev={() => playAdjacentSong('prev')}
-      onPlayNext={() => playAdjacentSong('next')}
-      onLogout={handleLogout}
-    >
-      <audio ref={audioRef} hidden preload="metadata" />
-      {activeView === 'feed' ? (
-        <FeedPage
-          activeTab={feedTab}
-          songs={feedSongs}
-          onChangeTab={(tab) => void changeFeedTab(tab)}
-          onCreate={() => setActiveView('create')}
-          onOpenSong={openSong}
-        />
-      ) : null}
-      {activeView === 'discover' ? (
-        <DiscoverPage
-          user={user}
-          songs={mySongs}
-          onOpenSong={openSong}
-          onPlaySong={(songId) => void handlePlaySong(songId)}
-        />
-      ) : null}
-      {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
-      {activeView === 'createForm' ? (
-        <CreateFormPage
-          mode={createMode}
-          onSubmit={handleCreateSubmit}
-          submitting={createSubmitting}
-          initialPrompt={createMode === 'radio' ? radioPreset.prompt : ''}
-          initialStyle={createMode === 'radio' ? radioPreset.style : ''}
-        />
-      ) : null}
-      {activeView === 'radio' ? (
-        <RadioPage
-          songs={mySongs}
-          onOpenSong={openSong}
-          onPlaySong={(songId) => void handlePlaySong(songId)}
-          onGenerate={(preset) => {
-            setRadioPreset(preset)
-            openCreateForm('radio')
-          }}
-        />
-      ) : null}
-      {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
-      {activeView === 'task' && createTask ? (
-        <TaskPage task={createTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
-      ) : null}
-      {activeView === 'songDetail' && currentSong ? (
-        <SongDetailPage
-          song={currentSong}
-          canManage={currentSong.author.id === user.id}
-          publishing={publishSubmitting}
-          onPlay={() => void handlePlaySong(currentSong.id)}
-          onOpenPoster={() => setPosterOpen(true)}
-          onPublish={() => void handlePublishSong(true)}
-          onSetPrivate={() => void handlePublishSong(false)}
-        />
-      ) : null}
-      {activeView === 'player' ? (
+  if (activeView === 'player') {
+    return (
+      <>
+        {audioElement}
         <PlayerPage
           song={currentSong}
           isPlaying={isPlaying}
           currentTime={currentTime}
           duration={playbackDuration || currentSong?.duration || 0}
+          visualizerBars={visualizerBars}
           onTogglePlay={togglePlayback}
           onPlayPrev={() => playAdjacentSong('prev')}
           onPlayNext={() => playAdjacentSong('next')}
           onSeek={seekPlayback}
+          onClose={() => setActiveView(currentSong ? 'songDetail' : 'feed')}
+          onBackHome={() => setActiveView('feed')}
         />
-      ) : null}
-      {posterOpen && currentSong ? (
-        <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />
-      ) : null}
-    </AppLayout>
+        {posterOpen && currentSong ? (
+          <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />
+        ) : null}
+      </>
+    )
+  }
+
+  return (
+    <>
+      {audioElement}
+      <AppLayout
+        active={activeNavKey as Exclude<NavKey, 'auth'>}
+        currentSong={currentSong}
+        isPlaying={isPlaying}
+        progress={playbackProgress}
+        user={user}
+        onNavigate={navigate}
+        onOpenPlayer={() => setActiveView('player')}
+        onTogglePlay={togglePlayback}
+        onPlayPrev={() => playAdjacentSong('prev')}
+        onPlayNext={() => playAdjacentSong('next')}
+        onLogout={handleLogout}
+      >
+        {activeView === 'feed' ? (
+          <FeedPage
+            activeTab={feedTab}
+            songs={feedSongs}
+            onChangeTab={(tab) => void changeFeedTab(tab)}
+            onCreate={() => setActiveView('create')}
+            onOpenSong={openSong}
+          />
+        ) : null}
+        {activeView === 'discover' ? (
+          <DiscoverPage
+            user={user}
+            songs={mySongs}
+            onOpenSong={openSong}
+            onPlaySong={(songId) => void handlePlaySong(songId)}
+          />
+        ) : null}
+        {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
+        {activeView === 'createForm' ? (
+          <CreateFormPage
+            mode={createMode}
+            onSubmit={handleCreateSubmit}
+            submitting={createSubmitting}
+            initialPrompt={createMode === 'radio' ? radioPreset.prompt : ''}
+            initialStyle={createMode === 'radio' ? radioPreset.style : ''}
+          />
+        ) : null}
+        {activeView === 'radio' ? (
+          <RadioPage
+            songs={mySongs}
+            onOpenSong={openSong}
+            onPlaySong={(songId) => void handlePlaySong(songId)}
+            onGenerate={(preset) => {
+              setRadioPreset(preset)
+              openCreateForm('radio')
+            }}
+          />
+        ) : null}
+        {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
+        {activeView === 'task' && createTask ? (
+          <TaskPage task={createTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
+        ) : null}
+        {activeView === 'songDetail' && currentSong ? (
+          <SongDetailPage
+            song={currentSong}
+            canManage={currentSong.author.id === user.id}
+            publishing={publishSubmitting}
+            onPlay={() => void handlePlaySong(currentSong.id)}
+            onOpenPoster={() => setPosterOpen(true)}
+            onPublish={() => void handlePublishSong(true)}
+            onSetPrivate={() => void handlePublishSong(false)}
+          />
+        ) : null}
+        {posterOpen && currentSong ? (
+          <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />
+        ) : null}
+      </AppLayout>
+    </>
   )
 }
 
