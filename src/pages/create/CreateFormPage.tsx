@@ -92,7 +92,9 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
   const [prompt, setPrompt] = useState(initialPrompt)
   const [style, setStyle] = useState(initialStyle)
   const [lyrics, setLyrics] = useState('')
-  const [generatedTitle, setGeneratedTitle] = useState('')
+  const [generatedTitle, setGeneratedTitle] = useState(
+    mode === 'radio' ? `${initialPrompt.split('：')[0] || 'Echo'}电台` : '',
+  )
   const [forWho, setForWho] = useState('')
   const [photoImage, setPhotoImage] = useState('')
   const [photoImageName, setPhotoImageName] = useState('')
@@ -183,7 +185,7 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
       return
     }
 
-    if (!nextLyrics) {
+    if (mode !== 'radio' && !nextLyrics) {
       setError('请先生成或输入歌词。')
       return
     }
