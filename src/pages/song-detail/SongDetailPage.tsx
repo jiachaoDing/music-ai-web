@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import { addSongToPlaylist, getPlaylists } from '../../api/me'
+import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
 import { formatCount, formatDuration } from '../../utils/format'
@@ -65,9 +68,51 @@ export function SongDetailPage({
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
   const coverUrl = resolveAssetUrl(song.coverUrl)
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState('')
+  const [playlistLoading, setPlaylistLoading] = useState(false)
+  const [playlistSubmitting, setPlaylistSubmitting] = useState(false)
   const displayDescription =
     song.description ??
     `${formatMode(song.mode)}已经完成，当前可以继续试听、查看歌词，并决定是否发布到社区。`
+
+  useEffect(() => {
+    async function hydratePlaylists() {
+      setPlaylistLoading(true)
+      try {
+        const nextPlaylists = await getPlaylists()
+        setPlaylists(nextPlaylists)
+        setSelectedPlaylistId((current) => current || nextPlaylists[0]?.id || '')
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setPlaylistLoading(false)
+      }
+    }
+
+    void hydratePlaylists()
+  }, [])
+
+  async function handleAddToPlaylist() {
+    if (!selectedPlaylistId) {
+      window.alert('请先选择一个歌单')
+      return
+    }
+
+    setPlaylistSubmitting(true)
+
+    try {
+      await addSongToPlaylist(selectedPlaylistId, song.id)
+      window.alert('已加入歌单')
+      setPlaylistModalOpen(false)
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '加入歌单失败，请稍后重试')
+    } finally {
+      setPlaylistSubmitting(false)
+    }
+  }
 
   return (
     <section className="page-stack song-detail-page">
@@ -174,6 +219,13 @@ export function SongDetailPage({
         <button type="button" className="song-detail-action">
           收藏 {formatCount(song.collectCount)}
         </button>
+        <button
+          type="button"
+          className="song-detail-action"
+          onClick={() => setPlaylistModalOpen(true)}
+        >
+          加入歌单
+        </button>
         <button type="button" className="song-detail-action" onClick={onOpenPoster}>
           查看海报
         </button>
@@ -235,6 +287,69 @@ export function SongDetailPage({
 
         </div>
       </section>
+
+      {playlistModalOpen ? (
+        <div className="song-detail-modal-backdrop" onClick={() => setPlaylistModalOpen(false)}>
+          <div className="song-detail-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="song-detail-modal__heading">
+              <div>
+                <span>Add To Playlist</span>
+                <h3>加入歌单</h3>
+              </div>
+              <button
+                type="button"
+                className="song-detail-modal__close"
+                onClick={() => setPlaylistModalOpen(false)}
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="song-detail-add-target">
+              <strong>{song.title}</strong>
+              <span>{song.style}</span>
+            </div>
+
+            <label className="song-detail-modal__field">
+              <span>选择歌单</span>
+              <select
+                value={selectedPlaylistId}
+                disabled={playlistLoading || !playlists.length}
+                onChange={(event) => setSelectedPlaylistId(event.target.value)}
+              >
+                {playlists.map((playlist) => (
+                  <option key={playlist.id} value={playlist.id}>
+                    {playlist.name} · {playlist.songCount} 首
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {!playlists.length && !playlistLoading ? (
+              <p className="song-detail-modal__hint">还没有可用歌单，可以先到个人中心新建歌单。</p>
+            ) : null}
+
+            <div className="song-detail-modal__actions">
+              <button
+                type="button"
+                className="song-detail-action"
+                disabled={playlistSubmitting}
+                onClick={() => setPlaylistModalOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="song-detail-action is-primary"
+                disabled={playlistLoading || playlistSubmitting || !selectedPlaylistId}
+                onClick={() => void handleAddToPlaylist()}
+              >
+                {playlistSubmitting ? '加入中...' : '确认加入'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
