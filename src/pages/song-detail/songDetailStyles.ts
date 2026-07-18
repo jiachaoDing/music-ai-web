@@ -291,7 +291,7 @@ export const songDetailStyles = `
 
 .song-detail-toolbar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 12px;
 }
 
@@ -406,6 +406,105 @@ export const songDetailStyles = `
   color: var(--ink);
   font-size: 15px;
   font-weight: 700;
+}
+
+.song-detail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(13, 12, 34, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.song-detail-modal {
+  display: grid;
+  gap: 18px;
+  width: min(480px, 100%);
+  border: 1px solid rgba(234, 76, 137, 0.16);
+  border-radius: 8px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
+}
+
+.song-detail-modal__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.song-detail-modal__heading span,
+.song-detail-modal__field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.song-detail-modal__heading h3 {
+  margin: 4px 0 0;
+  font-size: 26px;
+}
+
+.song-detail-modal__close {
+  min-height: 38px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--text);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.song-detail-add-target {
+  display: grid;
+  gap: 6px;
+  border: 1px dashed rgba(234, 76, 137, 0.24);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(234, 76, 137, 0.05);
+}
+
+.song-detail-add-target strong {
+  font-size: 18px;
+}
+
+.song-detail-add-target span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.song-detail-modal__field {
+  display: grid;
+  gap: 10px;
+}
+
+.song-detail-modal__field select {
+  min-height: 50px;
+  border: 1px solid rgba(13, 12, 34, 0.1);
+  border-radius: 8px;
+  padding: 0 14px;
+  color: var(--text);
+  background: #ffffff;
+  font: inherit;
+  font-weight: 800;
+}
+
+.song-detail-modal__hint {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.song-detail-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 @media (max-width: 1100px) {

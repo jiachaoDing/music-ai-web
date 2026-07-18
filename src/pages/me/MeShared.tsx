@@ -20,6 +20,7 @@ type MeStatsProps = {
 type MeAccountProps = {
   user: User
   inviteCode?: string
+  loading?: boolean
 }
 
 function formatDate(value?: string) {
@@ -93,7 +94,7 @@ export function MeStatsPanel({ stats }: MeStatsProps) {
   )
 }
 
-export function MeAccountPanel({ user, inviteCode }: MeAccountProps) {
+export function MeAccountPanel({ user, inviteCode, loading = false }: MeAccountProps) {
   return (
     <section className="me-panel me-panel--account">
       <div className="me-panel__heading">
@@ -117,7 +118,7 @@ export function MeAccountPanel({ user, inviteCode }: MeAccountProps) {
         </div>
         <div className="me-detail-row">
           <span>可用邀请码</span>
-          <strong>{inviteCode ?? '暂无可用邀请码'}</strong>
+          <strong>{loading ? '正在同步...' : inviteCode ?? '暂无可用邀请码'}</strong>
         </div>
       </div>
     </section>
