@@ -34,6 +34,7 @@ export function Topbar({ active, user, onNavigate, onLogout }: TopbarProps) {
           <strong>{user.nickname}</strong>
         </button>
         <div className="user-pill__menu" role="menu">
+          <a className="user-pill__admin" href="/admin" role="menuitem">进入管理员端</a>
           <button type="button" className="user-pill__logout" onClick={onLogout}>
             退出登录
           </button>

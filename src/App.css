@@ -287,6 +287,19 @@ textarea:focus {
   display: block;
 }
 
+.user-pill__admin {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  border-radius: 7px;
+  padding: 0 12px;
+  color: var(--theme-dark);
+  background: var(--theme-soft);
+  font-size: 13px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
 .user-pill__logout {
   width: 100%;
   border: 0;
