@@ -255,6 +255,21 @@ export const authStyles = `
   text-align: center;
 }
 
+.auth-admin-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 780;
+  text-decoration: none;
+}
+.auth-admin-link:hover { border-color: var(--theme-line); color: var(--theme-dark); background: var(--theme-soft); }
+
 @media (max-width: 640px) {
   .auth-page {
     width: 100%;
