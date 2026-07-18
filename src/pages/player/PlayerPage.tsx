@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react'
-import type { CSSProperties } from 'react'
+import { useMemo } from 'react'
+import type { RefObject } from 'react'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
 import { formatDuration } from '../../utils/format'
@@ -10,7 +10,7 @@ type PlayerPageProps = {
   isPlaying?: boolean
   currentTime?: number
   duration?: number
-  visualizerBars?: number[]
+  visualizerCanvasRef?: RefObject<HTMLCanvasElement | null>
   onTogglePlay?: () => void
   onPlayPrev?: () => void
   onPlayNext?: () => void
@@ -28,17 +28,12 @@ function parseLyrics(lyrics?: string): LyricLine[] {
   if (!lyrics?.trim()) return []
 
   return lyrics
-    .split('\n')
+    .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('[') && !line.startsWith('<') && !line.endsWith('>'))
+    .filter((line) => line && !line.startsWith('<'))
+    .map((line) => line.replace(/^(?:\[[^\]]+\]|【[^】]+】)\s*/, '').trim())
+    .filter(Boolean)
     .map((text, index) => ({ text, index }))
-}
-
-function getActiveLyricIndex(lines: LyricLine[], currentTime: number, duration: number) {
-  if (!lines.length || duration <= 0) return -1
-
-  const progress = Math.max(0, Math.min(currentTime / duration, 0.999))
-  return Math.min(lines.length - 1, Math.floor(progress * lines.length))
 }
 
 export function PlayerPage({
@@ -46,7 +41,7 @@ export function PlayerPage({
   isPlaying = false,
   currentTime = 0,
   duration = 0,
-  visualizerBars = [],
+  visualizerCanvasRef,
   onTogglePlay,
   onPlayPrev,
   onPlayNext,
@@ -56,60 +51,20 @@ export function PlayerPage({
 }: PlayerPageProps) {
   const coverUrl = resolveAssetUrl(song?.coverUrl)
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-  const lyricsRef = useRef<HTMLDivElement | null>(null)
 
   const lyricLines = useMemo(() => parseLyrics(song?.lyrics), [song?.lyrics])
-  const activeLyricIndex = useMemo(
-    () => getActiveLyricIndex(lyricLines, currentTime, duration || song?.duration || 0),
-    [currentTime, duration, lyricLines, song?.duration]
-  )
-
-  useEffect(() => {
-    if (!lyricsRef.current || activeLyricIndex < 0) return
-
-    const activeElement = lyricsRef.current.querySelector<HTMLElement>(
-      `[data-lyric-index="${activeLyricIndex}"]`
-    )
-
-    activeElement?.scrollIntoView({
-      block: 'center',
-      behavior: 'smooth',
-    })
-  }, [activeLyricIndex])
 
   return (
     <section className={`immersive-player${isPlaying ? ' is-playing' : ''}`}>
       <style>{playerStyles}</style>
 
+      <canvas
+        ref={visualizerCanvasRef}
+        className="immersive-player__visualizer"
+        aria-hidden="true"
+      />
+
       <div className="immersive-player__backdrop" />
-
-      <div className="immersive-player__bars immersive-player__bars--top" aria-hidden="true">
-        {visualizerBars.map((value, index) => (
-          <div key={`top-${index}`} className="immersive-player__bar">
-            <i
-              style={
-                {
-                  '--bar-height': `${Math.max(14, Math.round(value * 100))}%`,
-                } as CSSProperties
-              }
-            />
-          </div>
-        ))}
-      </div>
-
-      <div className="immersive-player__bars immersive-player__bars--bottom" aria-hidden="true">
-        {[...visualizerBars].reverse().map((value, index) => (
-          <div key={`bottom-${index}`} className="immersive-player__bar">
-            <i
-              style={
-                {
-                  '--bar-height': `${Math.max(12, Math.round(value * 100))}%`,
-                } as CSSProperties
-              }
-            />
-          </div>
-        ))}
-      </div>
 
       <header className="immersive-player__topbar">
         <button type="button" className="immersive-player__ghost" onClick={onClose}>
@@ -134,16 +89,10 @@ export function PlayerPage({
           <p>{song ? `@${song.author.nickname}` : '从首页或详情页选择一首歌开始播放'}</p>
         </div>
 
-        <div ref={lyricsRef} className="immersive-player__lyrics">
+        <div className="immersive-player__lyrics" aria-label="歌词列表">
           {lyricLines.length ? (
-            lyricLines.map((line, index) => (
-              <p
-                key={`${line.text}-${line.index}`}
-                data-lyric-index={index}
-                className={index === activeLyricIndex ? 'is-active' : ''}
-              >
-                {line.text}
-              </p>
+            lyricLines.map((line) => (
+              <p key={`${line.text}-${line.index}`}>{line.text}</p>
             ))
           ) : (
             <p className="immersive-player__empty">当前作品暂时没有歌词内容。</p>
@@ -165,6 +114,7 @@ export function PlayerPage({
                 const nextProgress = ((event.clientX - rect.left) / rect.width) * 100
                 onSeek(nextProgress)
               }}
+              aria-label="调整播放进度"
             >
               <span style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }} />
             </button>

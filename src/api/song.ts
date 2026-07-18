@@ -33,6 +33,12 @@ export type GenerateTaskStatus = {
   error?: string | null
 }
 
+export type RemixSongInput = {
+  style: string
+  prompt: string
+  lyrics?: string
+}
+
 export type PublishSongInput = {
   published?: boolean
   copyrightConfirmed?: boolean
@@ -124,6 +130,13 @@ export function getGenerateTaskStatus(taskId: string) {
   return request<GenerateTaskStatus>(`/api/task/${encodeURIComponent(taskId)}`)
 }
 
+export function submitRemixTask(songId: string, input: RemixSongInput) {
+  return request<GenerateTask>(`/api/song/${encodeURIComponent(songId)}/remix`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 export async function getSongDetail(songId: string): Promise<Song> {
   const result = await request<{ song: Song }>(`/api/song/${songId}`)
   return result.song
@@ -150,4 +163,17 @@ export async function recordSongPlay(songId: string): Promise<number> {
     method: 'POST',
   })
   return result.playCount
+}
+
+export async function likeSong(songId: string) {
+  return request<{ liked: boolean; likeCount: number; unlocked?: boolean }>(`/api/like/${songId}`, {
+    method: 'POST',
+  })
+}
+
+export async function collectSong(songId: string, playlistId?: string) {
+  return request<{ collected: boolean; collectCount: number }>(`/api/collect/${songId}`, {
+    method: 'POST',
+    body: JSON.stringify({ playlistId }),
+  })
 }

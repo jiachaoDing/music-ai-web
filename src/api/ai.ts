@@ -21,6 +21,13 @@ export type CoverResult = {
   providerResponse?: unknown
 }
 
+export type DjBroadcastResult = {
+  text?: string
+  audioUrl?: string | null
+  djText?: string
+  djUrl?: string | null
+}
+
 export function generateLyrics(input: string | LyricsRequestInput) {
   return request<LyricsResult>('/api/ai/lyrics', {
     method: 'POST',
@@ -32,5 +39,11 @@ export function generateCover(input: { title?: string; style?: string; prompt?: 
   return request<CoverResult>('/api/ai/cover', {
     method: 'POST',
     body: JSON.stringify(input),
+  })
+}
+
+export function generateDjBroadcast(songId: string) {
+  return request<DjBroadcastResult>(`/api/dj/${encodeURIComponent(songId)}`, {
+    method: 'POST',
   })
 }

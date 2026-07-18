@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { addSongToPlaylist, getPlaylists } from '../../api/me'
+import { addSongToPlaylist, createPlaylist, getPlaylists } from '../../api/me'
+import { collectSong, likeSong } from '../../api/song'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
@@ -11,6 +12,8 @@ type SongDetailPageProps = {
   canManage: boolean
   publishing?: boolean
   onPlay: () => void
+  onRemix: () => void | Promise<void>
+  onPlayDj: () => void | Promise<void>
   onOpenPoster: () => void
   onPublish: () => void
   onSetPrivate: () => void
@@ -62,6 +65,8 @@ export function SongDetailPage({
   canManage,
   publishing = false,
   onPlay,
+  onRemix,
+  onPlayDj,
   onOpenPoster,
   onPublish,
   onSetPrivate,
@@ -73,9 +78,23 @@ export function SongDetailPage({
   const [selectedPlaylistId, setSelectedPlaylistId] = useState('')
   const [playlistLoading, setPlaylistLoading] = useState(false)
   const [playlistSubmitting, setPlaylistSubmitting] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState('')
+  const [playlistCreating, setPlaylistCreating] = useState(false)
+  const [likeSubmitting, setLikeSubmitting] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState(song.likeCount)
+  const [collectCount, setCollectCount] = useState(song.collectCount)
+  const [djLoading, setDjLoading] = useState(false)
+  const [remixSubmitting, setRemixSubmitting] = useState(false)
   const displayDescription =
     song.description ??
     `${formatMode(song.mode)}已经完成，当前可以继续试听、查看歌词，并决定是否发布到社区。`
+
+  useEffect(() => {
+    setLiked(false)
+    setLikeCount(song.likeCount)
+    setCollectCount(song.collectCount)
+  }, [song.id, song.likeCount, song.collectCount])
 
   useEffect(() => {
     async function hydratePlaylists() {
@@ -103,14 +122,101 @@ export function SongDetailPage({
     setPlaylistSubmitting(true)
 
     try {
-      await addSongToPlaylist(selectedPlaylistId, song.id)
-      window.alert('已加入歌单')
+      try {
+        const result = await collectSong(song.id, selectedPlaylistId)
+        setCollectCount(result.collectCount)
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('已经收藏')) {
+          await addSongToPlaylist(selectedPlaylistId, song.id)
+        } else {
+          throw error
+        }
+      }
+
+      setPlaylists((current) =>
+        current.map((playlist) =>
+          playlist.id === selectedPlaylistId
+            ? { ...playlist, songCount: playlist.songCount + 1 }
+            : playlist,
+        ),
+      )
+      window.alert('已收藏到歌单')
       setPlaylistModalOpen(false)
     } catch (error) {
       console.error(error)
-      window.alert(error instanceof Error ? error.message : '加入歌单失败，请稍后重试')
+      window.alert(error instanceof Error ? error.message : '收藏到歌单失败，请稍后重试')
     } finally {
       setPlaylistSubmitting(false)
+    }
+  }
+
+  async function handleCreatePlaylist() {
+    const name = newPlaylistName.trim()
+    if (!name) {
+      window.alert('请输入歌单名称')
+      return
+    }
+
+    setPlaylistCreating(true)
+
+    try {
+      const nextPlaylist = await createPlaylist(name)
+      setPlaylists((current) => [nextPlaylist, ...current])
+      setSelectedPlaylistId(nextPlaylist.id)
+      setNewPlaylistName('')
+      window.alert('歌单已新建，可以继续收藏当前作品')
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '新建歌单失败，请稍后重试')
+    } finally {
+      setPlaylistCreating(false)
+    }
+  }
+
+  async function handleLikeSong() {
+    if (likeSubmitting || liked) return
+
+    setLikeSubmitting(true)
+
+    try {
+      const result = await likeSong(song.id)
+      setLiked(result.liked)
+      setLikeCount(result.likeCount)
+      window.alert('已点赞')
+    } catch (error) {
+      console.error(error)
+      if (error instanceof Error && error.message.includes('已经点赞')) {
+        setLiked(true)
+        window.alert('你已经点赞过这首作品')
+      } else {
+        window.alert(error instanceof Error ? error.message : '点赞失败，请稍后重试')
+      }
+    } finally {
+      setLikeSubmitting(false)
+    }
+  }
+
+  async function handlePlayDj() {
+    setDjLoading(true)
+    try {
+      await onPlayDj()
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : 'AI DJ 播报生成失败，请稍后重试')
+    } finally {
+      setDjLoading(false)
+    }
+  }
+
+  async function handleRemix() {
+    setRemixSubmitting(true)
+    try {
+      await onRemix()
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '二创任务提交失败，请稍后重试')
+    } finally {
+      setRemixSubmitting(false)
     }
   }
 
@@ -147,8 +253,8 @@ export function SongDetailPage({
 
               <div className="song-detail-stats">
                 <span>{formatCount(song.playCount)} 播放</span>
-                <span>{formatCount(song.likeCount)} 喜欢</span>
-                <span>{formatCount(song.collectCount)} 收藏</span>
+                <span>{formatCount(likeCount)} 喜欢</span>
+                <span>{formatCount(collectCount)} 收藏</span>
                 <span>{formatCount(song.commentCount)} 评论</span>
               </div>
 
@@ -179,7 +285,7 @@ export function SongDetailPage({
 
           <div className="song-detail-side__score">
             <span>作品热度</span>
-            <strong>{formatCount(song.playCount + song.likeCount + song.collectCount)}</strong>
+            <strong>{formatCount(song.playCount + likeCount + collectCount)}</strong>
             <p>当前由播放、点赞和收藏累积形成，后续还可以继续接评论和分享表现。</p>
           </div>
 
@@ -213,18 +319,36 @@ export function SongDetailPage({
         <button type="button" className="song-detail-action is-primary" onClick={onPlay}>
           播放作品
         </button>
-        <button type="button" className="song-detail-action">
-          点赞 {formatCount(song.likeCount)}
+        <button
+          type="button"
+          className="song-detail-action is-soft"
+          disabled={remixSubmitting}
+          onClick={() => void handleRemix()}
+        >
+          {remixSubmitting ? '提交中...' : '翻唱二创'}
         </button>
-        <button type="button" className="song-detail-action">
-          收藏 {formatCount(song.collectCount)}
+        <button
+          type="button"
+          className="song-detail-action is-soft"
+          disabled={djLoading}
+          onClick={() => void handlePlayDj()}
+        >
+          {djLoading ? '播报中...' : 'AI DJ 播报'}
+        </button>
+        <button
+          type="button"
+          className={`song-detail-action ${liked ? 'is-liked' : ''}`}
+          disabled={likeSubmitting || liked}
+          onClick={() => void handleLikeSong()}
+        >
+          {likeSubmitting ? '点赞中...' : liked ? '已点赞' : `点赞 ${formatCount(likeCount)}`}
         </button>
         <button
           type="button"
           className="song-detail-action"
           onClick={() => setPlaylistModalOpen(true)}
         >
-          加入歌单
+          收藏到歌单 {formatCount(collectCount)}
         </button>
         <button type="button" className="song-detail-action" onClick={onOpenPoster}>
           查看海报
@@ -260,7 +384,7 @@ export function SongDetailPage({
               <div className="song-detail-overview__row">
                 <span>互动反馈</span>
                 <strong>
-                  {formatCount(song.likeCount)} 喜欢 · {formatCount(song.collectCount)} 收藏
+                  {formatCount(likeCount)} 喜欢 · {formatCount(collectCount)} 收藏
                 </strong>
               </div>
               <div className="song-detail-overview__row">
@@ -293,8 +417,8 @@ export function SongDetailPage({
           <div className="song-detail-modal" onClick={(event) => event.stopPropagation()}>
             <div className="song-detail-modal__heading">
               <div>
-                <span>Add To Playlist</span>
-                <h3>加入歌单</h3>
+                <span>Collect To Playlist</span>
+                <h3>收藏到歌单</h3>
               </div>
               <button
                 type="button"
@@ -307,27 +431,58 @@ export function SongDetailPage({
 
             <div className="song-detail-add-target">
               <strong>{song.title}</strong>
-              <span>{song.style}</span>
+              <span>{song.style} · 当前 {formatCount(collectCount)} 次收藏</span>
             </div>
 
-            <label className="song-detail-modal__field">
-              <span>选择歌单</span>
-              <select
-                value={selectedPlaylistId}
-                disabled={playlistLoading || !playlists.length}
-                onChange={(event) => setSelectedPlaylistId(event.target.value)}
-              >
-                {playlists.map((playlist) => (
-                  <option key={playlist.id} value={playlist.id}>
-                    {playlist.name} · {playlist.songCount} 首
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="song-detail-playlist-list" aria-label="选择歌单">
+              {playlistLoading ? <p className="song-detail-modal__hint">正在读取歌单...</p> : null}
+              {playlists.map((playlist) => (
+                <button
+                  key={playlist.id}
+                  type="button"
+                  className={`song-detail-playlist-item ${
+                    playlist.id === selectedPlaylistId ? 'is-selected' : ''
+                  }`}
+                  onClick={() => setSelectedPlaylistId(playlist.id)}
+                >
+                  <span
+                    className="song-detail-playlist-cover"
+                    style={{ background: playlist.color ?? undefined }}
+                    aria-hidden="true"
+                  >
+                    ♪
+                  </span>
+                  <span className="song-detail-playlist-copy">
+                    <strong>{playlist.name}</strong>
+                    <small>{playlist.songCount} 首 · {playlist.type === 'liked' ? '喜欢歌单' : '自建歌单'}</small>
+                  </span>
+                  <span className="song-detail-playlist-check">
+                    {playlist.id === selectedPlaylistId ? '已选' : '选择'}
+                  </span>
+                </button>
+              ))}
+            </div>
 
             {!playlists.length && !playlistLoading ? (
-              <p className="song-detail-modal__hint">还没有可用歌单，可以先到个人中心新建歌单。</p>
+              <p className="song-detail-modal__hint">还没有可用歌单，可以直接在这里新建一个。</p>
             ) : null}
+
+            <div className="song-detail-create-playlist">
+              <input
+                value={newPlaylistName}
+                placeholder="新建一个歌单..."
+                disabled={playlistCreating}
+                onChange={(event) => setNewPlaylistName(event.target.value)}
+              />
+              <button
+                type="button"
+                className="song-detail-action is-soft"
+                disabled={playlistCreating}
+                onClick={() => void handleCreatePlaylist()}
+              >
+                {playlistCreating ? '新建中...' : '+ 新建'}
+              </button>
+            </div>
 
             <div className="song-detail-modal__actions">
               <button
@@ -344,12 +499,13 @@ export function SongDetailPage({
                 disabled={playlistLoading || playlistSubmitting || !selectedPlaylistId}
                 onClick={() => void handleAddToPlaylist()}
               >
-                {playlistSubmitting ? '加入中...' : '确认加入'}
+                {playlistSubmitting ? '收藏中...' : '确认收藏'}
               </button>
             </div>
           </div>
         </div>
       ) : null}
+
     </section>
   )
 }
