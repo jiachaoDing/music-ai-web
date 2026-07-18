@@ -30,6 +30,7 @@ export function AuthPage({ onAuthenticate, loading = false }: AuthPageProps) {
           <RegisterPage onSubmit={handleSubmit} loading={loading} />
         )}
         <AuthNote />
+        <a className="auth-admin-link" href="/admin">进入管理员端</a>
       </div>
     </section>
   )

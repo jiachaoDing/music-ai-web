@@ -22,6 +22,7 @@ import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
 import { resolveAssetUrl } from './utils/asset'
 import type { NavKey } from './utils/constants'
+import { AdminPage } from './pages/admin/AdminPage'
 
 type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player'
 
@@ -48,7 +49,7 @@ const IDLE_VISUALIZER_BARS = Array.from({ length: VISUALIZER_BAR_COUNT }, (_, in
   0.18 + ((index * 7) % 9) * 0.018
 )
 
-function App() {
+function UserApp() {
   const [activeView, setActiveView] = useState<AppView>('auth')
   const [user, setUser] = useState<User | null>(null)
   const [feedSongs, setFeedSongs] = useState<Song[]>([])
@@ -703,6 +704,13 @@ function App() {
       </AppLayout>
     </>
   )
+}
+
+function App() {
+  if (window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/')) {
+    return <AdminPage />
+  }
+  return <UserApp />
 }
 
 export default App
