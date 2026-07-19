@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { createPlaylist, getMeProfile } from '../../api/me'
+import {
+  createPlaylist,
+  getMeProfile,
+  getPlaylistDetail,
+  removeSongFromPlaylist,
+} from '../../api/me'
 import { EmptyState } from '../../components/EmptyState'
 import { SongCard } from '../../components/SongCard'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import type { InviteCode, User } from '../../types/user'
+import { resolveAssetUrl } from '../../utils/asset'
 import { MeAccountPanel, MeHero, MeStatsPanel } from './MeShared'
 import { meStyles } from './meStyles'
 
@@ -27,22 +33,44 @@ function formatPlaylistType(playlist: Playlist) {
   return playlist.type === 'liked' ? '喜欢列表' : playlist.isSystem ? '系统歌单' : '自建歌单'
 }
 
+function getPlaylistCoverColor(playlist: Playlist) {
+  if (playlist.type === 'liked' || playlist.name.includes('喜欢')) {
+    return '#f4b7c6'
+  }
+
+  return playlist.color ?? '#9ed9cc'
+}
+
 export function MePage({ user, songs, onOpenSong }: MePageProps) {
   const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
+  const [profileUser, setProfileUser] = useState<User>(user)
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [profileLoading, setProfileLoading] = useState(false)
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
   const [playlistName, setPlaylistName] = useState('')
   const [playlistSubmitting, setPlaylistSubmitting] = useState(false)
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null)
+  const [selectedPlaylistSongs, setSelectedPlaylistSongs] = useState<Song[]>([])
+  const [playlistDetailLoading, setPlaylistDetailLoading] = useState(false)
+  const [playlistActionLoading, setPlaylistActionLoading] = useState(false)
+
+  useEffect(() => {
+    setProfileUser(user)
+  }, [user])
 
   useEffect(() => {
     async function hydrateMePage() {
+      setProfileLoading(true)
       try {
         const profile = await getMeProfile()
+        setProfileUser(profile.user)
         setInviteCodes(profile.inviteCodes)
         setPlaylists(profile.playlists)
       } catch (error) {
         console.error(error)
+      } finally {
+        setProfileLoading(false)
       }
     }
 
@@ -73,7 +101,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
     { label: '累计作品', value: songs.length },
     { label: '总播放', value: totalPlayCount },
     { label: '收到喜欢', value: totalLikeCount },
-    { label: '连续打卡', value: `${user.streak} 天` },
+    { label: '连续打卡', value: `${profileUser.streak} 天` },
   ]
 
   const draftSongs = songs.filter((song) => !song.published || song.status === 'draft')
@@ -81,6 +109,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
     (song) => song.published || song.status === 'published',
   )
   const latestSong = songs[0]
+  const latestSongCoverUrl = latestSong?.coverUrl ? resolveAssetUrl(latestSong.coverUrl) : undefined
 
   const profileSummary = useMemo(
     () => ({
@@ -117,11 +146,53 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
     }
   }
 
+  async function openPlaylistDetail(playlist: Playlist) {
+    setSelectedPlaylist(playlist)
+    setSelectedPlaylistSongs([])
+    setPlaylistDetailLoading(true)
+
+    try {
+      const detail = await getPlaylistDetail(playlist.id)
+      setSelectedPlaylist(detail.playlist)
+      setSelectedPlaylistSongs(detail.songs)
+      setPlaylists((current) =>
+        current.map((item) => (item.id === detail.playlist.id ? detail.playlist : item)),
+      )
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '获取歌单详情失败，请稍后重试')
+      setSelectedPlaylist(null)
+    } finally {
+      setPlaylistDetailLoading(false)
+    }
+  }
+
+  async function handleRemoveSongFromPlaylist(songId: string) {
+    if (!selectedPlaylist) return
+
+    setPlaylistActionLoading(true)
+
+    try {
+      await removeSongFromPlaylist(selectedPlaylist.id, songId)
+      const detail = await getPlaylistDetail(selectedPlaylist.id)
+      setSelectedPlaylist(detail.playlist)
+      setSelectedPlaylistSongs(detail.songs)
+      setPlaylists((current) =>
+        current.map((item) => (item.id === detail.playlist.id ? detail.playlist : item)),
+      )
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '移出歌单失败，请稍后重试')
+    } finally {
+      setPlaylistActionLoading(false)
+    }
+  }
+
   return (
     <section className="page-stack me-page">
       <style>{meStyles}</style>
 
-      <MeHero user={user} summary={profileSummary} />
+      <MeHero user={profileUser} summary={profileSummary} />
 
       <div className="me-tabs" role="tablist" aria-label="个人页面内容切换">
         <button
@@ -158,7 +229,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
         <div className="me-overview-board">
           <div className="me-overview">
             <MeStatsPanel stats={stats} />
-            <MeAccountPanel user={user} inviteCode={inviteCode} />
+            <MeAccountPanel user={profileUser} inviteCode={inviteCode} loading={profileLoading} />
           </div>
 
           <section className="me-panel me-highlight">
@@ -176,12 +247,20 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
               >
                 <div className="me-highlight__hero">
                   <div className="me-highlight__art">
-                    <div
-                      className="me-highlight__disc"
-                      style={{ '--cover-color': latestSong.author.color ?? '#ea4c89' } as CSSProperties}
-                    >
-                      <b />
-                    </div>
+                    {latestSongCoverUrl ? (
+                      <img
+                        className="me-highlight__cover"
+                        src={latestSongCoverUrl}
+                        alt={`${latestSong.title} 封面`}
+                      />
+                    ) : (
+                      <div
+                        className="me-highlight__disc"
+                        style={{ '--cover-color': latestSong.author.color ?? '#ea4c89' } as CSSProperties}
+                      >
+                        <b />
+                      </div>
+                    )}
                     <div className="me-highlight__title">
                       <span>{latestSong.mode}</span>
                       <strong>{latestSong.title}</strong>
@@ -315,10 +394,22 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
           </div>
           <div className="me-playlist-grid">
             {playlists.map((playlist) => (
-              <article key={playlist.id} className="me-playlist-card">
+              <article
+                key={playlist.id}
+                className="me-playlist-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => void openPlaylistDetail(playlist)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    void openPlaylistDetail(playlist)
+                  }
+                }}
+              >
                 <div
                   className="me-playlist-cover"
-                  style={{ '--playlist-color': playlist.color ?? '#9ed9cc' } as CSSProperties}
+                  style={{ '--playlist-color': getPlaylistCoverColor(playlist) } as CSSProperties}
                 >
                   <span>{playlist.type === 'liked' ? 'liked' : 'playlist'}</span>
                 </div>
@@ -336,6 +427,68 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
             ))}
           </div>
         </section>
+      ) : null}
+
+      {selectedPlaylist ? (
+        <div className="me-modal-backdrop" onClick={() => setSelectedPlaylist(null)}>
+          <div className="me-modal me-modal--wide" onClick={(event) => event.stopPropagation()}>
+            <div className="me-modal__heading">
+              <div>
+                <span>Playlist Detail</span>
+                <h3>{selectedPlaylist.name}</h3>
+              </div>
+              <button
+                type="button"
+                className="me-modal__close"
+                onClick={() => setSelectedPlaylist(null)}
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="me-playlist-detail-head">
+              <div
+                className="me-playlist-detail-cover"
+                style={{ '--playlist-color': getPlaylistCoverColor(selectedPlaylist) } as CSSProperties}
+              >
+                <span>{selectedPlaylist.type === 'liked' ? 'liked' : 'playlist'}</span>
+              </div>
+              <div>
+                <p>
+                  {selectedPlaylist.songCount} 首歌曲 · {formatPlaylistType(selectedPlaylist)}
+                </p>
+                <p>
+                  创建于 {new Date(selectedPlaylist.createdAt).toLocaleDateString('zh-CN')}
+                </p>
+              </div>
+            </div>
+
+            {playlistDetailLoading ? (
+              <div className="me-playlist-empty">正在加载歌单歌曲...</div>
+            ) : selectedPlaylistSongs.length ? (
+              <div className="me-playlist-song-list">
+                {selectedPlaylistSongs.map((song) => (
+                  <div key={song.id} className="me-playlist-song-row">
+                    <button type="button" onClick={() => onOpenSong(song.id)}>
+                      <strong>{song.title}</strong>
+                      <span>{song.style} · {formatDuration(song.duration)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="me-playlist-song-row__remove"
+                      disabled={playlistActionLoading}
+                      onClick={() => void handleRemoveSongFromPlaylist(song.id)}
+                    >
+                      移出
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="me-playlist-empty">这个歌单还没有歌曲，可以从“我的作品”里加入。</div>
+            )}
+          </div>
+        </div>
       ) : null}
 
       {playlistModalOpen ? (
