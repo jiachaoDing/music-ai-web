@@ -12,9 +12,11 @@ type FortunePageProps = {
   selectedDate: string
   generatedSongs: FortuneSongDraft[]
   generating: boolean
+  checkedInToday: boolean
   onSelectDate: (date: string) => void
   onGenerateSong: (mode: FortuneMode) => void
   onCheckin: (message: string) => void
+  onCheckinToday: () => void
 }
 
 const scale = [261.63, 293.66, 329.63, 392, 440, 493.88, 523.25, 587.33]
@@ -25,20 +27,40 @@ export function FortunePage({
   selectedDate,
   generatedSongs,
   generating,
+  checkedInToday,
   onSelectDate,
   onGenerateSong,
   onCheckin,
+  onCheckinToday,
 }: FortunePageProps) {
   const selectedFortune = fortunes.find((fortune) => fortune.date === selectedDate) ?? fortunes[6]
   const selectedSongs = generatedSongs.filter((draft) => draft.fortuneDate === selectedFortune.date)
   const latestSong = selectedSongs[0]?.song
   const audioContextRef = useRef<AudioContext | null>(null)
+  const generatedAudioRef = useRef<HTMLAudioElement | null>(null)
   const timersRef = useRef<number[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
   const [shareQrUrl, setShareQrUrl] = useState('')
   const [sharing, setSharing] = useState(false)
   const [shareError, setShareError] = useState('')
+  const today = new Date().toLocaleDateString('en-CA')
+
+  function checkIn() {
+    if (selectedFortune.date < today) {
+      onCheckin('今天之前的日期不能补打卡，请选择今天。')
+      return
+    }
+    if (selectedFortune.date > today) {
+      onCheckin('未来日期暂时不能打卡，请到当天再来。')
+      return
+    }
+    if (checkedInToday) {
+      onCheckin('今天已经打卡，无需重复操作。')
+      return
+    }
+    onCheckinToday()
+  }
 
   async function openShareCard() {
     setShowShareCard(true)
@@ -59,7 +81,34 @@ export function FortunePage({
     timersRef.current = []
     audioContextRef.current?.close()
     audioContextRef.current = null
+    generatedAudioRef.current?.pause()
+    generatedAudioRef.current = null
     setIsPlaying(false)
+  }
+
+  async function playGeneratedSong() {
+    if (!latestSong?.audioUrl) {
+      playMelody()
+      return
+    }
+    if (isPlaying) {
+      stopMelody()
+      return
+    }
+    const audio = new Audio(resolveAssetUrl(latestSong.audioUrl))
+    generatedAudioRef.current = audio
+    audio.addEventListener('ended', stopMelody, { once: true })
+    audio.addEventListener('error', () => {
+      stopMelody()
+      onCheckin('演唱版音频加载失败，请稍后重新生成。')
+    }, { once: true })
+    try {
+      await audio.play()
+      setIsPlaying(true)
+    } catch {
+      stopMelody()
+      onCheckin('浏览器未能开始播放，请再次点击播放按钮。')
+    }
   }
 
   function playMelody() {
@@ -116,7 +165,9 @@ export function FortunePage({
             <strong>{selectedFortune.luckyColor.name}</strong>
           </div>
           <div className="fortune-actions">
-            <button type="button" onClick={() => onCheckin('今日已打卡，连续签到已更新。')}>今日打卡</button>
+            <button type="button" className={selectedFortune.date === today && checkedInToday ? 'is-checked' : ''} onClick={checkIn}>
+              {selectedFortune.date < today ? '过往日期不可打卡' : selectedFortune.date > today ? '未来日期不可打卡' : checkedInToday ? '今日已打卡' : '今日打卡'}
+            </button>
             <button type="button" disabled={generating} onClick={() => onGenerateSong('vocal')}>
               {generating ? '正在生成…' : '生成演唱版'}
             </button>
@@ -204,7 +255,7 @@ export function FortunePage({
             <strong>{latestSong.isInstrumental ? '纯音乐' : '演唱版'}</strong>
           </div>
           <div className="generated-actions">
-            <button type="button" onClick={playMelody}>{isPlaying ? '停止旋律' : '播放旋律'}</button>
+            <button type="button" onClick={() => void playGeneratedSong()}>{isPlaying ? '停止播放' : latestSong.audioUrl ? '播放生成歌曲' : '播放旋律'}</button>
             <button type="button" onClick={() => onCheckin(`${latestSong.title} 已保存到时运草稿。`)}>保存草稿</button>
           </div>
         </article>

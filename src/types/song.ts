@@ -26,6 +26,7 @@ export type Song = {
   published: boolean
   isInstrumental: boolean
   originId?: string | null
+  challengeId?: string | null
   aiReview?: string
   author: {
     id: string

@@ -1,9 +1,8 @@
 import type { CSSProperties } from 'react'
-import type { BattleRecord, ChallengeRecord, ChallengeSongRef, FortuneRecord } from './types'
+import type { BattleRecord, ChallengeRecord, FortuneRecord } from './types'
 
 type DiscoverHomePageProps = {
   challenges: ChallengeRecord[]
-  challengeSongRefs: ChallengeSongRef[]
   battles: BattleRecord[]
   todayFortune: FortuneRecord
   onOpenChallenge: (challengeId: string) => void
@@ -13,7 +12,6 @@ type DiscoverHomePageProps = {
 
 export function DiscoverHomePage({
   challenges,
-  challengeSongRefs,
   battles,
   todayFortune,
   onOpenChallenge,
@@ -21,8 +19,6 @@ export function DiscoverHomePage({
   onNavigateBattles,
 }: DiscoverHomePageProps) {
   const featuredChallenge = challenges[0]
-  const activeWorks = challengeSongRefs.length
-  const battleVotes = battles.reduce((total, battle) => total + battle.aVotes + battle.bVotes, 0)
 
   return (
     <div className="discover-overview">
@@ -52,24 +48,6 @@ export function DiscoverHomePage({
         </article>
       </section>
 
-      <section className="overview-panel">
-        <div className="overview-stat">
-          <span>话题作品</span>
-          <strong>{activeWorks}</strong>
-          <small>首作品正在挑战中</small>
-        </div>
-        <div className="overview-stat">
-          <span>PK 投票</span>
-          <strong>{battleVotes}</strong>
-          <small>票已投入擂台</small>
-        </div>
-        <div className="overview-stat">
-          <span>时运曲</span>
-          <strong>{todayFortune.keyword}</strong>
-          <small>{todayFortune.mood.name}</small>
-        </div>
-      </section>
-
       <section className="overview-challenges">
         <div className="section-title">
           <div>
@@ -88,7 +66,7 @@ export function DiscoverHomePage({
             >
               <span>话题挑战</span>
               <strong>{challenge.title}</strong>
-              <small>{challengeSongRefs.filter((ref) => ref.challengeId === challenge.id).length} 首作品已参与</small>
+              <small>{challenge.songCount ?? 0} 首作品已参与</small>
             </button>
           ))}
         </div>

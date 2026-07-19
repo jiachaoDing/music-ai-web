@@ -1,14 +1,14 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { generateCover } from './api/ai'
+import { generateCover, generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import type { FeedTab } from './api/song'
-import { generateSong, getFeed, getGenerateTaskStatus, getMySongs, publishSong, recordSongPlay, submitGenerateTask, updateSong } from './api/song'
+import { generateSong, getFeed, getGenerateTaskStatus, getMySongs, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask, updateSong } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
 import { AuthPage } from './pages/auth/AuthPage'
-import type { CreateSubmission } from './pages/create/CreateFormPage'
+import type { CreateChallengeContext, CreateSubmission } from './pages/create/CreateFormPage'
 import { CreateFormPage } from './pages/create/CreateFormPage'
 import { CreatePage } from './pages/create/CreatePage'
 import { DiscoverPage } from './pages/DiscoverPage'
@@ -43,11 +43,16 @@ type CreateTaskState = {
   canOpenSong: boolean
 }
 
+type CreatePreset = {
+  prompt: string
+  style: string
+  title?: string
+  lyrics?: string
+  originId?: string
+}
+
 const AUTH_STORAGE_KEY = 'echo-auth-user'
-const VISUALIZER_BAR_COUNT = 48
-const IDLE_VISUALIZER_BARS = Array.from({ length: VISUALIZER_BAR_COUNT }, (_, index) =>
-  0.18 + ((index * 7) % 9) * 0.018
-)
+const EMPTY_CREATE_PRESET: CreatePreset = { prompt: '', style: '' }
 
 function UserApp() {
   const [activeView, setActiveView] = useState<AppView>('auth')
@@ -56,7 +61,8 @@ function UserApp() {
   const [mySongs, setMySongs] = useState<Song[]>([])
   const [feedTab, setFeedTab] = useState<FeedTab>('resonance')
   const [createMode, setCreateMode] = useState<SongMode>('song')
-  const [radioPreset, setRadioPreset] = useState({ prompt: '', style: '' })
+  const [createChallenge, setCreateChallenge] = useState<CreateChallengeContext | null>(null)
+  const [radioPreset, setRadioPreset] = useState<CreatePreset>(EMPTY_CREATE_PRESET)
   const [currentSongId, setCurrentSongId] = useState<string>()
   const [posterOpen, setPosterOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -68,13 +74,14 @@ function UserApp() {
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackDuration, setPlaybackDuration] = useState(0)
   const [pendingPlaySongId, setPendingPlaySongId] = useState<string | null>(null)
-  const [visualizerBars, setVisualizerBars] = useState<number[]>(IDLE_VISUALIZER_BARS)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const playerVisualizerCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null)
+  const analyserDataRef = useRef<Uint8Array | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-  const analyserDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
+  const djFollowSongIdRef = useRef<string | null>(null)
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -87,48 +94,56 @@ function UserApp() {
     : undefined
   const currentSongIndex = currentSong ? allSongs.findIndex((song) => song.id === currentSong.id) : -1
   const playbackProgress = playbackDuration > 0 ? (currentTime / playbackDuration) * 100 : 0
-  const audioElement = <audio ref={audioRef} hidden preload="metadata" />
+  const audioElement = <audio ref={audioRef} hidden preload="metadata" crossOrigin="anonymous" />
 
-  function ensureAudioAnalyser() {
-    const audio = audioRef.current
-    if (!audio) return null
-    if (!audio.src) return null
-
-    const audioUrl = new URL(audio.src, window.location.href)
-    const canUseAnalyser =
-      audioUrl.origin === window.location.origin ||
-      audioUrl.protocol === 'blob:' ||
-      audioUrl.protocol === 'data:'
-
-    if (!canUseAnalyser) {
-      return null
-    }
-
+  function getAudioContext() {
     if (!audioContextRef.current) {
       try {
         const AudioContextClass = window.AudioContext
         if (!AudioContextClass) return null
 
-        const context = new AudioContextClass()
-        const analyser = context.createAnalyser()
-        analyser.fftSize = 256
-        analyser.smoothingTimeConstant = 0.86
-
-        const source = context.createMediaElementSource(audio)
-        source.connect(analyser)
-        analyser.connect(context.destination)
-
-        audioContextRef.current = context
-        analyserRef.current = analyser
-        sourceNodeRef.current = source
-        analyserDataRef.current = new Uint8Array(analyser.frequencyBinCount)
+        audioContextRef.current = new AudioContextClass()
       } catch (error) {
-        console.error('failed to initialize audio analyser', error)
+        console.error('failed to initialize audio context', error)
         return null
       }
     }
 
-    return analyserRef.current
+    return audioContextRef.current
+  }
+
+  function ensureAudioAnalyser() {
+    if (analyserRef.current) return analyserRef.current
+
+    const audio = audioRef.current
+    const audioContext = getAudioContext()
+    if (!audio || !audioContext) return null
+
+    try {
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 128
+      analyser.smoothingTimeConstant = 0.78
+
+      const source = audioContext.createMediaElementSource(audio)
+      source.connect(analyser)
+      analyser.connect(audioContext.destination)
+
+      analyserRef.current = analyser
+      sourceNodeRef.current = source
+      analyserDataRef.current = new Uint8Array(analyser.frequencyBinCount)
+      return analyser
+    } catch (error) {
+      console.error('failed to initialize audio analyser', error)
+      return null
+    }
+  }
+
+  function clearPlayerVisualizer() {
+    const canvas = playerVisualizerCanvasRef.current
+    const context = canvas?.getContext('2d')
+    if (!canvas || !context) return
+
+    context.clearRect(0, 0, canvas.width, canvas.height)
   }
 
   function openSong(songId: string) {
@@ -137,8 +152,12 @@ function UserApp() {
   }
 
   function replaceSongInList(list: Song[], nextSong: Song) {
+    const existingSong = list.find((song) => song.id === nextSong.id)
+    const mergedSong = existingSong
+      ? { ...existingSong, ...nextSong, challengeId: nextSong.challengeId ?? existingSong.challengeId }
+      : nextSong
     const filteredSongs = list.filter((song) => song.id !== nextSong.id)
-    return [nextSong, ...filteredSongs]
+    return [mergedSong, ...filteredSongs]
   }
 
   function syncSong(nextSong: Song) {
@@ -173,7 +192,7 @@ function UserApp() {
     } else if (currentSong?.audioUrl) {
       try {
         await audioRef.current?.play()
-        const audioContext = ensureAudioAnalyser() ? audioContextRef.current : null
+        const audioContext = getAudioContext()
         if (audioContext?.state === 'suspended') {
           await audioContext.resume()
         }
@@ -231,8 +250,55 @@ function UserApp() {
   }
 
   function openCreateForm(mode: SongMode) {
+    setCreateChallenge(null)
+    if (mode !== 'radio' && mode !== 'remix') {
+      setRadioPreset(EMPTY_CREATE_PRESET)
+    }
     setCreateMode(mode)
     setActiveView('createForm')
+  }
+
+  function openChallengeCreate(challenge: CreateChallengeContext) {
+    setCreateChallenge(challenge)
+    setRadioPreset(EMPTY_CREATE_PRESET)
+    setCreateMode('song')
+    setActiveView('createForm')
+  }
+
+  function handleRemixSong(song: Song) {
+    setRadioPreset({
+      prompt: `基于《${song.title}》做一次翻唱二创，保留原曲情绪，尝试新的编曲和演唱表达。`,
+      style: song.style,
+      title: `${song.title}（翻唱）`,
+      lyrics: song.lyrics ?? '',
+      originId: song.id,
+    })
+    openCreateForm('remix')
+  }
+
+  async function pollGenerateTask(taskId: string, taskLabel: string) {
+    let taskSong: Song | undefined
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const status = await getGenerateTaskStatus(taskId)
+      setCreateTask({
+        status: status.status === 'error' || status.status === 'failed' ? 'error' : 'running',
+        stage: status.stage || `正在生成${taskLabel}`,
+        description: status.status === 'queued' ? '任务正在排队，请稍等。' : `后端正在生成${taskLabel}和音频。`,
+        progress: status.progress ?? Math.min(90, 12 + attempt * 2),
+        canOpenSong: false,
+      })
+      if (status.status === 'done') {
+        taskSong = status.result?.song
+        break
+      }
+      if (status.status === 'error' || status.status === 'failed') {
+        throw new Error(status.error || `${taskLabel}生成失败。`)
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 2000))
+    }
+
+    if (!taskSong) throw new Error(`${taskLabel}仍在生成，请稍后在我的作品中查看。`)
+    return taskSong
   }
 
   async function handleCreateSubmit(payload: CreateSubmission) {
@@ -248,31 +314,19 @@ function UserApp() {
 
     try {
       let createdSong: Song
-      if (payload.mode === 'radio') {
+      if (payload.mode === 'remix' && payload.originId) {
+        const task = await submitRemixTask(payload.originId, {
+          style: payload.style,
+          lyrics: payload.lyrics,
+          prompt: payload.prompt || `翻唱二创《${payload.title}》`,
+        })
+        if (!task.taskId) throw new Error('后端没有返回二创生成任务 ID。')
+        createdSong = await pollGenerateTask(task.taskId, '翻唱二创')
+      } else if (payload.mode === 'radio' || payload.challengeId) {
         const task = await submitGenerateTask(payload)
-        if (!task.taskId) throw new Error('后端没有返回电台生成任务 ID。')
-
-        let taskSong: Song | undefined
-        for (let attempt = 0; attempt < 60; attempt += 1) {
-          const status = await getGenerateTaskStatus(task.taskId)
-          setCreateTask({
-            status: status.status === 'error' || status.status === 'failed' ? 'error' : 'running',
-            stage: status.stage || '正在生成电台音乐',
-            description: status.status === 'queued' ? '任务正在排队，请稍等。' : '后端正在生成纯音乐和音频。',
-            progress: status.progress ?? Math.min(90, 12 + attempt * 2),
-            canOpenSong: false,
-          })
-          if (status.status === 'done') {
-            taskSong = status.result?.song
-            break
-          }
-          if (status.status === 'error' || status.status === 'failed') {
-            throw new Error(status.error || '电台音乐生成失败。')
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, 2000))
-        }
-        if (!taskSong) throw new Error('电台音乐仍在生成，请稍后在我的作品中查看。')
-        createdSong = taskSong
+        if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
+        createdSong = await pollGenerateTask(task.taskId, payload.challengeId ? '话题挑战歌曲' : '电台音乐')
+        if (payload.challengeId) createdSong = { ...createdSong, challengeId: payload.challengeId }
       } else {
         createdSong = await generateSong(payload)
       }
@@ -285,6 +339,7 @@ function UserApp() {
         canOpenSong: false,
       })
 
+      let completionDescription = '歌曲和封面都已经准备好了，现在可以查看详情或继续发布。'
       try {
         const coverResult = await generateCover({
           title: createdSong.title,
@@ -296,26 +351,38 @@ function UserApp() {
           const songWithCover = await updateSong(createdSong.id, {
             coverUrl: coverResult.imageUrl,
           })
-          syncSong(songWithCover)
+          createdSong = { ...songWithCover, challengeId: songWithCover.challengeId ?? createdSong.challengeId }
+          syncSong(createdSong)
         }
-
-        setCreateTask({
-          status: 'done',
-          stage: '生成完成',
-          description: '歌曲和封面都已经准备好了，现在可以查看详情或继续发布。',
-          progress: 100,
-          canOpenSong: true,
-        })
       } catch (coverError) {
         console.error(coverError)
-        setCreateTask({
-          status: 'done',
-          stage: '生成完成',
-          description: '歌曲已经生成完成，但封面暂时没有成功生成，可以先查看详情。',
-          progress: 100,
-          canOpenSong: true,
-        })
+        completionDescription = '歌曲已经生成完成，但封面暂时没有成功生成，可以先查看详情。'
       }
+
+      if (payload.challengeId) {
+        setCreateTask({
+          status: 'running',
+          stage: '正在加入话题',
+          description: `歌曲已生成，正在发布并加入话题「${createChallenge?.title ?? '话题挑战'}」。`,
+          progress: 90,
+          canOpenSong: false,
+        })
+        const publishedSong = await publishSong(createdSong.id, {
+          published: true,
+          copyrightConfirmed: true,
+        })
+        createdSong = { ...createdSong, ...publishedSong, challengeId: payload.challengeId }
+        syncSong(createdSong)
+        completionDescription = `歌曲已经发布，并成功加入话题「${createChallenge?.title ?? '话题挑战'}」。`
+      }
+
+      setCreateTask({
+        status: 'done',
+        stage: '生成完成',
+        description: completionDescription,
+        progress: 100,
+        canOpenSong: true,
+      })
     } catch (error) {
       console.error(error)
       setCreateTask({
@@ -336,6 +403,38 @@ function UserApp() {
     void startPlayback(songId)
   }
 
+  async function handlePlayDjBroadcast(song: Song) {
+    const audio = audioRef.current
+    if (!audio) return
+
+    try {
+      const result = await generateDjBroadcast(song.id)
+      const djText = result.djText ?? result.text ?? 'AI DJ 播报已生成。'
+      const djUrl = result.djUrl ?? result.audioUrl
+
+      if (!djUrl) {
+        window.alert(djText)
+        return
+      }
+
+      setCurrentSongId(song.id)
+      djFollowSongIdRef.current = song.id
+      audio.src = resolveAssetUrl(djUrl)
+      audio.load()
+      await audio.play()
+
+      const audioContext = getAudioContext()
+      if (audioContext?.state === 'suspended') {
+        await audioContext.resume()
+      }
+
+      window.alert(djText)
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : 'AI DJ 播报生成失败，请稍后重试')
+    }
+  }
+
   async function handlePublishSong(published: boolean) {
     if (!currentSong) return
 
@@ -346,13 +445,14 @@ function UserApp() {
         published,
         copyrightConfirmed: published ? true : undefined,
       })
+      const preservedSong = { ...nextSong, challengeId: nextSong.challengeId ?? currentSong.challengeId }
 
-      setMySongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
+      setMySongs((currentSongs) => replaceSongInList(currentSongs, preservedSong))
       setFeedSongs((currentSongs) => {
-        const nextSongs = currentSongs.filter((song) => song.id !== nextSong.id)
-        return nextSong.published ? [nextSong, ...nextSongs] : nextSongs
+        const nextSongs = currentSongs.filter((song) => song.id !== preservedSong.id)
+        return preservedSong.published ? [preservedSong, ...nextSongs] : nextSongs
       })
-      setCurrentSongId(nextSong.id)
+      setCurrentSongId(preservedSong.id)
 
       window.alert(
         published ? '作品已发布，可以继续去首页或我的作品里查看。' : '作品已设为仅自己可见。'
@@ -427,6 +527,12 @@ function UserApp() {
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
     const handleLoadedMetadata = () => setPlaybackDuration(audio.duration || currentSong?.duration || 0)
     const handleEnded = () => {
+      if (djFollowSongIdRef.current) {
+        const followSongId = djFollowSongIdRef.current
+        djFollowSongIdRef.current = null
+        void startPlayback(followSongId)
+        return
+      }
       setIsPlaying(false)
       playAdjacentSong('next')
     }
@@ -457,6 +563,7 @@ function UserApp() {
       setIsPlaying(false)
       setCurrentTime(0)
       setPlaybackDuration(0)
+      clearPlayerVisualizer()
       return
     }
 
@@ -472,7 +579,7 @@ function UserApp() {
       void audio
         .play()
         .then(() => {
-          const audioContext = ensureAudioAnalyser() ? audioContextRef.current : null
+          const audioContext = getAudioContext()
           if (audioContext?.state === 'suspended') {
             void audioContext.resume()
           }
@@ -485,45 +592,72 @@ function UserApp() {
   }, [currentSong?.id, currentSong?.audioUrl, currentSong?.duration, pendingPlaySongId])
 
   useEffect(() => {
-    const analyser = ensureAudioAnalyser()
-    if (!analyser || !analyserDataRef.current) return
-
     if (animationFrameRef.current) {
       window.cancelAnimationFrame(animationFrameRef.current)
       animationFrameRef.current = null
     }
 
-    if (!isPlaying) {
-      setVisualizerBars((currentBars) =>
-        currentBars.map((value, index) => Math.max(IDLE_VISUALIZER_BARS[index] ?? 0.16, value * 0.72))
-      )
+    if (!isPlaying || !currentSong?.audioUrl) {
+      clearPlayerVisualizer()
       return
     }
 
+    const analyser = ensureAudioAnalyser()
     const frameData = analyserDataRef.current
-
-    const updateBars = () => {
-      analyser.getByteFrequencyData(frameData)
-
-      const bucketSize = Math.max(1, Math.floor(frameData.length / VISUALIZER_BAR_COUNT))
-      const nextBars = Array.from({ length: VISUALIZER_BAR_COUNT }, (_, index) => {
-        const start = index * bucketSize
-        const end = Math.min(frameData.length, start + bucketSize)
-        let total = 0
-
-        for (let pointer = start; pointer < end; pointer += 1) {
-          total += frameData[pointer]
-        }
-
-        const average = end > start ? total / (end - start) : 0
-        return Math.max(0.08, Math.min(1, average / 180))
-      })
-
-      setVisualizerBars(nextBars)
-      animationFrameRef.current = window.requestAnimationFrame(updateBars)
+    if (!analyser || !frameData) {
+      clearPlayerVisualizer()
+      return
     }
 
-    animationFrameRef.current = window.requestAnimationFrame(updateBars)
+    const updateVisualizer = () => {
+      animationFrameRef.current = window.requestAnimationFrame(updateVisualizer)
+      analyser.getByteFrequencyData(frameData as Uint8Array<ArrayBuffer>)
+
+      const canvas = playerVisualizerCanvasRef.current
+      const context = canvas?.getContext('2d')
+      if (!canvas || !context) return
+
+      const ratio = window.devicePixelRatio || 1
+      const width = Math.max(1, Math.floor(canvas.clientWidth * ratio))
+      const height = Math.max(1, Math.floor(canvas.clientHeight * ratio))
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width
+        canvas.height = height
+      }
+
+      context.fillStyle = 'rgba(8, 7, 16, 0.24)'
+      context.fillRect(0, 0, width, height)
+
+      const barCount = frameData.length
+      const barWidth = width / barCount
+
+      for (let index = 0; index < barCount; index += 1) {
+        const value = frameData[index] / 255
+        const barHeight = value * height * 0.42
+        const x = index * barWidth
+        const actualBarWidth = Math.max(2, barWidth * 0.72)
+
+        const bottomGradient = context.createLinearGradient(0, height, 0, height - barHeight)
+        bottomGradient.addColorStop(0, 'rgba(234, 76, 137, 0.95)')
+        bottomGradient.addColorStop(1, 'rgba(255, 214, 231, 0.9)')
+
+        context.globalAlpha = 0.72
+        context.fillStyle = bottomGradient
+        context.fillRect(x, height - barHeight, actualBarWidth, barHeight)
+
+        const topGradient = context.createLinearGradient(0, 0, 0, barHeight * 0.6)
+        topGradient.addColorStop(0, 'rgba(255, 214, 231, 0.9)')
+        topGradient.addColorStop(1, 'rgba(234, 76, 137, 0.5)')
+
+        context.fillStyle = topGradient
+        context.fillRect(x, 0, actualBarWidth, barHeight * 0.6)
+      }
+
+      context.globalAlpha = 1
+    }
+
+    animationFrameRef.current = window.requestAnimationFrame(updateVisualizer)
 
     return () => {
       if (animationFrameRef.current) {
@@ -531,7 +665,7 @@ function UserApp() {
         animationFrameRef.current = null
       }
     }
-  }, [isPlaying, currentSong?.id])
+  }, [isPlaying, currentSong?.id, currentSong?.audioUrl])
 
   async function handleAuthenticate(mode: AuthMode, values: AuthValues) {
     setAuthLoading(true)
@@ -614,7 +748,7 @@ function UserApp() {
           isPlaying={isPlaying}
           currentTime={currentTime}
           duration={playbackDuration || currentSong?.duration || 0}
-          visualizerBars={visualizerBars}
+          visualizerCanvasRef={playerVisualizerCanvasRef}
           onTogglePlay={togglePlayback}
           onPlayPrev={() => playAdjacentSong('prev')}
           onPlayNext={() => playAdjacentSong('next')}
@@ -660,6 +794,7 @@ function UserApp() {
             songs={mySongs}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId)}
+            onJoinChallenge={openChallengeCreate}
           />
         ) : null}
         {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
@@ -668,8 +803,12 @@ function UserApp() {
             mode={createMode}
             onSubmit={handleCreateSubmit}
             submitting={createSubmitting}
-            initialPrompt={createMode === 'radio' ? radioPreset.prompt : ''}
-            initialStyle={createMode === 'radio' ? radioPreset.style : ''}
+            initialPrompt={createMode === 'radio' || createMode === 'remix' ? radioPreset.prompt : ''}
+            initialStyle={createMode === 'radio' || createMode === 'remix' ? radioPreset.style : ''}
+            initialTitle={createMode === 'remix' ? radioPreset.title : ''}
+            initialLyrics={createMode === 'remix' ? radioPreset.lyrics : ''}
+            initialOriginId={createMode === 'remix' ? radioPreset.originId : undefined}
+            challenge={createChallenge}
           />
         ) : null}
         {activeView === 'radio' ? (
@@ -685,7 +824,15 @@ function UserApp() {
         ) : null}
         {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
         {activeView === 'task' && createTask ? (
-          <TaskPage task={createTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
+          <TaskPage
+            task={createTask}
+            onOpenSong={() => currentSong && openSong(currentSong.id)}
+            challengeTitle={createChallenge?.title}
+            onReturnToChallenge={createChallenge ? () => {
+              window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
+              setActiveView('discover')
+            } : undefined}
+          />
         ) : null}
         {activeView === 'songDetail' && currentSong ? (
           <SongDetailPage
@@ -693,6 +840,8 @@ function UserApp() {
             canManage={currentSong.author.id === user.id}
             publishing={publishSubmitting}
             onPlay={() => void handlePlaySong(currentSong.id)}
+            onRemix={() => handleRemixSong(currentSong)}
+            onPlayDj={() => void handlePlayDjBroadcast(currentSong)}
             onOpenPoster={() => setPosterOpen(true)}
             onPublish={() => void handlePublishSong(true)}
             onSetPrivate={() => void handlePublishSong(false)}

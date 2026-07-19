@@ -1,5 +1,5 @@
 import type { Song } from '../types/song'
-import type { BattleRecord, ChallengeRecord, FortuneRecord, VoteSide } from '../pages/discover/types'
+import type { BattleRecord, ChallengeParticipant, ChallengeRecord, ChallengeSongRef, FortuneRecord, VoteSide } from '../pages/discover/types'
 import { request } from './request'
 
 type UnknownRecord = Record<string, unknown>
@@ -73,6 +73,7 @@ function mapChallenge(value: unknown, index: number): ChallengeRecord {
     active: asBoolean(item.active, status === 'active'),
     createdAt: asString(item.createdAt, now),
     updatedAt: asString(item.updatedAt, now),
+    songCount: asNumber(item.songCount ?? item.count ?? asRecord(item._count).songs),
   }
 }
 
@@ -98,6 +99,8 @@ function mapBattle(value: unknown, index: number): BattleRecord {
     createdAt: asString(item.createdAt, now),
     updatedAt: asString(item.updatedAt, now),
     votedSide: item.votedSide === 'A' || item.votedSide === 'B' ? item.votedSide : undefined,
+    songA: Object.keys(asRecord(item.songA)).length ? (item.songA as Song) : undefined,
+    songB: Object.keys(asRecord(item.songB)).length ? (item.songB as Song) : undefined,
   }
 }
 
@@ -148,6 +151,77 @@ function mapFortune(value: unknown, fallbackDate: string): FortuneRecord {
 export async function getChallenges(): Promise<ChallengeRecord[]> {
   const result = await request<ListResponse<unknown> | unknown[]>('/api/challenges')
   return getList(result).map(mapChallenge)
+}
+
+export async function getChallengeDetail(challengeId: string): Promise<{ challenge?: ChallengeRecord; refs: ChallengeSongRef[]; songs: Song[]; participants: ChallengeParticipant[] }> {
+  const result = asRecord(await request<unknown>(`/api/challenges/${encodeURIComponent(challengeId)}`))
+  const challengeValue = asRecord(result.challenge)
+  const rawItems = Array.isArray(result.songs)
+    ? result.songs
+    : Array.isArray(result.list)
+      ? result.list
+      : []
+  const songs: Song[] = []
+  const refs = rawItems.flatMap((value, index) => {
+    const item = asRecord(value)
+    const rawSong = asRecord(item.song ?? value)
+    const id = asString(rawSong.id ?? item.songId)
+    if (!id) return []
+    const rawAuthor = asRecord(rawSong.author)
+    const authorId = asString(rawAuthor.id ?? rawSong.authorId)
+    const normalizedSong: Song = {
+      id,
+      title: asString(rawSong.title, '未命名话题作品'),
+      description: asString(rawSong.description) || undefined,
+      mode: 'song',
+      style: asString(rawSong.style, 'AI 音乐'),
+      tags: Array.isArray(rawSong.tags) ? rawSong.tags.filter((tag): tag is string => typeof tag === 'string') : [],
+      lyrics: asString(rawSong.lyrics) || undefined,
+      audioUrl: asString(rawSong.audioUrl) || undefined,
+      coverUrl: asString(rawSong.coverUrl ?? rawSong.coverImg ?? rawSong.cover) || undefined,
+      duration: asNumber(rawSong.duration),
+      status: 'published',
+      published: true,
+      isInstrumental: asBoolean(rawSong.isInstrumental),
+      challengeId,
+      author: {
+        id: authorId,
+        nickname: asString(rawAuthor.nickname ?? rawSong.authorName, '创作者'),
+        avatarUrl: asString(rawAuthor.avatarUrl) || undefined,
+      },
+      likeCount: asNumber(rawSong.likeCount ?? rawSong.likes),
+      collectCount: asNumber(rawSong.collectCount),
+      commentCount: asNumber(rawSong.commentCount),
+      playCount: asNumber(rawSong.playCount ?? rawSong.plays),
+      remixCount: asNumber(rawSong.remixCount ?? rawSong.coverCount),
+      createdAt: asString(rawSong.createdAt, new Date().toISOString()),
+      publishedAt: asString(rawSong.publishedAt) || null,
+    }
+    songs.push(normalizedSong)
+    return [{
+      id: asString(item.id, id),
+      challengeId,
+      songId: id,
+      note: asString(item.note ?? rawSong.description, '围绕话题创作的参与作品'),
+      rank: asNumber(item.rank, index + 1),
+    }]
+  })
+  const participants = (Array.isArray(result.participants) ? result.participants : []).flatMap((value) => {
+    const item = asRecord(value)
+    const id = asString(item.id)
+    if (!id) return []
+    return [{
+      id,
+      nickname: asString(item.nickname, '创作者'),
+      songCount: asNumber(item.songCount),
+    }]
+  })
+  return {
+    challenge: Object.keys(challengeValue).length ? mapChallenge(challengeValue, 0) : undefined,
+    refs,
+    songs,
+    participants,
+  }
 }
 
 export async function getBattles(): Promise<BattleRecord[]> {

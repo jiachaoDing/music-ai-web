@@ -12,6 +12,7 @@ export function BattleSong({
   votes,
   side,
   voted,
+  hasVoted,
   onVote,
   onOpen,
   onPlay,
@@ -20,6 +21,7 @@ export function BattleSong({
   votes: number
   side: VoteSide
   voted: boolean
+  hasVoted: boolean
   onVote: () => void
   onOpen: () => void
   onPlay: () => void
@@ -35,7 +37,7 @@ export function BattleSong({
         <strong>{song.title}</strong>
         <span>{song.author.nickname} · {formatDuration(song.duration)}</span>
       </div>
-      <button type="button" onClick={onVote}>{voted ? '已投票' : `投给 ${side}`}</button>
+      <button type="button" disabled={hasVoted} onClick={onVote}>{voted || hasVoted ? '已投票' : `投给 ${side}`}</button>
       <small>{votes} 票</small>
     </div>
   )

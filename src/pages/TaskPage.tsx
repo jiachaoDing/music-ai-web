@@ -7,9 +7,11 @@ type TaskPageProps = {
     canOpenSong: boolean
   }
   onOpenSong: () => void
+  onReturnToChallenge?: () => void
+  challengeTitle?: string
 }
 
-export function TaskPage({ task, onOpenSong }: TaskPageProps) {
+export function TaskPage({ task, onOpenSong, onReturnToChallenge, challengeTitle }: TaskPageProps) {
   const buttonLabel =
     task.status === 'error'
       ? '返回继续调整'
@@ -33,6 +35,9 @@ export function TaskPage({ task, onOpenSong }: TaskPageProps) {
         <button type="button" disabled={!task.canOpenSong} onClick={onOpenSong}>
           {buttonLabel}
         </button>
+        {task.status === 'done' && onReturnToChallenge ? (
+          <button type="button" onClick={onReturnToChallenge}>返回话题「{challengeTitle}」</button>
+        ) : null}
       </section>
     </section>
   )

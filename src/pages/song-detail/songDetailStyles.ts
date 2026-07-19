@@ -289,6 +289,12 @@ export const songDetailStyles = `
   background: rgba(234, 76, 137, 0.08);
 }
 
+.song-detail-action.is-liked {
+  border-color: rgba(234, 76, 137, 0.22);
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.12);
+}
+
 .song-detail-toolbar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
@@ -412,20 +418,23 @@ export const songDetailStyles = `
   position: fixed;
   inset: 0;
   z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(13, 12, 34, 0.2);
-  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(13, 12, 34, 0.42);
+  backdrop-filter: blur(14px);
 }
 
 .song-detail-modal {
   display: grid;
-  gap: 18px;
-  width: min(480px, 100%);
+  gap: 16px;
+  width: min(920px, 100%);
+  max-height: min(76vh, 720px);
+  overflow: auto;
   border: 1px solid rgba(234, 76, 137, 0.16);
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 18px 18px 8px 8px;
+  padding: 28px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
 }
@@ -479,20 +488,109 @@ export const songDetailStyles = `
   font-weight: 700;
 }
 
-.song-detail-modal__field {
+.song-detail-playlist-list {
   display: grid;
+  gap: 10px;
+  max-height: 270px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.song-detail-playlist-list::-webkit-scrollbar,
+.song-detail-modal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.song-detail-playlist-list::-webkit-scrollbar-track,
+.song-detail-modal::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(13, 12, 34, 0.05);
+}
+
+.song-detail-playlist-list::-webkit-scrollbar-thumb,
+.song-detail-modal::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(234, 76, 137, 0.24);
+}
+
+.song-detail-playlist-item {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 74px;
+  border: 1px solid rgba(13, 12, 34, 0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+}
+
+.song-detail-playlist-item:hover,
+.song-detail-playlist-item.is-selected {
+  border-color: rgba(234, 76, 137, 0.28);
+  background: rgba(234, 76, 137, 0.06);
+}
+
+.song-detail-playlist-cover {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #f7a8c8, #ea4c89);
+}
+
+.song-detail-playlist-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.song-detail-playlist-copy strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.song-detail-playlist-copy small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.song-detail-playlist-check {
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.09);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.song-detail-create-playlist {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
 }
 
-.song-detail-modal__field select {
-  min-height: 50px;
+.song-detail-create-playlist input {
+  min-height: 46px;
   border: 1px solid rgba(13, 12, 34, 0.1);
-  border-radius: 8px;
-  padding: 0 14px;
+  border-radius: 999px;
+  padding: 0 16px;
   color: var(--text);
-  background: #ffffff;
+  background: #f8f8fa;
   font: inherit;
-  font-weight: 800;
+  font-weight: 760;
+}
+
+.song-detail-create-playlist input:focus {
+  outline: 3px solid rgba(234, 76, 137, 0.14);
+  border-color: rgba(234, 76, 137, 0.34);
+  background: #ffffff;
 }
 
 .song-detail-modal__hint {
@@ -570,6 +668,36 @@ export const songDetailStyles = `
 
   .song-detail-action {
     width: 100%;
+  }
+
+  .song-detail-modal-backdrop {
+    padding: 12px;
+  }
+
+  .song-detail-modal {
+    width: 100%;
+    max-height: 82vh;
+    border-radius: 16px 16px 8px 8px;
+    padding: 18px;
+  }
+
+  .song-detail-playlist-item {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
+
+  .song-detail-playlist-cover {
+    width: 46px;
+  }
+
+  .song-detail-playlist-check {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .song-detail-create-playlist,
+  .song-detail-modal__actions {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 
   .song-detail-block__header,

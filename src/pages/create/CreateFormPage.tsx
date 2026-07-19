@@ -77,6 +77,14 @@ export type CreateSubmission = {
   prompt: string
   isInstrumental: boolean
   forWho?: string
+  originId?: string
+  challengeId?: string
+}
+
+export type CreateChallengeContext = {
+  id: string
+  title: string
+  prompt?: string
 }
 
 type CreateFormPageProps = {
@@ -85,16 +93,28 @@ type CreateFormPageProps = {
   submitting?: boolean
   initialPrompt?: string
   initialStyle?: string
+  initialTitle?: string
+  initialLyrics?: string
+  initialOriginId?: string
+  challenge?: CreateChallengeContext | null
 }
 
-export function CreateFormPage({ mode, onSubmit, submitting = false, initialPrompt = '', initialStyle = '' }: CreateFormPageProps) {
+export function CreateFormPage({
+  mode,
+  onSubmit,
+  submitting = false,
+  initialPrompt = '',
+  initialStyle = '',
+  initialTitle = '',
+  initialLyrics = '',
+  initialOriginId,
+  challenge,
+}: CreateFormPageProps) {
   const current = modeCopy[mode]
   const [prompt, setPrompt] = useState(initialPrompt)
   const [style, setStyle] = useState(initialStyle)
-  const [lyrics, setLyrics] = useState('')
-  const [generatedTitle, setGeneratedTitle] = useState(
-    mode === 'radio' ? `${initialPrompt.split('：')[0] || 'Echo'}电台` : '',
-  )
+  const [lyrics, setLyrics] = useState(initialLyrics)
+  const [generatedTitle, setGeneratedTitle] = useState(initialTitle)
   const [forWho, setForWho] = useState('')
   const [photoImage, setPhotoImage] = useState('')
   const [photoImageName, setPhotoImageName] = useState('')
@@ -125,6 +145,7 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
 
   async function handleGenerateLyrics() {
     const isPhotoMode = mode === 'photo'
+    const isRadioMode = mode === 'radio'
     const nextPrompt = [prompt.trim(), style.trim() ? `风格：${style.trim()}` : ''].filter(Boolean).join('，')
 
     if (isPhotoMode && !photoImage) {
@@ -149,7 +170,7 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
       })
       setGeneratedTitle(result.title)
       setStyle(result.style)
-      setLyrics(result.lyrics)
+      setLyrics(isRadioMode ? '' : result.lyrics)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'AI 写词失败，请检查后端服务。')
     } finally {
@@ -159,9 +180,9 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
 
   async function handleSubmit() {
     const isPhotoMode = mode === 'photo'
-    const nextTitle = generatedTitle.trim()
+    let nextTitle = generatedTitle.trim()
     const nextStyle = style.trim()
-    const nextLyrics = lyrics.trim()
+    const nextLyrics = mode === 'radio' ? '[Instrumental]' : lyrics.trim()
     const nextPrompt = prompt.trim()
     const nextForWho = forWho.trim()
 
@@ -180,8 +201,27 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
       return
     }
 
+    if (!nextTitle && mode === 'radio') {
+      try {
+        setLoadingLyrics(true)
+        const result = await generateLyrics({
+          prompt: `${nextPrompt}。这是一首没有歌词的纯音乐，请只生成一个与场景和风格匹配的中文歌名。`,
+          mode: 'radio',
+          styles: parseStyleTags(nextStyle),
+        })
+        nextTitle = result.title.trim()
+        if (result.style?.trim()) setStyle(result.style)
+        setGeneratedTitle(nextTitle)
+      } catch {
+        nextTitle = `${nextPrompt.replace(/[，。！？,.!?]/g, ' ').trim().slice(0, 12) || '今日频率'} · 纯音乐`
+        setGeneratedTitle(nextTitle)
+      } finally {
+        setLoadingLyrics(false)
+      }
+    }
+
     if (!nextTitle) {
-      setError('请输入歌名，或先使用 AI 写词。')
+      setError('请输入歌名，或先使用 AI 生成。')
       return
     }
 
@@ -205,6 +245,8 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
       prompt: nextPrompt || '请根据图片内容写一首歌',
       isInstrumental: mode === 'radio',
       forWho: mode === 'foryou' ? nextForWho : undefined,
+      originId: initialOriginId,
+      challengeId: challenge?.id,
     })
   }
 
@@ -217,6 +259,14 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
         <h1>{current.title}</h1>
         <p>{current.description}</p>
       </header>
+
+      {challenge ? (
+        <div className="create-challenge-context">
+          <span>🏷 参加话题</span>
+          <strong>{challenge.title}</strong>
+          <p>{challenge.prompt ?? '围绕这个话题生成的新歌曲会自动加入挑战。'}</p>
+        </div>
+      ) : null}
 
       <form className="create-form-layout">
         <section className="create-form-panel">
@@ -281,8 +331,8 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
 
         <section className="create-form-panel create-result-panel">
           <div className="create-panel-heading">
-            <span>歌词编辑</span>
-            <h2>生成后可以继续修改</h2>
+            <span>{mode === 'radio' ? '标题生成' : '歌词编辑'}</span>
+            <h2>{mode === 'radio' ? '让 AI 为这段纯音乐命名' : '生成后可以继续修改'}</h2>
           </div>
 
           <label className="create-field">
@@ -294,7 +344,7 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
             />
           </label>
 
-          <label className="create-field create-lyrics-field">
+          {mode !== 'radio' ? <label className="create-field create-lyrics-field">
             歌词
             {lyrics ? (
               <textarea aria-label="生成歌词" value={lyrics} onChange={(event) => setLyrics(event.target.value)} />
@@ -303,13 +353,13 @@ export function CreateFormPage({ mode, onSubmit, submitting = false, initialProm
                 {loadingLyrics ? 'AI 正在写词...' : '点击 AI 写词后，生成的歌词会显示在这里。'}
               </div>
             )}
-          </label>
+          </label> : <div className="create-lyrics-empty">纯音乐模式不生成歌词，AI 会根据主题和风格生成匹配的标题。</div>}
 
           {error ? <p className="create-form-error">{error}</p> : null}
 
           <div className="create-form-actions">
             <button type="button" disabled={loadingLyrics || submitting} onClick={handleGenerateLyrics}>
-              {loadingLyrics ? '生成中...' : 'AI 写词'}
+              {loadingLyrics ? '生成中...' : mode === 'radio' ? 'AI 生成标题' : 'AI 写词'}
             </button>
             <button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
               {submitting ? '生成中...' : '提交生成'}

@@ -2,8 +2,7 @@ export type AdminStats={users:number;newUsersToday:number;checkinsToday:number;s
 export type AdminLedger={t:number;delta:number;reason:string;balance:number}
 export type AdminUser={id:string;name:string;points:number;streak:number;createdAt:number;lastCheckin:string|null;invitedBy:string|null;stats:{songs?:number;likesGot?:number;coversGot?:number};ledger:AdminLedger[]}
 export type AdminInvite={code:string;createdBy:string;usedBy:string|null;createdAt:number}
-export type AdminSong={id:string;title:string;author:string;authorId:string|null;originId?:string|null;mode:string;likes:number;plays:number;coverCount:number;duration:number;createdAt:number}
+export type AdminSong={id:string;title:string;author:string;authorId:string|null;originId?:string|null;mode:string;likes:number;plays:number;coverCount:number;duration:number;createdAt:number;audioUrl?:string|null;coverUrl?:string|null;status?:string}
 export type AdminComment={id:string;songId:string;songTitle:string;userId:string|null;name:string;anon:boolean;text:string;t:number}
 export type AdminChallenge={id:string;title:string;emoji:string;desc:string;color:string;createdBy?:'host'|'admin';active:boolean;createdAt?:number;count:number;source:string}
-export type AdminData={users:AdminUser[];invites:AdminInvite[];songs:AdminSong[];comments:AdminComment[];challenges:AdminChallenge[]}
-
+export type AdminData={users:AdminUser[];invites:AdminInvite[];songs:AdminSong[];comments:AdminComment[];challenges:AdminChallenge[];summary?:AdminStats}

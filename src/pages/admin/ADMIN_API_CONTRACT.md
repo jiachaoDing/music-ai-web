@@ -1,55 +1,62 @@
-# 管理员端 Mock 与后端接口契约
+# 管理员端真实接口联调说明
 
-## 当前使用方式
+## 当前状态
 
-- 页面入口：`/admin`
-- Mock 管理密钥：`echo-admin`
-- 登录状态：`sessionStorage.echo_admin_mock_key`
-- Mock 数据：`localStorage.echo-admin-mock-v2`
-- Mock 数据与用户端、真实后端完全隔离。
+- 管理员端不再读取 Mock 数据或浏览器 `localStorage` 数据。
+- 页面入口：`/admin`。
+- 管理员通过 `POST /api/auth/login` 使用昵称和密码登录。
+- 登录成功后必须满足 `user.role === "admin"`。
+- JWT 保存在项目原有的 `localStorage.echo_token`，管理员页面登录标记保存在当前标签页的 `sessionStorage`。
+- 所有管理数据来自 `http://localhost:3000/api/admin/*`（实际基础地址由 `VITE_API_BASE_URL` 决定）。
 
-## 精确数据类型
+## 页面与真实接口
 
-所有时间均使用 JavaScript 毫秒时间戳 `number`；可空字段使用 `null`，不要用空字符串替代。
+| 页面功能 | 真实接口 |
+| --- | --- |
+| 管理员登录 | `POST /api/auth/login` |
+| 后台统计 | `GET /api/admin/stats` |
+| 用户列表 | `GET /api/admin/users?pageSize=1000` |
+| 调整回声 | `POST /api/admin/users/:id/points` |
+| 重置密码 | `POST /api/admin/users/:id/password` |
+| 删除用户 | `DELETE /api/admin/users/:id` |
+| 邀请码列表 | `GET /api/admin/invites` |
+| 批量生成邀请码 | `POST /api/admin/invites` |
+| 作废邀请码 | `DELETE /api/admin/invites/:code` |
+| 歌曲列表 | `GET /api/admin/songs?pageSize=1000` |
+| 删除歌曲及翻唱 | `DELETE /api/admin/songs/:id` |
+| 留言列表 | `GET /api/admin/comments?pageSize=1000` |
+| 删除留言 | `DELETE /api/admin/comments/:songId/:commentId` |
+| 话题列表 | `GET /api/admin/challenges` |
+| 新增话题 | `POST /api/admin/challenges` |
+| 编辑/上下架话题 | `PATCH /api/admin/challenges/:id` |
+| 删除话题 | `DELETE /api/admin/challenges/:id` |
 
-- `AdminStats`：`users`、`newUsersToday`、`checkinsToday`、`songs`、`totalPoints`、`totalPlays`、`totalLikes`、`invitesTotal`、`invitesUsed`、`invitesFree`、`commentsTotal`，均为 `number`。
-- `AdminUser`：`id:string`、`name:string`、`points:number`、`streak:number`、`createdAt:number`、`lastCheckin:string|null`（格式 `YYYY-MM-DD`）、`invitedBy:string|null`、`stats:{songs?,likesGot?,coversGot?}`、`ledger:AdminLedger[]`。
-- `AdminLedger`：`t:number`、`delta:number`（非零整数）、`reason:string`、`balance:number`。
-- `AdminInvite`：`code:string`、`createdBy:string`、`usedBy:string|null`、`createdAt:number`。example 通过 `usedBy` 判断状态，没有独立 `status` 字段。
-- `AdminSong`：`id:string`、`title:string`、`author:string`、`authorId:string|null`、`originId?:string|null`、`mode:string`、`likes:number`、`plays:number`、`coverCount:number`、`duration:number`、`createdAt:number`。
-- `AdminComment`：`id:string`、`songId:string`、`songTitle:string`、`userId:string|null`、`name:string`、`anon:boolean`、`text:string`、`t:number`。
-- `AdminChallenge`：`id:string`、`title:string`、`emoji:string`、`desc:string`、`color:string`、`createdBy?:'host'|'admin'`、`active:boolean`、`createdAt?:number`、`count:number`、`source:string`。
+## 字段适配
 
-类型唯一来源为 `types.ts`。管理员接口不要直接复用用户端的 `User` 和 `Song`：example 使用 `name/points/likes/plays`，当前用户端使用 `nickname/echoPoints/likeCount/playCount`。
+后端使用统一响应 `{ code, message, data }`，项目公共 `request()` 会取出 `data`。列表接口的 `data` 仍为 `{ list, total, page, pageSize }`，管理员服务层再提取 `list`。
 
-## 后端需要实现的接口（与 example 一致）
+| 页面字段 | 后端字段 |
+| --- | --- |
+| `users` | `totalUsers` |
+| `songs` | `totalSongs` |
+| `totalPoints` | `totalEchoPoints` |
+| `invitesTotal` | `totalInvites` |
+| `commentsTotal` | `totalComments` |
+| 用户 `name` | `nickname` |
+| 用户 `points` | `echoPoints` |
+| 用户作品数 `stats.songs` | `songCount` |
+| 用户流水 `ledger` | `recentLedger` |
+| 歌曲 `author` | `authorName` |
+| 邀请码使用者 | `usedByName ?? usedBy` |
+| 留言者 `name` | `userName` |
+| 留言时间 `t` | `createdAt` |
+| 话题参与数 `count` | `songCount` |
+| 话题来源 `source` | `createdBy` |
 
-除登录外，管理员请求头为 `Content-Type: application/json` 与 `x-admin-key: <管理员密钥>`。
+后端的 ISO 时间字符串会在适配层转换成毫秒时间戳，现有页面组件无需感知后端字段差异。
 
-| 方法与路径 | 请求 | 响应 |
-| --- | --- | --- |
-| `POST /api/admin/login` | `{key:string}` | `{ok:true}` |
-| `GET /api/admin/stats` | 无 | `AdminStats`；example 另含页面未使用的 `econ` |
-| `GET /api/admin/users` | 可选 `?q=` | `AdminUser[]` |
-| `POST /api/admin/users/:id/points` | `{delta:number,reason:string}` | `{points:number}` |
-| `POST /api/admin/users/:id/password` | `{password:string}`，空值表示随机生成 | `{ok:true,password:string}` |
-| `DELETE /api/admin/users/:id` | 无 | `{ok:true}` |
-| `GET /api/admin/invites` | 无 | `AdminInvite[]` |
-| `POST /api/admin/invites` | `{count:number}`，范围 1–50 | `{codes:string[]}` |
-| `DELETE /api/admin/invites/:code` | 无 | `{ok:true}`；已使用邀请码应返回 400 |
-| `GET /api/admin/songs` | 无 | `AdminSong[]` |
-| `DELETE /api/admin/songs/:id` | 无 | `{ok:true}`；同时删除 `originId` 等于该 ID 的翻唱 |
-| `GET /api/admin/comments` | 无 | `AdminComment[]`，按 `t` 倒序 |
-| `DELETE /api/admin/comments/:songId/:commentId` | 无 | `{ok:true}`，并同步减少歌曲留言数 |
-| `GET /api/admin/challenges` | 无 | `AdminChallenge[]` |
-| `POST /api/admin/challenges` | `{title,emoji,desc,color?}` | 新话题对象 |
-| `PATCH /api/admin/challenges/:id` | `{title?,emoji?,desc?,color?,active?}` | `{ok:true}` |
-| `DELETE /api/admin/challenges/:id` | 无 | `{ok:true,removed:number}` |
+## 与老师 example 的差异
 
-## Mock 与真实后端的边界
-
-- Mock 重置密码只生成测试明文，不计算哈希、不刷新 token。
-- Mock 删除歌曲不删除真实音频、封面或 DJ 文件。
-- Mock 删除留言不改变用户端歌曲留言数。
-- Mock 统计由本地列表即时计算。
-- 联调时建议保留页面和 `types.ts`，仅将 `mockService.ts` 替换为真实请求层。
+- example 使用管理员密钥和 `x-admin-key`；当前项目使用管理员账号 JWT。功能未减少，只调整了登录方式。
+- 后端另外支持管理员创建用户、修改角色、歌曲状态管理和分页查询，当前页面暂未展示这些 example 之外的扩展能力。
+- 当前歌曲“试听”直接打开后端返回的真实 `audioUrl`。

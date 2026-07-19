@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   createBattle as createBattleRequest,
   getBattles,
+  getChallengeDetail,
   getChallenges,
   getDayArt,
   getDayFortune,
@@ -14,11 +15,11 @@ import {
 import { BattleNewPage } from './discover/BattleNewPage'
 import { BattlesPage } from './discover/BattlesPage'
 import { ChallengeDetailPage } from './discover/ChallengeDetailPage'
-import { initialBattles, initialChallengeSongRefs, initialChallenges, initialFortunes } from './discover/data'
+import { initialBattles, initialChallenges, initialFortunes } from './discover/data'
 import { DiscoverHomePage } from './discover/DiscoverHomePage'
 import { discoverStyles } from './discover/discoverStyles'
 import { FortunePage } from './discover/FortunePage'
-import type { BattleRecord, BattleVoteRecord, DiscoverView, FortuneSongDraft, VoteSide } from './discover/types'
+import type { BattleRecord, BattleVoteRecord, ChallengeParticipant, ChallengeSongRef, DiscoverView, FortuneSongDraft, VoteSide } from './discover/types'
 import type { Song } from '../types/song'
 import type { User } from '../types/user'
 
@@ -36,26 +37,36 @@ type DiscoverPageProps = {
   songs: Song[]
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
+  onJoinChallenge: (challenge: { id: string; title: string; prompt?: string }) => void
 }
 
-const today = new Date().toISOString().slice(0, 10)
+const today = new Date().toLocaleDateString('en-CA')
 const currentMonth = today.slice(0, 7)
 
-export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPageProps) {
+function loadSavedBattleVotes(userId: string): BattleVoteRecord[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(`echo_battle_votes_${userId}`) ?? '[]')
+    return Array.isArray(value) ? value : []
+  } catch {
+    return []
+  }
+}
+
+export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onJoinChallenge }: DiscoverPageProps) {
   const [view, setView] = useState<DiscoverView>(getInitialView)
   const [selectedChallengeId, setSelectedChallengeId] = useState(() => {
     const challengeId = window.location.pathname.split('/challenges/')[1]
-    return initialChallenges.some((challenge) => challenge.id === challengeId) ? challengeId : initialChallenges[0].id
+    return challengeId || initialChallenges[0].id
   })
-  const [challengeSongRefs, setChallengeSongRefs] = useState(initialChallengeSongRefs)
+  const [challengeSongRefs, setChallengeSongRefs] = useState<ChallengeSongRef[]>([])
+  const [challengeSongs, setChallengeSongs] = useState<Song[]>([])
+  const [challengeParticipants, setChallengeParticipants] = useState<ChallengeParticipant[]>([])
   const [challenges, setChallenges] = useState(initialChallenges)
   const [battles, setBattles] = useState<BattleRecord[]>(initialBattles)
-  const [battleVotes, setBattleVotes] = useState<BattleVoteRecord[]>([])
+  const [battleVotes, setBattleVotes] = useState<BattleVoteRecord[]>(() => loadSavedBattleVotes(user.id))
   const [fortuneSongs, setFortuneSongs] = useState<FortuneSongDraft[]>([])
   const [fortunes, setFortunes] = useState(initialFortunes)
   const [todayFortune, setTodayFortune] = useState(() => initialFortunes.find((fortune) => fortune.date === today) ?? initialFortunes[0])
-  const [selectedSongId, setSelectedSongId] = useState(songs.find((song) => song.published)?.id ?? songs[0]?.id ?? '')
-  const [creationTitle, setCreationTitle] = useState('夏夜回信')
   const [battleTopic, setBattleTopic] = useState('哪首歌更适合今晚循环？')
   const [aId, setAId] = useState('song_001')
   const [bId, setBId] = useState('song_005')
@@ -63,22 +74,27 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
   const [message, setMessage] = useState('')
   const [loadingData, setLoadingData] = useState(true)
   const [generatingFortune, setGeneratingFortune] = useState(false)
+  const [checkedInToday, setCheckedInToday] = useState(user.lastCheckin === today)
 
-  const publishedSongs = useMemo(
-    () => [...fortuneSongs.map((draft) => draft.song), ...songs].filter((song) => song.published || song.status === 'draft'),
-    [fortuneSongs, songs],
-  )
+  const publishedSongs = useMemo(() => {
+    const songMap = new Map<string, Song>()
+    ;[...fortuneSongs.map((draft) => draft.song), ...challengeSongs, ...battles.flatMap((battle) => [battle.songA, battle.songB]), ...songs]
+      .filter((song): song is Song => Boolean(song))
+      .filter((song) => song.published || song.status === 'draft')
+      .forEach((song) => songMap.set(song.id, song))
+    return [...songMap.values()]
+  }, [battles, challengeSongs, fortuneSongs, songs])
   const activeChallenges = challenges.filter((challenge) => challenge.active && challenge.status === 'active')
   const selectedChallenge = challenges.find((challenge) => challenge.id === selectedChallengeId) ?? activeChallenges[0]
-  const selectedChallengeSongs = selectedChallenge
-    ? challengeSongRefs.filter((ref) => ref.challengeId === selectedChallenge.id)
-    : []
-
-  useEffect(() => {
-    if (!selectedSongId && songs.length) {
-      setSelectedSongId(songs.find((song) => song.published)?.id ?? songs[0]?.id ?? '')
-    }
-  }, [selectedSongId, songs])
+  const selectedChallengeSongs = useMemo(() => {
+    if (!selectedChallenge) return []
+    const refs = new Map(challengeSongRefs.filter((ref) => ref.challengeId === selectedChallenge.id).map((ref) => [ref.songId, ref]))
+    songs.filter((song) => song.challengeId === selectedChallenge.id).forEach((song, index) => {
+      if (!refs.has(song.id)) refs.set(song.id, { id: song.id, challengeId: selectedChallenge.id, songId: song.id, note: song.description ?? '我参与的话题作品', rank: refs.size + index + 1 })
+    })
+    return [...refs.values()]
+  }, [challengeSongRefs, selectedChallenge, songs])
+  const hasParticipated = selectedChallengeSongs.some((ref) => publishedSongs.find((song) => song.id === ref.songId)?.author.id === user.id)
 
   useEffect(() => {
     if (!publishedSongs.length) return
@@ -120,6 +136,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
           img: artResult.status === 'fulfilled' && artResult.value ? artResult.value : fortuneResult.value.img,
         }
         setTodayFortune(fortune)
+        setCheckedInToday(true)
         setSelectedDate(fortune.date)
       }
       if (calendarResult.status === 'fulfilled' && calendarResult.value.length) {
@@ -143,6 +160,32 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
     }
   }, [])
 
+  useEffect(() => {
+    if (!selectedChallengeId) return
+    let cancelled = false
+    setChallengeSongRefs([])
+    setChallengeSongs([])
+    setChallengeParticipants([])
+    getChallengeDetail(selectedChallengeId)
+      .then((detail) => {
+        if (cancelled) return
+        setChallengeSongRefs(detail.refs)
+        setChallengeSongs(detail.songs)
+        setChallengeParticipants(detail.participants)
+        if (detail.challenge) {
+          setChallenges((current) => current.map((challenge) => challenge.id === detail.challenge?.id ? { ...challenge, ...detail.challenge } : challenge))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChallengeSongRefs([])
+          setChallengeSongs([])
+          setChallengeParticipants([])
+        }
+      })
+    return () => { cancelled = true }
+  }, [selectedChallengeId])
+
   function navigate(nextView: DiscoverView, path: string) {
     window.history.pushState({}, '', path)
     setView(nextView)
@@ -154,30 +197,23 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
     navigate('challenge', `/challenges/${challengeId}`)
   }
 
-  function submitChallengeSong() {
-    if (!selectedSongId) {
-      setMessage('请先选择一首要投稿的作品。')
-      return
-    }
-
-    setChallengeSongRefs((current) => [
-      {
-        id: `challenge_song_${Date.now()}`,
-        challengeId: selectedChallenge.id,
-        songId: selectedSongId,
-        note: `${creationTitle || '我的挑战作品'} 已加入挑战池，等待大家试听。`,
-        rank: current.filter((item) => item.challengeId === selectedChallenge.id).length + 1,
-      },
-      ...current,
-    ])
-    setMessage('投稿成功，作品已经加入挑战。')
-  }
-
   async function voteBattle(battleId: string, side: VoteSide) {
     const hasVoted = battleVotes.some((vote) => vote.battleId === battleId && vote.userId === user.id)
     if (hasVoted) {
       setMessage('你已经投过这个擂台了，每场对决只能投一次。')
       return
+    }
+
+    function rememberVote(savedSide?: VoteSide) {
+      setBattleVotes((current) => {
+        if (current.some((vote) => vote.battleId === battleId && vote.userId === user.id)) return current
+        const next = [
+          ...current,
+          { id: `battle_vote_${Date.now()}`, battleId, userId: user.id, side: savedSide, createdAt: new Date().toISOString() },
+        ]
+        localStorage.setItem(`echo_battle_votes_${user.id}`, JSON.stringify(next))
+        return next
+      })
     }
 
     try {
@@ -195,13 +231,16 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
             : battle,
         ),
       )
-      setBattleVotes((current) => [
-        ...current,
-        { id: `battle_vote_${Date.now()}`, battleId, userId: user.id, side, createdAt: new Date().toISOString() },
-      ])
+      rememberVote(side)
       setMessage(`投票成功，你支持了 ${side} 方。`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '投票失败，请稍后重试。')
+      const errorMessage = error instanceof Error ? error.message : '投票失败，请稍后重试。'
+      if (errorMessage.includes('已经投过') || errorMessage.includes('已投过')) {
+        rememberVote()
+        setMessage('你已经投过这个擂台了，投票状态已恢复。')
+      } else {
+        setMessage(errorMessage)
+      }
     }
   }
 
@@ -302,7 +341,6 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
         <DiscoverHomePage
           battles={battles}
           challenges={activeChallenges}
-          challengeSongRefs={challengeSongRefs}
           todayFortune={todayFortune}
           onNavigateBattles={() => navigate('battles', '/battles')}
           onNavigateFortune={() => navigate('fortune', '/fortune')}
@@ -313,17 +351,15 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
       {view === 'challenge' ? (
         selectedChallenge ? <ChallengeDetailPage
           challenges={activeChallenges}
-          creationTitle={creationTitle}
           publishedSongs={publishedSongs}
           selectedChallenge={selectedChallenge}
           selectedChallengeSongs={selectedChallengeSongs}
-          selectedSongId={selectedSongId}
-          onChangeCreationTitle={setCreationTitle}
-          onChangeSelectedSongId={setSelectedSongId}
+          participants={challengeParticipants}
+          hasParticipated={hasParticipated}
           onOpenChallenge={openChallenge}
           onOpenSong={onOpenSong}
           onPlaySong={onPlaySong}
-          onSubmit={submitChallengeSong}
+          onJoin={() => onJoinChallenge({ id: selectedChallenge.id, title: selectedChallenge.title, prompt: selectedChallenge.prompt ?? selectedChallenge.desc })}
         /> : <section className="content-panel empty-panel"><h2>暂无话题挑战</h2><p>后端当前还没有发布可参与的话题。</p></section>
       ) : null}
 
@@ -361,9 +397,14 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong }: DiscoverPa
           fortunes={fortunes}
           generatedSongs={fortuneSongs}
           generating={generatingFortune}
+          checkedInToday={checkedInToday}
           month={currentMonth}
           selectedDate={selectedDate}
           onCheckin={setMessage}
+          onCheckinToday={() => {
+            setCheckedInToday(true)
+            setMessage('今日已打卡，签到状态已经保存。')
+          }}
           onGenerateSong={(mode) => void generateFortuneSong(mode)}
           onSelectDate={setSelectedDate}
         />
