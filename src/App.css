@@ -897,6 +897,15 @@ textarea:focus {
     linear-gradient(135deg, color-mix(in srgb, var(--cover-color, #111827) 78%, white), #1f2433);
 }
 
+.song-card__cover-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.song-card__cover-wrap .song-cover {
+  width: 100%;
+}
+
 .song-cover--portrait {
   aspect-ratio: 1;
 }
@@ -1682,6 +1691,8 @@ textarea:focus {
   .host-panel__header,
   .host-panel__footer {
     display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: 10px;
   }
 
@@ -1697,6 +1708,7 @@ textarea:focus {
 
   .host-panel__entry {
     width: fit-content;
+    justify-self: end;
     min-height: 36px;
     padding: 0 16px;
   }

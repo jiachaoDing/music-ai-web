@@ -54,6 +54,68 @@ export const meStyles = `
   box-shadow: inset 0 0 0 1px rgba(234, 76, 137, 0.12);
 }
 
+.me-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.me-subtabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.me-subtabs button:hover,
+.me-subtabs button.is-active {
+  border-color: rgba(234, 76, 137, 0.16);
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.08);
+}
+
+.me-subtabs span {
+  min-width: 22px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: var(--muted);
+  background: rgba(13, 12, 34, 0.06);
+  font-size: 12px;
+}
+
+.me-work-rules {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  max-width: 360px;
+  border-right: 3px solid rgba(234, 76, 137, 0.32);
+  padding-right: 14px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.me-work-rules strong {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 760;
+}
+
+.me-work-rules p {
+  margin: 0;
+  color: var(--muted-2);
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .me-hero,
 .me-panel,
 .me-stat-card,
@@ -1073,6 +1135,16 @@ export const meStyles = `
   .me-panel__heading {
     display: grid;
     align-items: start;
+  }
+
+  .me-work-rules {
+    justify-items: start;
+    max-width: none;
+    border-right: 0;
+    border-left: 3px solid rgba(234, 76, 137, 0.28);
+    padding-right: 0;
+    padding-left: 12px;
+    text-align: left;
   }
 
   .me-stats-grid {

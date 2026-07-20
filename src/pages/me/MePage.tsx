@@ -21,6 +21,7 @@ type MePageProps = {
 }
 
 type MeTabKey = 'profile' | 'drafts' | 'works' | 'playlists'
+type WorksViewKey = 'published' | 'private'
 
 const PLAYLIST_COLORS = ['#9ed9cc', '#a8c7f0', '#f5cfae', '#c9b8f2', '#f4b7c6']
 
@@ -31,6 +32,14 @@ function formatDuration(duration?: number) {
 
 function formatPlaylistType(playlist: Playlist) {
   return playlist.type === 'liked' ? '喜欢列表' : playlist.isSystem ? '系统歌单' : '自建歌单'
+}
+
+function formatSongStatus(song: Song) {
+  if (song.status === 'private') return '私密'
+  if (song.status === 'published' || song.published) return '已发布'
+  if (song.status === 'failed') return '生成失败'
+  if (song.status === 'generating') return '生成中'
+  return '草稿'
 }
 
 function getPlaylistCoverColor(playlist: Playlist) {
@@ -47,6 +56,7 @@ function getPlaylistCoverUrl(playlist: Playlist) {
 
 export function MePage({ user, songs, onOpenSong }: MePageProps) {
   const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
+  const [worksView, setWorksView] = useState<WorksViewKey>('published')
   const [profileUser, setProfileUser] = useState<User>(user)
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
@@ -108,9 +118,12 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
     { label: '连续打卡', value: `${profileUser.streak} 天` },
   ]
 
-  const draftSongs = songs.filter((song) => !song.published || song.status === 'draft')
+  const draftSongs = songs.filter(
+    (song) => song.status === 'draft' || song.status === 'failed' || song.status === 'generating',
+  )
+  const privateSongs = songs.filter((song) => song.status === 'private')
   const publishedSongs = songs.filter(
-    (song) => song.published || song.status === 'published',
+    (song) => song.published && song.status === 'published',
   )
   const latestSong = songs[0]
   const latestSongCoverUrl = latestSong?.coverUrl ? resolveAssetUrl(latestSong.coverUrl) : undefined
@@ -279,7 +292,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
                     <div className="me-highlight__stats">
                       <span>{latestSong.playCount} 播放</span>
                       <span>{latestSong.likeCount} 喜欢</span>
-                      <span>{latestSong.status === 'draft' ? '草稿' : '已发布'}</span>
+                      <span>{formatSongStatus(latestSong)}</span>
                     </div>
                     <div className="me-highlight__summary">
                       <div>
@@ -355,24 +368,64 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
               <span>Works</span>
               <h2>我的作品</h2>
             </div>
-            <p>
-              {publishedSongs.length
-                ? `当前已展示 ${publishedSongs.length} 个已发布作品。`
-                : '你的作品正式发布后会出现在这里。'}
-            </p>
+            <div className="me-work-rules">
+              <strong>
+                {worksView === 'published'
+                  ? `当前已展示 ${publishedSongs.length} 个公开发布作品。`
+                  : `当前共有 ${privateSongs.length} 首私密作品。`}
+              </strong>
+              <p>草稿、私密可删除；已发布需先转为私密。</p>
+            </div>
           </div>
-          {publishedSongs.length ? (
+
+          <div className="me-subtabs" role="tablist" aria-label="我的作品分类">
+            <button
+              type="button"
+              className={worksView === 'published' ? 'is-active' : ''}
+              onClick={() => setWorksView('published')}
+            >
+              已发布
+              <span>{publishedSongs.length}</span>
+            </button>
+            <button
+              type="button"
+              className={worksView === 'private' ? 'is-active' : ''}
+              onClick={() => setWorksView('private')}
+            >
+              私密
+              <span>{privateSongs.length}</span>
+            </button>
+          </div>
+
+          {worksView === 'published' && publishedSongs.length ? (
             <div className="card-list">
               {publishedSongs.map((song) => (
                 <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
               ))}
             </div>
-          ) : (
+          ) : null}
+
+          {worksView === 'private' && privateSongs.length ? (
+            <div className="card-list">
+              {privateSongs.map((song) => (
+                <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
+              ))}
+            </div>
+          ) : null}
+
+          {worksView === 'published' && !publishedSongs.length ? (
             <EmptyState
               title="还没有作品"
               description="当前账号下还没有可展示作品，可以先从创作页生成第一首歌。"
             />
-          )}
+          ) : null}
+
+          {worksView === 'private' && !privateSongs.length ? (
+            <EmptyState
+              title="还没有私密作品"
+              description="你可以在歌曲详情页把已发布作品设为仅自己可见，之后会在这里管理。"
+            />
+          ) : null}
         </section>
       ) : null}
 

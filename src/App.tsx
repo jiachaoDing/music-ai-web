@@ -4,7 +4,7 @@ import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
 import type { FeedTab, ResonanceFeedResponse } from './api/song'
-import { getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
+import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { BackButton } from './components/BackButton'
 import { LoadingState } from './components/LoadingState'
@@ -492,6 +492,20 @@ function UserApp() {
     }
   }
 
+  async function handleDeleteSong(songId: string) {
+    await deleteSong(songId)
+    setMySongs((currentSongs) => currentSongs.filter((song) => song.id !== songId))
+    setFeedSongs((currentSongs) => currentSongs.filter((song) => song.id !== songId))
+
+    if (currentSongId === songId) {
+      pausePlayback()
+      setCurrentSongId(undefined)
+      setActiveView('me')
+    }
+
+    window.alert('作品已删除。')
+  }
+
   useEffect(() => {
     async function bootstrap() {
       const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
@@ -920,6 +934,7 @@ function UserApp() {
               onOpenPoster={() => setPosterOpen(true)}
               onPublish={() => void handlePublishSong(true)}
               onSetPrivate={() => void handlePublishSong(false)}
+              onDelete={() => handleDeleteSong(currentSong.id)}
               onSongUpdate={syncSong}
             />
           </>
