@@ -338,4 +338,32 @@ export const playerStyles = `
     height: 48px;
   }
 }
+
+@media (max-width: 640px) {
+  .immersive-player__topbar {
+    padding: 10px 10px 0;
+  }
+
+  .immersive-player__content {
+    min-height: calc(100vh - 50px);
+    padding: 4px 12px 152px;
+  }
+
+  .immersive-player__cover {
+    width: 88px;
+  }
+
+  .immersive-player__title h1 {
+    font-size: clamp(21px, 6.8vw, 27px);
+  }
+
+  .immersive-player__lyrics {
+    min-height: 140px;
+    max-height: 180px;
+  }
+
+  .immersive-player__lyrics p {
+    font-size: 13px;
+  }
+}
 `

@@ -527,4 +527,45 @@ export const hostStyles = `
     max-width: 210px;
   }
 }
+
+@media (max-width: 640px) {
+  .host-page {
+    width: calc(100% - 20px);
+    padding-top: 12px;
+  }
+
+  .host-hero,
+  .host-daily-card {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .host-identity h1 {
+    font-size: clamp(25px, 8vw, 31px);
+  }
+
+  .host-stats strong {
+    padding: 8px;
+    font-size: 17px;
+  }
+
+  .host-section__title h2 {
+    font-size: 24px;
+  }
+
+  .host-song,
+  .host-song--compact {
+    grid-template-columns: 52px minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .host-song__cover,
+  .host-song--compact .host-song__cover {
+    width: 52px;
+  }
+
+  .host-song__body strong {
+    font-size: 16px;
+  }
+}
 `

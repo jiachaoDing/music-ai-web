@@ -56,7 +56,7 @@ export function generateLyrics(input: string | LyricsRequestInput) {
 }
 
 export function generateLyricsWithFallback(input: LyricsRequestInput) {
-  return request<LyricsResult>('/api/lyrics', {
+  return request<LyricsResult>('/api/ai/lyrics', {
     method: 'POST',
     body: JSON.stringify(input),
   })

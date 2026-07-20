@@ -299,4 +299,20 @@ export const authStyles = `
     height: 36px;
   }
 }
+
+@media (max-width: 640px) {
+  .auth-card {
+    gap: 16px;
+    border-radius: 16px;
+    padding: 22px 16px 18px;
+  }
+
+  .auth-title h1 {
+    font-size: 30px;
+  }
+
+  .auth-title p {
+    font-size: 13px;
+  }
+}
 `

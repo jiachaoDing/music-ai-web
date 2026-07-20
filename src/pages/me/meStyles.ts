@@ -1109,4 +1109,63 @@ export const meStyles = `
     padding: 18px;
   }
 }
+
+@media (max-width: 640px) {
+  .me-page {
+    gap: 14px;
+  }
+
+  .me-hero,
+  .me-panel {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .me-hero__copy h1 {
+    font-size: 24px;
+  }
+
+  .me-hero__disc {
+    width: 92px;
+  }
+
+  .me-tabs {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    border-radius: 12px;
+    padding: 6px;
+    scrollbar-width: none;
+  }
+
+  .me-tabs button {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 13px;
+    font-size: 12px;
+  }
+
+  .me-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .me-stat-card {
+    min-height: 92px;
+    padding: 12px;
+  }
+
+  .me-highlight__art {
+    min-height: 136px;
+  }
+
+  .me-highlight__disc {
+    width: 104px;
+  }
+
+  .me-highlight__details,
+  .me-highlight__footer {
+    padding: 14px;
+  }
+}
 `
