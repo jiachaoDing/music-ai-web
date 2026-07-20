@@ -17,19 +17,23 @@ function getSongCover(song?: Song | null) {
   return resolveAssetUrl(song?.coverUrl)
 }
 
-function getUniqueSongs(songs: Song[]) {
+function getUniqueSongs(songs: Array<Song | null | undefined>) {
   const songMap = new Map<string, Song>()
-  songs.forEach((song) => songMap.set(song.id, song))
+  songs.forEach((song) => {
+    if (song) songMap.set(song.id, song)
+  })
   return Array.from(songMap.values())
 }
 
 function HostSongItem({
   song,
-  featured,
+  badge,
+  compact,
   onOpenSong,
 }: {
   song: Song
-  featured?: boolean
+  badge?: string
+  compact?: boolean
   onOpenSong: (songId: string) => void
 }) {
   const coverUrl = getSongCover(song)
@@ -38,52 +42,46 @@ function HostSongItem({
   return (
     <button
       type="button"
-      className={featured ? 'host-song host-song--featured' : 'host-song'}
+      className={`host-song ${compact ? 'host-song--compact' : ''}`}
       onClick={() => onOpenSong(song.id)}
     >
       <span className="host-song__cover">
-        {coverUrl ? (
-          <img src={coverUrl} alt={`${song.title} 封面`} />
-        ) : (
-          <i aria-hidden="true">E</i>
-        )}
+        {coverUrl ? <img src={coverUrl} alt={`${song.title} 封面`} /> : <i aria-hidden="true">E</i>}
         <b aria-hidden="true">▶</b>
       </span>
       <span className="host-song__body">
+        {badge ? <em>{badge}</em> : null}
         <strong>{song.title}</strong>
         <small>
           @{authorName} · {formatDuration(song.duration)} · {formatCount(song.playCount)} 播放
         </small>
         <span className="host-song__tags">
-          <em>{song.style || song.mode}</em>
-          <em>{song.published ? '已发布' : '草稿'}</em>
+          <i>{song.style || song.mode}</i>
+          <i>{song.published ? '已发布' : '草稿'}</i>
         </span>
-      </span>
-      <span className="host-song__action" aria-hidden="true">
-        打开
       </span>
     </button>
   )
 }
 
-export function HostPage({
-  hostPage,
-  curation,
-  onBack,
-  onCreate,
-  onOpenSong,
-}: HostPageProps) {
-  const todayPick = curation?.featuredSong ?? hostPage?.todayPick ?? null
-  const todayQuote =
-    curation?.hostNote ||
-    hostPage?.greeting ||
-    '今天想把这首歌轻轻放到你耳边，它值得被更多人听见。'
-  const featuredSongs = getUniqueSongs([
-    ...(hostPage?.featuredSongs ?? []),
-    ...(curation?.recommendations ?? []),
-  ])
-  const avatarUrl = resolveAssetUrl(hostPage?.avatarUrl ?? undefined)
+export function HostPage({ hostPage, curation, onBack, onCreate, onOpenSong }: HostPageProps) {
+  const hostName = hostPage?.name ?? 'Echo 主理人'
+  const officialSongs = hostPage?.featuredSongs ?? []
+  const officialToday = officialSongs[0] ?? curation?.featuredSong ?? null
+  const todayPick = hostPage?.todayPick ?? null
+  const todayPickQuote =
+    todayPick && 'quote' in todayPick && typeof todayPick.quote === 'string'
+      ? todayPick.quote
+      : '主理人今天翻到这首社区作品，想把它放到更多人耳边。'
   const topics = hostPage?.topics ?? []
+  const recommendations = getUniqueSongs(
+    (curation?.recommendations ?? []).filter(
+      (song) =>
+        song.id !== officialToday?.id &&
+        song.id !== todayPick?.id &&
+        !officialSongs.some((officialSong) => officialSong.id === song.id),
+    ),
+  )
 
   if (!hostPage && !curation) {
     return (
@@ -108,28 +106,24 @@ export function HostPage({
           <button type="button" onClick={onBack}>
             返回首页
           </button>
-          <span>On Air</span>
+          <span>Daily Host</span>
         </div>
 
         <div className="host-hero__main">
-          <div className="host-avatar">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={`${hostPage?.name ?? 'Echo 主理人'} 头像`} />
-            ) : (
-              <span>AI</span>
-            )}
+          <div className="host-avatar" aria-hidden="true">
+            <span>Echo</span>
           </div>
 
           <div className="host-identity">
             <span>AI Curator</span>
-            <h1>{hostPage?.name ?? 'Echo 主理人'}</h1>
+            <h1>{hostName}</h1>
             <p>
               {hostPage?.bio ??
-                '社区常驻主理人，负责推荐灵感、策展作品和整理今日声音。'}
+                '社区常驻主理人。每天写一首主打歌、抛一个话题，也会翻你们的作品。'}
             </p>
             <div className="host-stats">
               <strong>
-                {formatCount(hostPage?.stats?.featuredCount ?? featuredSongs.length)}
+                {formatCount(hostPage?.stats?.featuredCount ?? officialSongs.length)}
                 <small>主打歌</small>
               </strong>
               <strong>
@@ -143,28 +137,51 @@ export function HostPage({
             </div>
           </div>
         </div>
+      </section>
 
-        {todayPick ? (
-          <div className="host-pick">
+      <section className="host-daily-grid">
+        <article className="host-daily-card">
+          <div className="host-section__title">
             <div>
-              <span>今日翻牌</span>
-              <h2>{todayPick.title}</h2>
-              <p>{todayQuote}</p>
+              <span>Official Track</span>
+              <h2>今日主打歌</h2>
             </div>
-            <HostSongItem song={todayPick} featured onOpenSong={onOpenSong} />
           </div>
-        ) : (
-          <div className="host-pick host-pick--empty">
+          {officialToday ? (
+            <>
+              <p>{curation?.hostNote ?? hostPage?.greeting ?? '这是主理人今天写下的声音。'}</p>
+              <HostSongItem song={officialToday} badge="Echo 主理人作品" onOpenSong={onOpenSong} />
+            </>
+          ) : (
+            <div className="host-empty-inline">
+              <strong>今日主打歌还在生成路上</strong>
+              <p>后端每日任务成功后，这里会出现主理人发布的官方歌曲。</p>
+            </div>
+          )}
+        </article>
+
+        <article className="host-daily-card host-daily-card--pick">
+          <div className="host-section__title">
             <div>
-              <span>今日翻牌</span>
-              <h2>等待第一首主打歌</h2>
-              <p>发布作品后，AI 主理人会逐步把社区里的好作品整理出来。</p>
+              <span>Today Pick</span>
+              <h2>今日翻牌</h2>
             </div>
-            <button type="button" onClick={onCreate}>
-              去创作
-            </button>
           </div>
-        )}
+          {todayPick ? (
+            <>
+              <p>{todayPickQuote}</p>
+              <HostSongItem song={todayPick} badge="社区作品" onOpenSong={onOpenSong} />
+            </>
+          ) : (
+            <div className="host-empty-inline">
+              <strong>还没有翻牌作品</strong>
+              <p>发布公开作品后，AI 主理人会从社区里挑一首认真点评。</p>
+              <button type="button" onClick={onCreate}>
+                去创作
+              </button>
+            </div>
+          )}
+        </article>
       </section>
 
       {topics.length ? (
@@ -172,7 +189,7 @@ export function HostPage({
           <div className="host-section__title">
             <div>
               <span>Topics</span>
-              <h2>主理人在抛的话题</h2>
+              <h2>主理人正在抛的话题</h2>
             </div>
           </div>
           <div className="host-topic-grid">
@@ -189,25 +206,41 @@ export function HostPage({
       <section className="host-section">
         <div className="host-section__title">
           <div>
-            <span>Featured</span>
-            <h2>主理人的主打歌</h2>
+            <span>Host Songs</span>
+            <h2>主理人的官方作品</h2>
           </div>
         </div>
-        {featuredSongs.length ? (
+        {officialSongs.length ? (
           <div className="host-song-list">
-            {featuredSongs.map((song) => (
-              <HostSongItem key={song.id} song={song} onOpenSong={onOpenSong} />
+            {officialSongs.map((song) => (
+              <HostSongItem key={song.id} song={song} compact onOpenSong={onOpenSong} />
             ))}
           </div>
         ) : (
           <EmptyState
-            title="还没有主理人精选"
-            description="等后端配置主理人推荐后，这里会展示 AI 主理人的推荐作品。"
+            title="还没有主理人作品"
+            description="每日任务生成成功后，这里会展示 Echo 主理人的官方歌曲。"
             actionLabel="开始创作"
             onAction={onCreate}
           />
         )}
       </section>
+
+      {recommendations.length ? (
+        <section className="host-section">
+          <div className="host-section__title">
+            <div>
+              <span>Curation</span>
+              <h2>主理人顺手整理的社区声音</h2>
+            </div>
+          </div>
+          <div className="host-song-list">
+            {recommendations.map((song) => (
+              <HostSongItem key={song.id} song={song} compact onOpenSong={onOpenSong} />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </section>
   )
 }
