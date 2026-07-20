@@ -59,14 +59,6 @@ export function FeedPage({
           <h1>把灵感变成 AI 音乐作品</h1>
           <p>输入一句灵感，生成旋律、歌词和封面；也可以先逛逛社区里的新作品。</p>
         </div>
-        <div className="prompt-box">
-          <input placeholder="写下你的音乐灵感，例如：夏天、校园、毕业季、温暖流行" />
-          <div className="prompt-box__footer">
-            <button type="button" onClick={onCreate}>
-              开始创作
-            </button>
-          </div>
-        </div>
       </section>
 
       <section className="host-panel">

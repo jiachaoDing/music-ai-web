@@ -104,7 +104,7 @@ export function SongDetailPage({
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [playlistCreating, setPlaylistCreating] = useState(false)
   const [likeSubmitting, setLikeSubmitting] = useState(false)
-  const [liked, setLiked] = useState(false)
+  const [liked, setLiked] = useState(song.liked ?? false)
   const [likeCount, setLikeCount] = useState(song.likeCount)
   const [collectCount, setCollectCount] = useState(song.collectCount)
   const [djLoading, setDjLoading] = useState(false)
@@ -125,6 +125,7 @@ export function SongDetailPage({
   useEffect(() => {
     setLiked(false)
     setLikeCount(song.likeCount)
+    setLiked(song.liked ?? false)
     setCollectCount(song.collectCount)
     setCommentCount(song.commentCount)
     setAiReview(formatAiReviewText(song.aiReview) ?? '')
@@ -236,6 +237,7 @@ export function SongDetailPage({
       const result = await likeSong(song.id)
       setLiked(result.liked)
       setLikeCount(result.likeCount)
+      onSongUpdate?.({ ...song, liked: result.liked, likeCount: result.likeCount })
       window.alert('已点赞')
     } catch (error) {
       console.error(error)
@@ -452,7 +454,7 @@ export function SongDetailPage({
           className="song-detail-action"
           onClick={() => setPlaylistModalOpen(true)}
         >
-          收藏到歌单 {formatCount(collectCount)}
+          收藏到歌单
         </button>
         <button type="button" className="song-detail-action" onClick={onOpenPoster}>
           查看海报

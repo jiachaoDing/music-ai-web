@@ -35,6 +35,7 @@ export type Song = {
     color?: string
   }
   likeCount: number
+  liked?: boolean
   collectCount: number
   commentCount: number
   playCount: number

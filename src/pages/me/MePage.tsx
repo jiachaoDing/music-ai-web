@@ -41,6 +41,10 @@ function getPlaylistCoverColor(playlist: Playlist) {
   return playlist.color ?? '#9ed9cc'
 }
 
+function getPlaylistCoverUrl(playlist: Playlist) {
+  return playlist.coverUrl ? resolveAssetUrl(playlist.coverUrl) : undefined
+}
+
 export function MePage({ user, songs, onOpenSong }: MePageProps) {
   const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
   const [profileUser, setProfileUser] = useState<User>(user)
@@ -408,9 +412,12 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
                 }}
               >
                 <div
-                  className="me-playlist-cover"
+                  className={`me-playlist-cover ${playlist.coverUrl ? 'has-image' : ''}`}
                   style={{ '--playlist-color': getPlaylistCoverColor(playlist) } as CSSProperties}
                 >
+                  {getPlaylistCoverUrl(playlist) ? (
+                    <img src={getPlaylistCoverUrl(playlist)} alt={`${playlist.name} 封面`} />
+                  ) : null}
                   <span>{playlist.type === 'liked' ? 'liked' : 'playlist'}</span>
                 </div>
                 <div className="me-playlist-body">
@@ -448,9 +455,12 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
 
             <div className="me-playlist-detail-head">
               <div
-                className="me-playlist-detail-cover"
+                className={`me-playlist-detail-cover ${selectedPlaylist.coverUrl ? 'has-image' : ''}`}
                 style={{ '--playlist-color': getPlaylistCoverColor(selectedPlaylist) } as CSSProperties}
               >
+                {getPlaylistCoverUrl(selectedPlaylist) ? (
+                  <img src={getPlaylistCoverUrl(selectedPlaylist)} alt={`${selectedPlaylist.name} 封面`} />
+                ) : null}
                 <span>{selectedPlaylist.type === 'liked' ? 'liked' : 'playlist'}</span>
               </div>
               <div>
