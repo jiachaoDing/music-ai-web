@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
 import './admin.css'
-import * as api from './mockService'
+import * as api from './adminService'
+import {resolveAssetUrl} from '../../utils/asset'
 import type {AdminChallenge,AdminData} from './types'
 type Tab='users'|'invites'|'songs'|'comments'|'challenges'
 type Field={key:string;label:string;value?:string;type?:string;placeholder?:string}
@@ -10,30 +11,61 @@ const fmt=(t:number)=>new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-d
 const mode:Record<string,string>={song:'歌曲',radio:'电台',photo:'看图写歌',album:'专辑',meme:'热梗神曲',emotion:'情绪成歌',foryou:'为你写歌',remix:'翻唱',fortune:'运势曲'}
 
 export function AdminPage(){
- const [logged,setLogged]=useState(sessionStorage.getItem('echo_admin_mock_key')===api.ADMIN_MOCK_KEY),[key,setKey]=useState(''),[loginError,setLoginError]=useState(''),[data,setData]=useState<AdminData|null>(null),[tab,setTab]=useState<Tab>('users'),[query,setQuery]=useState(''),[loading,setLoading]=useState(false),[newCodes,setNewCodes]=useState<string[]>([]),[modal,setModal]=useState<Modal|null>(null)
+ const [logged,setLogged]=useState(api.hasAdminSession),[nickname,setNickname]=useState(''),[password,setPassword]=useState(''),[loginError,setLoginError]=useState(''),[data,setData]=useState<AdminData|null>(null),[tab,setTab]=useState<Tab>('users'),[query,setQuery]=useState(''),[loading,setLoading]=useState(false),[newCodes,setNewCodes]=useState<string[]>([]),[modal,setModal]=useState<Modal|null>(null)
  const resolver=useRef<((v:Record<string,string>|boolean|null)=>void)|null>(null)
- const refresh=async()=>{setLoading(true);try{setData(await api.all())}finally{setLoading(false)}}
+ const audioRef=useRef<HTMLAudioElement|null>(null)
+ const [playingSongId,setPlayingSongId]=useState<string|null>(null)
+ const refresh=async()=>{setLoading(true);try{setData(await api.all())}catch(e){api.logout();setLogged(false);setData(null);setLoginError(e instanceof Error?e.message:'管理员登录已失效')}finally{setLoading(false)}}
  useEffect(()=>{if(logged)void refresh()},[logged])
+ useEffect(()=>()=>{audioRef.current?.pause();audioRef.current=null},[])
+ useEffect(()=>{if(tab!=='songs')stopPreview()},[tab])
  const summary=useMemo(()=>data?api.stats(data):null,[data])
  function ask(m:Modal){setModal(m);return new Promise<Record<string,string>|boolean|null>(r=>resolver.current=r)}
  function close(v:Record<string,string>|boolean|null){resolver.current?.(v);resolver.current=null;setModal(null)}
  async function run(job:()=>Promise<unknown>){try{await job();await refresh()}catch(e){await ask({title:'操作失败',message:e instanceof Error?e.message:'请稍后重试',okText:'知道了'})}}
- async function login(e:React.FormEvent){e.preventDefault();setLoginError('');try{await api.login(key.trim());sessionStorage.setItem('echo_admin_mock_key',key.trim());setLogged(true)}catch(e){setLoginError(e instanceof Error?e.message:'管理员密钥错误')}}
- function logout(){sessionStorage.removeItem('echo_admin_mock_key');setLogged(false);setData(null);setKey('')}
+ async function login(e:React.FormEvent){e.preventDefault();setLoginError('');try{await api.login(nickname,password);setLogged(true)}catch(e){setLoginError(e instanceof Error?e.message:'管理员登录失败')}}
+ function logout(){api.logout();setLogged(false);setData(null);setPassword('')}
+ function backToUserLogin(){api.logout();window.location.assign('/')}
+ function stopPreview(){
+  const audio=audioRef.current
+  if(audio){audio.pause();audio.currentTime=0;audio.src='';audioRef.current=null}
+  setPlayingSongId(null)
+ }
+ async function togglePreview(songId:string,audioUrl:string){
+  if(playingSongId===songId&&audioRef.current&&!audioRef.current.paused){
+   audioRef.current.pause()
+   setPlayingSongId(null)
+   return
+  }
+  stopPreview()
+  const audio=new Audio(resolveAssetUrl(audioUrl))
+  audio.preload='metadata'
+  audioRef.current=audio
+  audio.onended=()=>{if(audioRef.current===audio){audioRef.current=null;setPlayingSongId(null)}}
+  audio.onerror=()=>{if(audioRef.current===audio){audioRef.current=null;setPlayingSongId(null)}}
+  try{
+   await audio.play()
+   setPlayingSongId(songId)
+  }catch(e){
+   if(audioRef.current===audio)audioRef.current=null
+   setPlayingSongId(null)
+   await ask({title:'试听失败',message:e instanceof Error?e.message:'音频暂时无法播放，请检查音频地址。',okText:'知道了'})
+  }
+ }
  const q=query.toLowerCase().trim();const users=data?.users.filter(u=>!q||u.name.toLowerCase().includes(q))||[];const songs=data?.songs.filter(s=>!q||`${s.title}${s.author}`.toLowerCase().includes(q))||[];const comments=data?.comments.filter(c=>!q||`${c.text}${c.songTitle}${c.name}`.toLowerCase().includes(q))||[]
- if(!logged)return <main className="admin-login"><form className="admin-login__card" onSubmit={login}><a href="/" className="admin-brand">Echo AI</a><span>管理员工作台 · Mock</span><h1>欢迎回来</h1><p>输入管理员密钥，管理用户、内容与社区活动。</p><label>管理员密钥<input autoFocus type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="请输入管理员密钥"/></label>{loginError&&<div className="admin-error">{loginError}</div>}<button>进入后台</button><small>Mock 测试密钥：echo-admin</small></form></main>
+ if(!logged)return <main className="admin-login"><form className="admin-login__card" onSubmit={login}><button type="button" className="admin-brand admin-link-button" onClick={backToUserLogin}>Echo AI</button><span>管理员工作台</span><h1>欢迎回来</h1><p>使用具有管理员权限的账号登录，管理用户、内容与社区活动。</p><label>管理员昵称<input autoFocus value={nickname} onChange={e=>setNickname(e.target.value)} placeholder="请输入管理员昵称"/></label><label>密码<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="请输入密码"/></label>{loginError&&<div className="admin-error">{loginError}</div>}<button disabled={!nickname.trim()||!password}>进入后台</button><button type="button" className="admin-ghost" onClick={backToUserLogin}>返回用户登录</button></form></main>
  if(!data||!summary)return <main className="admin-loading">正在加载管理数据…</main>
  async function adjust(id:string,name:string){const v=await ask({title:`调整「${name}」的回声`,fields:[{key:'delta',label:'数量（正数增加 / 负数扣减）',type:'number',value:'10'},{key:'reason',label:'备注（流水显示）',value:'管理员调整'}],okText:'确定调整'});if(!v||typeof v==='boolean')return;const d=parseInt(v.delta,10);if(!d)return void ask({title:'提示',message:'请输入非零整数'});await run(async()=>{const r=await api.points(id,d,v.reason||'管理员调整');await ask({title:'调整完成',message:`当前余额 ${r.points} 🔊`})})}
  async function reset(id:string,name:string){const v=await ask({title:`重置「${name}」的密码`,fields:[{key:'password',label:'新密码（留空＝随机生成）',placeholder:'留空则随机生成'}],okText:'重置密码'});if(!v||typeof v==='boolean')return;await run(async()=>{const r=await api.password(id,v.password);await ask({title:'密码已重置',message:`新密码：${r.password}。该用户需使用新密码重新登录。`})})}
  async function confirmRun(title:string,message:string,job:()=>Promise<unknown>){if(await ask({title,message,danger:true,okText:'确定'}))await run(job)}
- return <div className="admin-shell"><header className="admin-topbar"><a href="/" className="admin-brand">Echo AI</a><span className="admin-topbar__tag">管理后台</span><div/><button className="admin-ghost" disabled={loading} onClick={()=>void refresh()}>{loading?'刷新中…':'刷新数据'}</button><button className="admin-ghost" onClick={logout}>退出</button></header><main className="admin-main">
-  <section className="admin-heading"><div><span>ADMIN CONSOLE</span><h1>内容与社区管理</h1><p>{summary.users} 位用户 · {summary.songs} 首歌曲 · {summary.totalPoints.toLocaleString()} 回声流通中</p></div><a href="/">返回用户端</a></section>
+ return <div className="admin-shell"><header className="admin-topbar"><button type="button" className="admin-brand admin-link-button" onClick={backToUserLogin}>Echo AI</button><span className="admin-topbar__tag">管理后台</span><div/><button className="admin-ghost" disabled={loading} onClick={()=>void refresh()}>{loading?'刷新中…':'刷新数据'}</button><button className="admin-ghost" onClick={logout}>退出</button></header><main className="admin-main">
+  <section className="admin-heading"><div><span>ADMIN CONSOLE</span><h1>内容与社区管理</h1><p>{summary.users} 位用户 · {summary.songs} 首歌曲 · {summary.totalPoints.toLocaleString()} 回声流通中</p></div><button type="button" onClick={backToUserLogin}>返回用户登录</button></section>
   <section className="admin-stats">{[['用户',summary.users,`今日新增 ${summary.newUsersToday}`],['今日打卡',summary.checkinsToday,'当前活跃'],['歌曲',summary.songs,`播放 ${summary.totalPlays} · 喜欢 ${summary.totalLikes}`],['流通回声',summary.totalPoints,'所有用户余额'],['邀请码',summary.invitesTotal,`已用 ${summary.invitesUsed} · 可用 ${summary.invitesFree}`],['树洞留言',summary.commentsTotal,'全站留言']].map(x=><article key={x[0] as string}><span>{x[0]}</span><strong>{Number(x[1]).toLocaleString()}</strong><small>{x[2]}</small></article>)}</section>
   <nav className="admin-tabs">{tabs.map(([k,l])=><button key={k} className={tab===k?'is-active':''} onClick={()=>{setTab(k);setQuery('')}}>{l}</button>)}</nav>
   <section className="admin-panel">{!['invites','challenges'].includes(tab)&&<Toolbar value={query} set={setQuery} label={tab==='users'?'搜索昵称':tab==='songs'?'搜索歌名或作者':'搜索留言、歌曲或留言者'} count={tab==='users'?users.length:tab==='songs'?songs.length:comments.length}/>} 
    {tab==='users'&&<Table heads={['昵称','回声','连签','作品','被邀请','注册','操作']}>{users.map(u=><tr key={u.id}><td><b>{u.name}</b></td><td>{u.points.toLocaleString()} 🔊</td><td>{u.streak}</td><td>{u.stats.songs||0}</td><td>{u.invitedBy||'—'}</td><td>{fmt(u.createdAt)}</td><td><Actions><button onClick={()=>void adjust(u.id,u.name)}>± 回声</button><button onClick={()=>void reset(u.id,u.name)}>重置密码</button><Danger onClick={()=>void confirmRun('删除用户',`确定删除「${u.name}」？此操作不可恢复。`,()=>api.removeUser(u.id))}>删除</Danger></Actions></td></tr>)}</Table>}
    {tab==='invites'&&<Invites data={data} codes={newCodes} generate={async n=>{const r=await api.invites(n);setNewCodes(r.codes);await refresh()}} remove={c=>void confirmRun('作废邀请码',`确定作废 ${c}？`,()=>api.removeInvite(c))}/>} 
-   {tab==='songs'&&<Table heads={['歌名','作者','类型','喜欢','播放','翻唱','操作']}>{songs.map(s=><tr key={s.id}><td><b>{s.title}</b></td><td>{s.author}</td><td><Badge>{mode[s.mode]||s.mode||'歌曲'}</Badge></td><td>{s.likes}</td><td>{s.plays}</td><td>{s.coverCount}</td><td><Actions><a href={`/?s=${s.id}`} target="_blank">试听</a><Danger onClick={()=>void confirmRun('删除歌曲',`确定删除「${s.title}」？其翻唱衍生也会一并删除。`,()=>api.removeSong(s.id))}>删除</Danger></Actions></td></tr>)}</Table>}
+   {tab==='songs'&&<Table heads={['歌名','作者','类型','喜欢','播放','翻唱','操作']}>{songs.map(s=><tr key={s.id}><td><b>{s.title}</b></td><td>{s.author}</td><td><Badge>{mode[s.mode]||s.mode||'歌曲'}</Badge></td><td>{s.likes}</td><td>{s.plays}</td><td>{s.coverCount}</td><td><Actions>{s.audioUrl?<button className={playingSongId===s.id?'admin-preview is-playing':'admin-preview'} type="button" onClick={()=>void togglePreview(s.id,s.audioUrl!)}>{playingSongId===s.id?'暂停':'试听'}</button>:<span>暂无音频</span>}<Danger onClick={()=>void confirmRun('删除歌曲',`确定删除「${s.title}」？其翻唱衍生也会一并删除。`,()=>api.removeSong(s.id))}>删除</Danger></Actions></td></tr>)}</Table>}
    {tab==='comments'&&<Table heads={['留言内容','所属歌曲','留言者','时间','操作']}>{comments.map(c=><tr key={c.id}><td className="admin-wrap">{c.text}</td><td>{c.songTitle}</td><td>{c.name} {c.anon&&<Badge>匿名</Badge>}</td><td>{fmt(c.t)}</td><td><Danger onClick={()=>void confirmRun('删除留言','确定删除这条树洞留言？此操作不可恢复。',()=>api.removeComment(c.songId,c.id))}>删除</Danger></td></tr>)}</Table>}
    {tab==='challenges'&&<Challenges data={data.challenges} ask={ask} run={run} confirmRun={confirmRun}/>} 
   </section></main>{modal&&<AdminModal modal={modal} close={close}/>}</div>

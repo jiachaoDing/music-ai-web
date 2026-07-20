@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Song } from '../../types/song'
-import { BattleSong, songStyle } from './DiscoverShared'
+import { BattleSong } from './DiscoverShared'
 import type { BattleRecord, BattleVoteRecord, VoteSide } from './types'
 
 type BattlesPageProps = {
@@ -30,7 +30,7 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
   }, [battles])
 
   function songById(songId: string) {
-    return songs.find((song) => song.id === songId) ?? songs[0]
+    return songs.find((song) => song.id === songId)
   }
 
   if (!selectedBattle) {
@@ -44,19 +44,26 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
 
   const songA = songById(selectedBattle.aId)
   const songB = songById(selectedBattle.bId)
+  if (!songA || !songB) {
+    return (
+      <section className="content-panel empty-panel">
+        <h2>这场擂台的歌曲暂时无法加载</h2>
+        <p>歌曲可能已被删除，请选择其他擂台或稍后刷新。</p>
+      </section>
+    )
+  }
   const total = Math.max(1, selectedBattle.aVotes + selectedBattle.bVotes)
   const percentA = Math.round((selectedBattle.aVotes / total) * 100)
   const percentB = 100 - percentA
-  const votedSide =
-    selectedBattle.votedSide ??
-    battleVotes.find((vote) => vote.battleId === selectedBattle.id && vote.userId === currentUserId)?.side
+  const savedVote = battleVotes.find((vote) => vote.battleId === selectedBattle.id && vote.userId === currentUserId)
+  const votedSide = selectedBattle.votedSide ?? savedVote?.side
+  const hasVoted = Boolean(selectedBattle.votedSide || savedVote)
 
   return (
     <section className="playground-shell battle-playground">
       <aside className="playground-rail battle-rail-left rail-scroll" aria-label="擂台列表">
         <div className="rail-title">PK</div>
         {battles.map((battle) => {
-          const coverSong = songById(battle.aId)
           return (
             <button
               className={battle.id === selectedBattle.id ? 'rail-card is-active' : 'rail-card'}
@@ -64,9 +71,11 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
               type="button"
               onClick={() => setSelectedBattleId(battle.id)}
             >
-              <span className="rail-cover" style={songStyle(coverSong)} />
-              <strong>{battle.topic}</strong>
-              <small>{battle.aVotes + battle.bVotes} 票</small>
+              <span className="rail-battle-mark" aria-hidden="true">PK</span>
+              <span className="rail-card-copy">
+                <strong>{battle.topic}</strong>
+                <small>{battle.aVotes + battle.bVotes} 票</small>
+              </span>
             </button>
           )
         })}
@@ -82,11 +91,11 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
         </div>
 
         <div className="battle-duel-frame">
-          <BattleSong song={songA} votes={selectedBattle.aVotes} side="A" voted={votedSide === 'A'} onVote={() => onVote(selectedBattle.id, 'A')} onOpen={() => onOpenSong(songA.id)} onPlay={() => onPlaySong(songA.id)} />
+          <BattleSong song={songA} votes={selectedBattle.aVotes} side="A" voted={votedSide === 'A'} hasVoted={hasVoted} onVote={() => onVote(selectedBattle.id, 'A')} onOpen={() => onOpenSong(songA.id)} onPlay={() => onPlaySong(songA.id)} />
           <div className="battle-divider">
             <strong>VS</strong>
           </div>
-          <BattleSong song={songB} votes={selectedBattle.bVotes} side="B" voted={votedSide === 'B'} onVote={() => onVote(selectedBattle.id, 'B')} onOpen={() => onOpenSong(songB.id)} onPlay={() => onPlaySong(songB.id)} />
+          <BattleSong song={songB} votes={selectedBattle.bVotes} side="B" voted={votedSide === 'B'} hasVoted={hasVoted} onVote={() => onVote(selectedBattle.id, 'B')} onOpen={() => onOpenSong(songB.id)} onPlay={() => onPlaySong(songB.id)} />
           <div className="battle-progress" aria-label={`A 方 ${percentA}%，B 方 ${percentB}%`}>
             <span style={{ width: `${percentA}%` }} />
             <strong>{percentA}%</strong>
@@ -94,10 +103,6 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
           </div>
         </div>
 
-        <label className="battle-lyric-box">
-          <span>投票理由</span>
-          <input placeholder="哪一首更适合这个主题？写一句你的理由" />
-        </label>
       </main>
 
       <aside className="playground-rail insight-rail" aria-label="擂台看点">

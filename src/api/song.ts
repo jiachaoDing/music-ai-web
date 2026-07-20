@@ -15,6 +15,7 @@ export type GenerateSongInput = {
   isInstrumental?: boolean
   originId?: string | null
   forWho?: string
+  challengeId?: string
 }
 
 export type GenerateTask = {

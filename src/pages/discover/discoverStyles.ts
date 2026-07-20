@@ -174,15 +174,16 @@ export const discoverStyles = `
 
 .discover-overview {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr);
+  grid-template-columns: 1fr;
   gap: clamp(12px, 2vw, 18px);
 }
 
 .overview-lead {
-  display: grid;
-  align-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 18px;
-  min-height: clamp(220px, 26vw, 330px);
+  min-height: clamp(180px, 20vw, 240px);
   padding: clamp(18px, 3vw, 30px);
   background:
     radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--feature-color) 16%, white), transparent 34%),
@@ -191,6 +192,7 @@ export const discoverStyles = `
 
 .overview-side {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(12px, 2vw, 18px);
 }
 
@@ -287,7 +289,7 @@ export const discoverStyles = `
 
 .playground-shell {
   display: grid;
-  grid-template-columns: minmax(126px, 0.16fr) minmax(0, 1fr) minmax(150px, 0.18fr);
+  grid-template-columns: clamp(190px, 16vw, 230px) minmax(0, 1fr) clamp(170px, 14vw, 210px);
   gap: clamp(12px, 1.8vw, 18px);
   align-items: stretch;
 }
@@ -295,7 +297,10 @@ export const discoverStyles = `
 .playground-rail {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 18px;
+  width: 100%;
+  min-width: 0;
+  height: min(650px, calc(100vh - 190px));
   max-height: min(650px, calc(100vh - 190px));
   overflow-y: auto;
   overflow-x: hidden;
@@ -303,6 +308,17 @@ export const discoverStyles = `
   scrollbar-color: rgba(234, 76, 137, 0.32) transparent;
   scrollbar-width: thin;
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.playground-rail::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.playground-rail::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(234, 76, 137, 0.3);
 }
 
 .rail-scroll {
@@ -320,6 +336,51 @@ export const discoverStyles = `
   text-align: center;
   background: transparent;
   box-shadow: none;
+  min-width: 0;
+}
+
+.battle-rail-left .rail-card {
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  justify-items: stretch;
+  gap: 11px;
+  width: 100%;
+  min-height: 82px;
+  border: 1px solid rgba(234, 76, 137, 0.14);
+  padding: 12px;
+  text-align: left;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 251, 0.9));
+}
+
+.battle-rail-left .rail-card:hover,
+.battle-rail-left .rail-card.is-active {
+  border-color: rgba(234, 76, 137, 0.34);
+  background: linear-gradient(135deg, #fff0f6, #fff9f2);
+}
+
+.rail-battle-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  color: #d83f78;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.92), transparent 30%),
+    linear-gradient(135deg, #ffd6e7, #ffe6bf);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.rail-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.battle-rail-left .rail-card small {
+  display: block;
 }
 
 .rail-card:hover,
@@ -345,22 +406,25 @@ export const discoverStyles = `
 }
 
 .rail-card strong {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
+  overflow: visible;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   font-size: 13px;
-  line-height: 1.2;
+  line-height: 1.35;
 }
 
 .rail-card small {
-  display: -webkit-box;
-  overflow: hidden;
-  max-width: 118px;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
+  overflow: visible;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 .playground-stage {
@@ -546,9 +610,18 @@ export const discoverStyles = `
 
 .challenge-lab {
   display: grid;
-  grid-template-columns: minmax(128px, 0.17fr) minmax(0, 1fr);
+  grid-template-columns: clamp(200px, 17vw, 250px) minmax(0, 1fr);
   gap: clamp(12px, 1.8vw, 18px);
+  align-items: start;
 }
+
+.battle-rail-left,
+.challenge-rail {
+  position: sticky;
+  top: 88px;
+}
+
+.challenge-empty-work{grid-column:1/-1;border:1px dashed var(--line-soft);border-radius:12px;padding:24px;color:var(--muted);text-align:center;background:rgba(255,255,255,.56)}
 
 .challenge-main-stage {
   display: grid;
@@ -698,6 +771,45 @@ export const discoverStyles = `
   font-size: 13px;
 }
 
+.challenge-participants {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  padding-top: 14px;
+}
+
+.challenge-participants > span {
+  color: var(--theme-dark);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .04em;
+}
+
+.challenge-participants > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.challenge-participant {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(234, 76, 137, 0.14);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: rgba(255, 245, 250, 0.78);
+}
+
+.challenge-participant strong {
+  font-size: 12px;
+}
+
+.challenge-participant small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .compact-song {
   display: grid;
   grid-template-columns: 50px minmax(0, 1fr);
@@ -746,8 +858,9 @@ export const discoverStyles = `
 }
 
 .battle-new-stage {
-  width: min(1040px, 100%);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .battle-new-layout {
@@ -1041,7 +1154,7 @@ export const discoverStyles = `
   line-height: 1.65;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .playground-shell,
   .challenge-lab {
     grid-template-columns: 1fr;
@@ -1050,11 +1163,17 @@ export const discoverStyles = `
   .playground-rail {
     display: flex;
     max-height: none;
+    height: auto;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 10px;
     scrollbar-width: none;
     mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .battle-rail-left,
+  .challenge-rail {
+    position: static;
   }
 
   .playground-rail::-webkit-scrollbar {
@@ -1067,7 +1186,7 @@ export const discoverStyles = `
   }
 
   .rail-card {
-    flex: 0 0 106px;
+    flex: 0 0 min(180px, 42vw);
   }
 
   .insight-rail {
@@ -1086,6 +1205,10 @@ export const discoverStyles = `
   .fortune-draft-card,
   .challenge-flow,
   .share-card-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-side {
     grid-template-columns: 1fr;
   }
 
@@ -1177,7 +1300,6 @@ export const discoverStyles = `
   }
 
   .rail-card {
-    flex-basis: 88px;
     padding: 6px;
   }
 
@@ -1187,6 +1309,29 @@ export const discoverStyles = `
 
   .rail-card small {
     display: none;
+  }
+
+  .insight-rail {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .insight-rail .rail-title {
+    padding: 0 4px;
+  }
+
+  .insight-rail .insight-card {
+    flex: 0 0 142px;
+    width: 142px;
+    min-height: 94px;
+    padding: 12px;
+  }
+
+  .insight-rail .insight-card strong {
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-size: 14px;
+    line-height: 1.35;
   }
 
   .stage-heading,
@@ -1255,11 +1400,43 @@ export const discoverStyles = `
   }
 
   .battle-preview {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
   }
 
-  .versus {
+  .battle-preview .versus {
     justify-self: center;
+    width: 34px;
+    height: 34px;
+    border-width: 4px;
+    font-size: 10px;
+  }
+
+  .battle-preview .preview-song {
+    align-self: stretch;
+    align-content: start;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .battle-preview .battle-cover {
+    width: min(112px, 100%);
+    max-width: 112px;
+    justify-self: center;
+  }
+
+  .battle-preview .preview-song span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .battle-preview-shell {
+    padding: 12px;
   }
 
   .calendar-grid {

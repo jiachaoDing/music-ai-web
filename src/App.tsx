@@ -9,7 +9,7 @@ import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
 import { AuthPage } from './pages/auth/AuthPage'
-import type { CreateSubmission } from './pages/create/CreateFormPage'
+import type { CreateChallengeContext, CreateSubmission } from './pages/create/CreateFormPage'
 import { CreateFormPage } from './pages/create/CreateFormPage'
 import { CreatePage } from './pages/create/CreatePage'
 import { DiscoverPage } from './pages/DiscoverPage'
@@ -65,6 +65,7 @@ function UserApp() {
   const [curation, setCuration] = useState<HostCuration | null>(null)
   const [feedTab, setFeedTab] = useState<FeedTab>('resonance')
   const [createMode, setCreateMode] = useState<SongMode>('song')
+  const [createChallenge, setCreateChallenge] = useState<CreateChallengeContext | null>(null)
   const [radioPreset, setRadioPreset] = useState<CreatePreset>(EMPTY_CREATE_PRESET)
   const [currentSongId, setCurrentSongId] = useState<string>()
   const [posterOpen, setPosterOpen] = useState(false)
@@ -155,8 +156,12 @@ function UserApp() {
   }
 
   function replaceSongInList(list: Song[], nextSong: Song) {
+    const existingSong = list.find((song) => song.id === nextSong.id)
+    const mergedSong = existingSong
+      ? { ...existingSong, ...nextSong, challengeId: nextSong.challengeId ?? existingSong.challengeId }
+      : nextSong
     const filteredSongs = list.filter((song) => song.id !== nextSong.id)
-    return [nextSong, ...filteredSongs]
+    return [mergedSong, ...filteredSongs]
   }
 
   function syncSong(nextSong: Song) {
@@ -261,10 +266,18 @@ function UserApp() {
   }
 
   function openCreateForm(mode: SongMode) {
+    setCreateChallenge(null)
     if (mode !== 'radio' && mode !== 'remix') {
       setRadioPreset(EMPTY_CREATE_PRESET)
     }
     setCreateMode(mode)
+    setActiveView('createForm')
+  }
+
+  function openChallengeCreate(challenge: CreateChallengeContext) {
+    setCreateChallenge(challenge)
+    setRadioPreset(EMPTY_CREATE_PRESET)
+    setCreateMode('song')
     setActiveView('createForm')
   }
 
@@ -326,20 +339,40 @@ function UserApp() {
         })
         if (!task.taskId) throw new Error('后端没有返回二创生成任务 ID。')
         createdSong = await pollGenerateTask(task.taskId, '翻唱二创')
-      } else if (payload.mode === 'radio') {
+      } else if (payload.mode === 'radio' || payload.challengeId) {
         const task = await submitGenerateTask(payload)
-        if (!task.taskId) throw new Error('后端没有返回电台生成任务 ID。')
-        createdSong = await pollGenerateTask(task.taskId, '电台音乐')
+        if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
+        createdSong = await pollGenerateTask(task.taskId, payload.challengeId ? '话题挑战歌曲' : '电台音乐')
+        if (payload.challengeId) createdSong = { ...createdSong, challengeId: payload.challengeId }
       } else {
         const task = await submitGenerateTask(payload)
         if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
         createdSong = await pollGenerateTask(task.taskId, '歌曲')
       }
       syncSong(createdSong)
+      let completionDescription = '歌曲、封面和乐评都已经准备好了，现在可以查看详情或继续发布。'
+
+      if (payload.challengeId) {
+        setCreateTask({
+          status: 'running',
+          stage: '正在加入话题',
+          description: `歌曲已生成，正在发布并加入话题「${createChallenge?.title ?? '话题挑战'}」。`,
+          progress: 90,
+          canOpenSong: false,
+        })
+        const publishedSong = await publishSong(createdSong.id, {
+          published: true,
+          copyrightConfirmed: true,
+        })
+        createdSong = { ...createdSong, ...publishedSong, challengeId: payload.challengeId }
+        syncSong(createdSong)
+        completionDescription = `歌曲已经发布，并成功加入话题「${createChallenge?.title ?? '话题挑战'}」。`
+      }
+
       setCreateTask({
         status: 'done',
         stage: '生成完成',
-        description: '歌曲、封面和乐评都已经准备好了，现在可以查看详情或继续发布。',
+        description: completionDescription,
         progress: 100,
         canOpenSong: true,
       })
@@ -406,13 +439,14 @@ function UserApp() {
         published,
         copyrightConfirmed: published ? true : undefined,
       })
+      const preservedSong = { ...nextSong, challengeId: nextSong.challengeId ?? currentSong.challengeId }
 
-      setMySongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
+      setMySongs((currentSongs) => replaceSongInList(currentSongs, preservedSong))
       setFeedSongs((currentSongs) => {
-        const nextSongs = currentSongs.filter((song) => song.id !== nextSong.id)
-        return nextSong.published ? [nextSong, ...nextSongs] : nextSongs
+        const nextSongs = currentSongs.filter((song) => song.id !== preservedSong.id)
+        return preservedSong.published ? [preservedSong, ...nextSongs] : nextSongs
       })
-      setCurrentSongId(nextSong.id)
+      setCurrentSongId(preservedSong.id)
 
       window.alert(
         published ? '作品已发布，可以继续去首页或我的作品里查看。' : '作品已设为仅自己可见。'
@@ -772,6 +806,8 @@ function UserApp() {
             songs={mySongs}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId)}
+            onSongGenerated={syncSong}
+            onJoinChallenge={openChallengeCreate}
           />
         ) : null}
         {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
@@ -785,6 +821,7 @@ function UserApp() {
             initialTitle={createMode === 'remix' ? radioPreset.title : ''}
             initialLyrics={createMode === 'remix' ? radioPreset.lyrics : ''}
             initialOriginId={createMode === 'remix' ? radioPreset.originId : undefined}
+            challenge={createChallenge}
           />
         ) : null}
         {activeView === 'radio' ? (
@@ -800,7 +837,15 @@ function UserApp() {
         ) : null}
         {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
         {activeView === 'task' && createTask ? (
-          <TaskPage task={createTask} onOpenSong={() => currentSong && openSong(currentSong.id)} />
+          <TaskPage
+            task={createTask}
+            onOpenSong={() => currentSong && openSong(currentSong.id)}
+            challengeTitle={createChallenge?.title}
+            onReturnToChallenge={createChallenge ? () => {
+              window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
+              setActiveView('discover')
+            } : undefined}
+          />
         ) : null}
         {activeView === 'songDetail' && currentSong ? (
           <SongDetailPage

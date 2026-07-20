@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import type { SongMode } from '../../types/song'
 import { createStyles } from './createStyles'
 
@@ -68,14 +68,16 @@ export function CreatePage({ onOpenForm }: CreatePageProps) {
       <header className="create-page-hero">
         <h1 className="create-wave-title" aria-label="Where Ideas Become Sound">
           {titleChars.map((char, index) => (
-            <span
-              className={char === ' ' ? 'create-title-space' : undefined}
-              style={{ '--wave-index': index } as CSSProperties}
-              aria-hidden="true"
-              key={`${char}-${index}`}
-            >
-              {char}
-            </span>
+            <Fragment key={`${char}-${index}`}>
+              {index === 12 && <span className="create-title-mobile-break" aria-hidden="true" />}
+              <span
+                className={char === ' ' ? 'create-title-space' : undefined}
+                style={{ '--wave-index': index } as CSSProperties}
+                aria-hidden="true"
+              >
+                {char}
+              </span>
+            </Fragment>
           ))}
         </h1>
       </header>

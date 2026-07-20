@@ -1,4 +1,5 @@
 export const createStyles = `
+.create-challenge-context{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 14px;border:1px solid rgba(234,76,137,.2);border-radius:16px;padding:16px 20px;background:linear-gradient(135deg,rgba(255,240,246,.9),rgba(255,255,255,.86))}.create-challenge-context span{color:var(--theme-dark);font-size:12px;font-weight:800;letter-spacing:.06em}.create-challenge-context strong{font-size:18px}.create-challenge-context p{grid-column:2;margin:0;color:var(--muted);font-size:13px}
 .create-suite {
   gap: clamp(16px, 2vw, 24px);
 }
@@ -80,6 +81,10 @@ export const createStyles = `
 
 .create-wave-title .create-title-space {
   width: 0.34em;
+}
+
+.create-title-mobile-break {
+  display: none !important;
 }
 
 .create-section-heading h2,
@@ -621,6 +626,18 @@ export const createStyles = `
 
   .create-page-hero h1 {
     font-size: clamp(28px, 8vw, 36px);
+  }
+
+  .create-wave-title {
+    column-gap: 0.015em;
+    row-gap: 0;
+  }
+
+  .create-title-mobile-break {
+    display: block !important;
+    flex-basis: 100%;
+    width: 100%;
+    height: 0;
   }
 
   .create-producer-card {

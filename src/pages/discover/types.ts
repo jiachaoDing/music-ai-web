@@ -18,6 +18,7 @@ export type ChallengeRecord = {
   active: boolean
   createdAt: string
   updatedAt: string
+  songCount?: number
 }
 
 export type BattleRecord = {
@@ -32,13 +33,15 @@ export type BattleRecord = {
   createdAt: string
   updatedAt: string
   votedSide?: VoteSide
+  songA?: Song
+  songB?: Song
 }
 
 export type BattleVoteRecord = {
   id: string
   battleId: string
   userId: string
-  side: VoteSide
+  side?: VoteSide
   createdAt: string
 }
 
@@ -83,6 +86,12 @@ export type ChallengeSongRef = {
   songId: string
   note: string
   rank: number
+}
+
+export type ChallengeParticipant = {
+  id: string
+  nickname: string
+  songCount: number
 }
 
 export type FortuneSongDraft = {
