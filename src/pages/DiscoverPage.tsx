@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { generateLyrics, generateLyricsWithFallback } from '../api/ai'
 import {
   createBattle as createBattleRequest,
   getBattles,
@@ -6,7 +7,6 @@ import {
   getChallenges,
   getDayArt,
   getDayFortune,
-  getDayLyric,
   getFortunes,
   getGenerateTask,
   submitFortuneSong,
@@ -37,11 +37,51 @@ type DiscoverPageProps = {
   songs: Song[]
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
+  onSongGenerated: (song: Song) => void
   onJoinChallenge: (challenge: { id: string; title: string; prompt?: string }) => void
 }
 
 const today = new Date().toLocaleDateString('en-CA')
 const currentMonth = today.slice(0, 7)
+const FORTUNE_TASK_POLL_LIMIT = 180
+
+type PendingFortuneTask = {
+  taskId: string
+  fortuneDate: string
+}
+
+function pendingFortuneTaskKey(userId: string) {
+  return `echo_pending_fortune_task_${userId}`
+}
+
+function isPlaceholderTitle(title?: string) {
+  const normalized = title?.trim().replace(/[《》「」“”]/g, '') ?? ''
+  return !normalized || ['未命名', '未命名歌曲', 'AI生成歌曲', 'AI 生成歌曲', '今日微光', '今日微光（纯音乐）'].includes(normalized)
+}
+
+function extractAiTitle(rawText?: string) {
+  if (!rawText) return ''
+  const match = rawText.match(/(?:标题|歌名)\s*[:：]\s*[《「“"]?([^》」”"\n]+)/)
+  return match?.[1]?.trim() ?? ''
+}
+
+function extractAiLyrics(rawText?: string) {
+  if (!rawText) return ''
+  const cleaned = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  const marker = cleaned.match(/(?:歌词|Lyrics)\s*[:：]\s*([\s\S]+)/i)
+  if (marker?.[1]?.trim()) return marker[1].trim()
+  const section = cleaned.match(/\[(?:Verse|Chorus|Bridge|主歌|副歌)[^\]]*\][\s\S]*/i)
+  return section?.[0]?.trim() ?? ''
+}
+
+function usableVocalLyrics(lyrics?: string, rawText?: string) {
+  const direct = lyrics?.trim() ?? ''
+  if (direct && /(?:标题|歌名|风格)\s*[:：]/.test(direct)) {
+    return extractAiLyrics(direct) || extractAiLyrics(rawText)
+  }
+  if (direct && !/^(?:歌词|Lyrics)\s*[:：]?$/i.test(direct)) return direct
+  return extractAiLyrics(rawText)
+}
 
 function loadSavedBattleVotes(userId: string): BattleVoteRecord[] {
   try {
@@ -52,7 +92,7 @@ function loadSavedBattleVotes(userId: string): BattleVoteRecord[] {
   }
 }
 
-export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onJoinChallenge }: DiscoverPageProps) {
+export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenerated, onJoinChallenge }: DiscoverPageProps) {
   const [view, setView] = useState<DiscoverView>(getInitialView)
   const [selectedChallengeId, setSelectedChallengeId] = useState(() => {
     const challengeId = window.location.pathname.split('/challenges/')[1]
@@ -103,6 +143,23 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onJoinChalle
       setBId(publishedSongs.find((song) => song.id !== aId)?.id ?? '')
     }
   }, [aId, bId, publishedSongs])
+
+  useEffect(() => {
+    const saved = localStorage.getItem(pendingFortuneTaskKey(user.id))
+    if (!saved) return
+    try {
+      const pending = JSON.parse(saved) as PendingFortuneTask
+      if (!pending.taskId || !pending.fortuneDate) return
+      setGeneratingFortune(true)
+      void waitForFortuneTask(pending.taskId, pending.fortuneDate)
+        .catch((error) => setMessage(error instanceof Error ? error.message : '恢复时运曲生成任务失败。'))
+        .finally(() => setGeneratingFortune(false))
+    } catch {
+      localStorage.removeItem(pendingFortuneTaskKey(user.id))
+    }
+  // 恢复任务只应在登录用户变化时触发，避免轮询函数重建导致重复请求。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
 
   useEffect(() => {
     let cancelled = false
@@ -267,34 +324,94 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onJoinChalle
   }
 
   function addFortuneSong(draft: FortuneSongDraft) {
-    setFortuneSongs((current) => [draft, ...current])
+    setFortuneSongs((current) => current.some((item) => item.song.id === draft.song.id) ? current : [draft, ...current])
+    onSongGenerated(draft.song)
     setMessage(`时运曲已生成：${draft.song.title}。`)
+  }
+
+  async function waitForFortuneTask(taskId: string, fortuneDate: string) {
+    for (let attempt = 0; attempt < FORTUNE_TASK_POLL_LIMIT; attempt += 1) {
+      const status = await getGenerateTask(taskId)
+      if (status.status === 'done') {
+        if (!status.result?.song) throw new Error('生成完成，但后端没有返回歌曲数据。')
+        localStorage.removeItem(pendingFortuneTaskKey(user.id))
+        addFortuneSong({ song: status.result.song, fortuneDate })
+        return
+      }
+      if (status.status === 'error') {
+        localStorage.removeItem(pendingFortuneTaskKey(user.id))
+        throw new Error(status.error || '时运曲生成失败。')
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 2000))
+    }
+    throw new Error('时运曲仍在后台生成。任务进度已经保存，重新进入时运页面后会继续查询。')
   }
 
   async function generateFortuneSong(mode: 'vocal' | 'instrumental') {
     setGeneratingFortune(true)
     try {
-      const lyric = await getDayLyric(mode)
+      const isInstrumental = mode === 'instrumental'
+      const fortunePrompt = [
+        `日期：${todayFortune.date}`,
+        `今日时运关键词：${todayFortune.keyword}`,
+        `今日心情：${todayFortune.mood.name}`,
+        `今日能量：${todayFortune.battery}`,
+        `充电建议：${todayFortune.recharge ?? todayFortune.encourage ?? '治愈与放松'}`,
+        isInstrumental
+          ? '请据此创作一首纯音乐的标题和风格。标题要简洁、有画面感、与今日时运相关，不要使用“今日微光”，不要出现“纯音乐”字样；歌词内容仅作为创作参考，最终音乐不得包含人声。'
+          : '请据此创作一首今日时运歌曲。标题要简洁、有画面感、与今日状态相关，不要使用“今日微光”；歌词需要完整并包含 Verse、Chorus 等段落。',
+      ].join('\n')
+      const styles = isInstrumental ? ['治愈', 'Lo-fi', '氛围纯音乐'] : ['治愈流行', 'Lo-fi']
+      let lyric = await generateLyrics({ mode: 'song', prompt: fortunePrompt, styles })
+      let vocalLyrics = isInstrumental ? '' : usableVocalLyrics(lyric.lyrics, lyric.rawText)
+
+      if (!isInstrumental && !vocalLyrics) {
+        const retry = await generateLyrics({
+          mode: 'song',
+          prompt: `${fortunePrompt}\n上一次没有返回可识别的歌词。请严格按照“标题：”“风格：”“歌词：”输出，并提供完整的 [Verse] 和 [Chorus]。`,
+          styles,
+        })
+        lyric = retry
+        vocalLyrics = usableVocalLyrics(retry.lyrics, retry.rawText)
+      }
+
+      if (!isInstrumental && !vocalLyrics) {
+        const fallback = await generateLyricsWithFallback({
+          mode: 'song',
+          prompt: `${fortunePrompt}\n请生成完整且非空的 [Verse]、[Chorus] 演唱歌词。`,
+          styles,
+        })
+        if (isPlaceholderTitle(lyric.title) && !isPlaceholderTitle(fallback.title)) lyric = fallback
+        vocalLyrics = usableVocalLyrics(fallback.lyrics, fallback.rawText)
+      }
+
+      if (!isInstrumental && !vocalLyrics) {
+        throw new Error('AI 没有返回演唱歌词，本次未提交音乐生成，请稍后重试。')
+      }
+
+      let generatedTitle = isPlaceholderTitle(lyric.title) ? extractAiTitle(lyric.rawText) : lyric.title.trim()
+      if (isPlaceholderTitle(generatedTitle)) {
+        const titleResult = await generateLyrics({
+          mode: 'song',
+          prompt: `${fortunePrompt}\n上一次没有生成有效歌名。请重新构思一个独特的中文歌名，并严格以“标题：歌名”开头。`,
+          styles,
+        })
+        generatedTitle = isPlaceholderTitle(titleResult.title) ? extractAiTitle(titleResult.rawText) : titleResult.title.trim()
+      }
+      const fallbackTitle = `${todayFortune.keyword}·${todayFortune.mood.name}`
       const task = await submitFortuneSong({
-        title: lyric.title || `${todayFortune.keyword}时运曲`,
-        style: lyric.style || (mode === 'instrumental' ? 'Lo-fi / 纯音乐' : '治愈流行 / Lo-fi'),
-        lyrics: lyric.lyrics,
-        prompt: `${todayFortune.keyword}、${todayFortune.mood.name}、${todayFortune.recharge ?? '治愈'}`,
-        isInstrumental: mode === 'instrumental',
+        title: isPlaceholderTitle(generatedTitle) ? fallbackTitle : generatedTitle,
+        style: lyric.style?.trim() || (isInstrumental ? 'Lo-fi / 氛围纯音乐' : '治愈流行 / Lo-fi'),
+        lyrics: isInstrumental ? '' : vocalLyrics,
+        prompt: fortunePrompt,
+        isInstrumental,
       })
       if (!task.taskId) throw new Error('后端没有返回生成任务 ID。')
-
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        const status = await getGenerateTask(task.taskId)
-        if (status.status === 'done') {
-          if (!status.result?.song) throw new Error('生成完成，但后端没有返回歌曲数据。')
-          addFortuneSong({ song: status.result.song, fortuneDate: todayFortune.date })
-          return
-        }
-        if (status.status === 'error') throw new Error(status.error || '时运曲生成失败。')
-        await new Promise((resolve) => window.setTimeout(resolve, 2000))
-      }
-      throw new Error('时运曲仍在生成，请稍后再查看作品列表。')
+      localStorage.setItem(pendingFortuneTaskKey(user.id), JSON.stringify({
+        taskId: task.taskId,
+        fortuneDate: todayFortune.date,
+      } satisfies PendingFortuneTask))
+      await waitForFortuneTask(task.taskId, todayFortune.date)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '时运曲生成失败，请稍后重试。')
     } finally {

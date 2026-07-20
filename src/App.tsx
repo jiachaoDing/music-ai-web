@@ -794,6 +794,7 @@ function UserApp() {
             songs={mySongs}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId)}
+            onSongGenerated={syncSong}
             onJoinChallenge={openChallengeCreate}
           />
         ) : null}

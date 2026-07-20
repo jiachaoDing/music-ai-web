@@ -289,13 +289,14 @@ export async function submitFortuneSong(input: {
 export async function getGenerateTask(taskId: string): Promise<GenerateTaskStatus> {
   const result = asRecord(await request<unknown>(`/api/task/${encodeURIComponent(taskId)}`))
   const status = asString(result.status, 'running')
+  const errorRecord = asRecord(result.error)
   return {
     taskId: asString(result.taskId ?? result.id, taskId),
     status: status === 'queued' || status === 'done' || status === 'error' ? status : 'running',
     stage: asString(result.stage) || undefined,
     progress: typeof result.progress === 'number' ? result.progress : undefined,
     result: asRecord(result.result) as GenerateTaskStatus['result'],
-    error: asString(result.error) || null,
+    error: asString(errorRecord.message ?? result.error) || null,
   }
 }
 

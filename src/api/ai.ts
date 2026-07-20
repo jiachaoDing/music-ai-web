@@ -35,6 +35,13 @@ export function generateLyrics(input: string | LyricsRequestInput) {
   })
 }
 
+export function generateLyricsWithFallback(input: LyricsRequestInput) {
+  return request<LyricsResult>('/api/lyrics', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 export function generateCover(input: { title?: string; style?: string; prompt?: string }) {
   return request<CoverResult>('/api/ai/cover', {
     method: 'POST',
