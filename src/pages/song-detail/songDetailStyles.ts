@@ -295,6 +295,30 @@ export const songDetailStyles = `
   background: rgba(234, 76, 137, 0.12);
 }
 
+.song-detail-action.is-danger {
+  border-color: rgba(214, 51, 108, 0.18);
+  color: #d6336c;
+  background: rgba(214, 51, 108, 0.06);
+}
+
+.song-detail-action.is-danger:hover {
+  border-color: #d6336c;
+  color: #ffffff;
+  background: #d6336c;
+}
+
+.song-detail-delete-note {
+  width: 100%;
+  margin: 0;
+  border: 1px solid rgba(13, 12, 34, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--muted);
+  background: rgba(13, 12, 34, 0.03);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .song-detail-toolbar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));

@@ -19,6 +19,7 @@ type SongDetailPageProps = {
   onOpenPoster: () => void
   onPublish: () => void
   onSetPrivate: () => void
+  onDelete?: () => void | Promise<void>
   onSongUpdate?: (song: Song) => void
 }
 
@@ -92,10 +93,15 @@ export function SongDetailPage({
   onOpenPoster,
   onPublish,
   onSetPrivate,
+  onDelete,
   onSongUpdate,
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
   const coverUrl = resolveAssetUrl(song.coverUrl)
+  const canDelete =
+    canManage &&
+    !song.published &&
+    ['draft', 'private', 'failed', 'generating', 'generated'].includes(song.status)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
   const [selectedPlaylistId, setSelectedPlaylistId] = useState('')
@@ -118,6 +124,7 @@ export function SongDetailPage({
   const [commentAnon, setCommentAnon] = useState(false)
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const [commentCount, setCommentCount] = useState(song.commentCount)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const displayDescription =
     song.description ??
     `${formatMode(song.mode)}已经完成，当前可以继续试听、查看歌词，并决定是否发布到社区。`
@@ -276,6 +283,24 @@ export function SongDetailPage({
     }
   }
 
+  async function handleDeleteSong() {
+    if (!onDelete) return
+
+    const confirmed = window.confirm(`确定删除《${song.title}》吗？删除后无法恢复。`)
+    if (!confirmed) return
+
+    setDeleteSubmitting(true)
+
+    try {
+      await onDelete()
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '删除作品失败，请稍后重试')
+    } finally {
+      setDeleteSubmitting(false)
+    }
+  }
+
   async function handleGenerateReview() {
     if (reviewLoading) return
 
@@ -416,6 +441,19 @@ export function SongDetailPage({
                   {publishing ? '处理中...' : '设为仅自己可见'}
                 </button>
               )}
+              {canDelete && onDelete ? (
+                <button
+                  type="button"
+                  className="song-detail-action is-danger"
+                  disabled={deleteSubmitting}
+                  onClick={() => void handleDeleteSong()}
+                >
+                  {deleteSubmitting ? '删除中...' : '删除作品'}
+                </button>
+              ) : null}
+              <p className="song-detail-delete-note">
+                删除规则：草稿和私密作品可以删除；已发布作品需要先设为仅自己可见。
+              </p>
             </div>
           ) : null}
         </aside>

@@ -190,6 +190,12 @@ export async function updateSong(songId: string, input: UpdateSongInput): Promis
   return result.song
 }
 
+export async function deleteSong(songId: string) {
+  return request<{ deleted: boolean; songId: string }>(`/api/song/${songId}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function recordSongPlay(songId: string): Promise<number> {
   const result = await request<{ playCount: number }>(`/api/play/${songId}`, {
     method: 'POST',

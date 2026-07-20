@@ -9,7 +9,11 @@ type SongCardProps = {
   coverAspect?: 'default' | 'portrait'
 }
 
-export function SongCard({ song, onOpen, coverAspect = 'default' }: SongCardProps) {
+export function SongCard({
+  song,
+  onOpen,
+  coverAspect = 'default',
+}: SongCardProps) {
   const coverUrl = resolveAssetUrl(song.coverUrl)
   const coverStyle = {
     '--cover-color': song.author.color,
@@ -17,17 +21,19 @@ export function SongCard({ song, onOpen, coverAspect = 'default' }: SongCardProp
 
   return (
     <article className="song-card">
-      <button
-        aria-label={`打开作品 ${song.title}`}
-        className={`song-cover${coverAspect === 'portrait' ? ' song-cover--portrait' : ''}`}
-        style={coverStyle}
-        type="button"
-        onClick={() => onOpen?.(song.id)}
-      >
-        {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
-        <span className="song-cover__eyebrow">{song.mode}</span>
-        <i aria-hidden="true" />
-      </button>
+      <div className="song-card__cover-wrap">
+        <button
+          aria-label={`打开作品 ${song.title}`}
+          className={`song-cover${coverAspect === 'portrait' ? ' song-cover--portrait' : ''}`}
+          style={coverStyle}
+          type="button"
+          onClick={() => onOpen?.(song.id)}
+        >
+          {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
+          <span className="song-cover__eyebrow">{song.mode}</span>
+          <i aria-hidden="true" />
+        </button>
+      </div>
       <div className="song-card__body">
         <div className="song-card__title-row">
           <h3>{song.title}</h3>
