@@ -331,6 +331,36 @@ export const songDetailStyles = `
   gap: 12px;
 }
 
+.song-detail-panel__header > div {
+  display: grid;
+  gap: 8px;
+}
+
+.song-detail-panel__button {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin-top: 0;
+  border: 1px solid rgba(234, 76, 137, 0.16);
+  border-radius: 999px;
+  padding: 0 16px;
+  color: var(--theme);
+  font-size: 13px;
+  font-weight: 800;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(234, 76, 137, 0.16);
+  cursor: pointer;
+}
+
+.song-detail-panel__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
 .song-detail-block h2 {
   font-size: 24px;
 }
@@ -643,6 +673,11 @@ export const songDetailStyles = `
   .song-detail-panel,
   .song-detail-block {
     padding: 18px;
+  }
+
+  .song-detail-panel__button {
+    top: 18px;
+    right: 18px;
   }
 
   .song-detail-copy h1,

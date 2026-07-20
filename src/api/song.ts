@@ -31,7 +31,7 @@ export type GenerateTaskStatus = {
   result?: {
     song?: Song
   }
-  error?: string | null
+  error?: string | { message?: string } | null
 }
 
 export type RemixSongInput = {

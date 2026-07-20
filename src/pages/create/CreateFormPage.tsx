@@ -51,13 +51,18 @@ const modeCopy: Record<SongMode, { title: string; description: string; placehold
   },
 }
 
-const styleTags = ['流行', '治愈', '电子', '民谣', 'Lo-Fi', 'City Pop']
+const styleTags = ['流行', '国风', '抒情', '电子', '摇滚', '民谣', '说唱', '爵士', '治愈', '欢快', '伤感', 'Lo-fi']
 
 function parseStyleTags(style: string) {
   return style
     .split(/[\/,，]/)
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+function getInitialStyleSelection(style: string) {
+  const tags = parseStyleTags(style)
+  return tags
 }
 
 function readFileAsDataUrl(file: File) {
@@ -112,7 +117,7 @@ export function CreateFormPage({
 }: CreateFormPageProps) {
   const current = modeCopy[mode]
   const [prompt, setPrompt] = useState(initialPrompt)
-  const [style, setStyle] = useState(initialStyle)
+  const [selectedStyles, setSelectedStyles] = useState(() => getInitialStyleSelection(initialStyle))
   const [lyrics, setLyrics] = useState(initialLyrics)
   const [generatedTitle, setGeneratedTitle] = useState(initialTitle)
   const [forWho, setForWho] = useState('')
@@ -120,12 +125,16 @@ export function CreateFormPage({
   const [photoImageName, setPhotoImageName] = useState('')
   const [loadingLyrics, setLoadingLyrics] = useState(false)
   const [error, setError] = useState('')
+  const style = selectedStyles.join(' / ')
+  const visibleStyleTags = Array.from(new Set([...styleTags, ...selectedStyles]))
 
   function pickStyle(tag: string) {
-    setStyle((currentStyle) => {
-      if (!currentStyle) return tag
-      if (currentStyle.includes(tag)) return currentStyle
-      return `${currentStyle} / ${tag}`
+    setSelectedStyles((currentStyles) => {
+      if (currentStyles.includes(tag)) {
+        return currentStyles.filter((item) => item !== tag)
+      }
+
+      return [...currentStyles, tag]
     })
   }
 
@@ -162,14 +171,18 @@ export function CreateFormPage({
       setError('')
       setLoadingLyrics(true)
       const result = await generateLyrics({
-        prompt: nextPrompt || '请根据图片内容写一首歌',
+        prompt: nextPrompt,
         mode,
-        styles: parseStyleTags(style),
         forWho: mode === 'foryou' ? forWho.trim() : undefined,
         image: mode === 'photo' ? photoImage : undefined,
+        styles: selectedStyles,
       })
-      setGeneratedTitle(result.title)
-      setStyle(result.style)
+      if (result.title && result.title !== '未命名') {
+        setGeneratedTitle(result.title)
+      }
+      if (result.style && !['pop, emotional', 'pop / emotional'].includes(result.style.trim().toLowerCase())) {
+        setSelectedStyles(getInitialStyleSelection(result.style))
+      }
       setLyrics(isRadioMode ? '' : result.lyrics)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'AI 写词失败，请检查后端服务。')
@@ -210,7 +223,9 @@ export function CreateFormPage({
           styles: parseStyleTags(nextStyle),
         })
         nextTitle = result.title.trim()
-        if (result.style?.trim()) setStyle(result.style)
+        if (result.style?.trim() && !['pop, emotional', 'pop / emotional'].includes(result.style.trim().toLowerCase())) {
+          setSelectedStyles(getInitialStyleSelection(result.style))
+        }
         setGeneratedTitle(nextTitle)
       } catch {
         nextTitle = `${nextPrompt.replace(/[，。！？,.!?]/g, ' ').trim().slice(0, 12) || '今日频率'} · 纯音乐`
@@ -230,16 +245,11 @@ export function CreateFormPage({
       return
     }
 
-    if (mode === 'foryou' && !nextForWho) {
-      setError('请输入写给的对象。')
-      return
-    }
-
     setError('')
 
     await onSubmit({
-      title: nextTitle,
-      style: nextStyle,
+      title: nextTitle || '未命名',
+      style: nextStyle || '流行',
       lyrics: nextLyrics,
       mode,
       prompt: nextPrompt || '请根据图片内容写一首歌',
@@ -284,21 +294,25 @@ export function CreateFormPage({
             />
           </label>
 
-          <label className="create-field">
-            风格标签
-            <input
-              placeholder="流行 / 治愈 / 电子 / 民谣"
-              value={style}
-              onChange={(event) => setStyle(event.target.value)}
-            />
-          </label>
+          <div className="create-field create-style-picker">
+            <div className="create-field-head">
+              <span>风格 / 情绪</span>
+              <em>{style || '可选'}</em>
+            </div>
 
-          <div className="create-tag-row" aria-label="推荐风格">
-            {styleTags.map((tag) => (
-              <button type="button" key={tag} onClick={() => pickStyle(tag)}>
-                {tag}
-              </button>
-            ))}
+            <div className="create-tag-row" aria-label="选择风格">
+              {visibleStyleTags.map((tag) => (
+                <button
+                  type="button"
+                  key={tag}
+                  className={selectedStyles.includes(tag) ? 'is-active' : ''}
+                  aria-pressed={selectedStyles.includes(tag)}
+                  onClick={() => pickStyle(tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
 
           {mode === 'foryou' ? (
