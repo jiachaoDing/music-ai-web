@@ -1,5 +1,5 @@
 import type { HostCuration, HostPage } from '../api/host'
-import type { FeedTab } from '../api/song'
+import type { FeedTab, ResonanceFeedResponse } from '../api/song'
 import { EmptyState } from '../components/EmptyState'
 import { SongCard } from '../components/SongCard'
 import type { Song } from '../types/song'
@@ -10,6 +10,7 @@ type FeedPageProps = {
   songs: Song[]
   hostPage?: HostPage | null
   curation?: HostCuration | null
+  resonance?: ResonanceFeedResponse | null
   onChangeTab: (tab: FeedTab) => void
   onOpenSong: (songId: string) => void
   onCreate: () => void
@@ -27,24 +28,28 @@ export function FeedPage({
   songs,
   hostPage,
   curation,
+  resonance,
   onChangeTab,
   onOpenSong,
   onCreate,
   onOpenHost,
 }: FeedPageProps) {
   const hostName = hostPage?.name ?? 'AI 主理人'
-  const hostPick = curation?.featuredSong ?? hostPage?.todayPick ?? null
-  const hostPickQuote: string | undefined =
-    hostPick && 'quote' in hostPick && typeof hostPick.quote === 'string'
-      ? hostPick.quote
-      : undefined
-  const hostNote: string =
+  const officialSong = hostPage?.featuredSongs?.[0] ?? curation?.featuredSong ?? null
+  const pickedSong = hostPage?.todayPick ?? null
+  const pickQuote =
+    pickedSong && 'quote' in pickedSong && typeof pickedSong.quote === 'string'
+      ? pickedSong.quote
+      : pickedSong?.description
+  const hostNote =
     curation?.hostNote ||
     hostPage?.greeting ||
-    hostPickQuote ||
     '今天也有新的声音在发生，AI 主理人会从社区里挑出值得一听的新作品。'
-  const topics = hostPage?.topics?.slice(0, 3) ?? []
-  const recommendations = curation?.recommendations ?? hostPage?.featuredSongs ?? []
+  const topics = hostPage?.topics?.slice(0, 2) ?? []
+  const featuredCount = hostPage?.stats?.featuredCount ?? hostPage?.featuredSongs?.length ?? 0
+  const resonanceNote = resonance?.note ?? resonance?.intro
+  const resonanceTags = resonance?.mood?.tags ?? resonance?.moodTags ?? []
+  const resonanceLabel = resonance?.moodLabel ?? (resonance?.mood?.title ? `同「${resonance.mood.title}」频` : '今日同频')
 
   return (
     <section className="page-stack feed-page">
@@ -65,49 +70,74 @@ export function FeedPage({
       </section>
 
       <section className="host-panel">
-        <div className="host-panel__copy">
-          <span>AI Curator</span>
-          <h3>{hostName}</h3>
-          <p>{hostNote}</p>
+        <div className="host-panel__header">
+          <div className="host-panel__copy">
+            <span>AI Curator</span>
+            <h3>{hostName}</h3>
+            <p>{hostNote}</p>
+          </div>
+
+          {onOpenHost ? (
+            <button type="button" className="host-panel__entry" onClick={onOpenHost}>
+              进入主页
+            </button>
+          ) : null}
+        </div>
+
+        <div className="host-panel__today">
+          {officialSong ? (
+            <button
+              type="button"
+              className="host-panel__feature"
+              onClick={() => onOpenSong(officialSong.id)}
+            >
+              <span>今日主打歌</span>
+              <strong>{officialSong.title}</strong>
+              <small>{officialSong.style}</small>
+            </button>
+          ) : (
+            <button type="button" className="host-panel__feature is-empty" onClick={onOpenHost ?? onCreate}>
+              <span>今日主打歌</span>
+              <strong>等待主理人发布</strong>
+              <small>每日任务生成后会出现在这里</small>
+            </button>
+          )}
+
+          {pickedSong ? (
+            <button
+              type="button"
+              className="host-panel__feature host-panel__feature--pick"
+              onClick={() => onOpenSong(pickedSong.id)}
+            >
+              <span>今日翻牌</span>
+              <strong>{pickedSong.title}</strong>
+              <small>{pickQuote ?? '主理人今天想把这首社区作品推荐给你。'}</small>
+            </button>
+          ) : (
+            <button type="button" className="host-panel__feature is-empty" onClick={onCreate}>
+              <span>今日翻牌</span>
+              <strong>还没有翻牌</strong>
+              <small>发布公开作品，让主理人听见你的新灵感</small>
+            </button>
+          )}
+        </div>
+
+        <div className="host-panel__footer">
           <div className="host-panel__meta">
-            <strong>{formatCount(hostPage?.stats?.featuredCount ?? recommendations.length)}</strong>
-            <small>精选作品</small>
+            <strong>{formatCount(featuredCount)}</strong>
+            <small>主理人作品</small>
             <strong>{formatCount(hostPage?.stats?.totalPlays ?? 0)}</strong>
             <small>累计播放</small>
           </div>
+
+          {topics.length ? (
+            <div className="host-panel__topics" aria-label="AI 主理人话题">
+              {topics.map((topic) => (
+                <span key={topic.id}>{topic.title}</span>
+              ))}
+            </div>
+          ) : null}
         </div>
-
-        {onOpenHost ? (
-          <button type="button" className="filter-button" onClick={onOpenHost}>
-            进入主理人主页
-          </button>
-        ) : null}
-
-        {hostPick ? (
-          <button
-            type="button"
-            className="host-panel__pick"
-            onClick={() => onOpenSong(hostPick.id)}
-          >
-            <span>今日精选</span>
-            <strong>{hostPick.title}</strong>
-            <small>{hostPickQuote ?? hostPick.description ?? '点击查看 AI 主理人推荐的作品'}</small>
-          </button>
-        ) : (
-          <button type="button" className="host-panel__pick is-empty" onClick={onCreate}>
-            <span>等待推荐</span>
-            <strong>先创作一首歌</strong>
-            <small>让 AI 主理人听听你的新灵感</small>
-          </button>
-        )}
-
-        {topics.length ? (
-          <div className="host-panel__topics" aria-label="AI 主理人话题">
-            {topics.map((topic) => (
-              <span key={topic.id}>{topic.title}</span>
-            ))}
-          </div>
-        ) : null}
       </section>
 
       <div className="feed-toolbar">
@@ -137,6 +167,22 @@ export function FeedPage({
           筛选
         </button>
       </section>
+
+      {activeTab === 'resonance' && (resonanceNote || resonanceTags.length) ? (
+        <section className="resonance-lead">
+          <div>
+            <span>{resonanceLabel}</span>
+            {resonanceNote ? <p>{resonanceNote}</p> : null}
+          </div>
+          {resonanceTags.length ? (
+            <div className="resonance-lead__tags">
+              {resonanceTags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {songs.length ? (
         <div className="card-list">

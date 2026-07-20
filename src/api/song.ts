@@ -1,4 +1,5 @@
 import { mockSongs } from '../mock/songs'
+import type { Comment } from '../types/comment'
 import type { Song } from '../types/song'
 import { request } from './request'
 
@@ -53,10 +54,19 @@ export type UpdateSongInput = {
   coverUrl?: string
 }
 
-type ResonanceFeedResponse = {
+export type ResonanceFeedResponse = {
+  mood?: {
+    title: string
+    style?: string
+    tags?: string[]
+  }
+  moodLabel?: string
+  note?: string
   intro?: string
   moodTags?: string[]
   list?: Song[]
+  songs?: Song[]
+  total?: number
 }
 
 type SongListResponse = {
@@ -87,8 +97,8 @@ export async function getFeed(tab: FeedTab = 'resonance'): Promise<Song[]> {
 
   try {
     if (tab === 'resonance') {
-      const result = await request<ResonanceFeedResponse | Song[]>('/api/resonance')
-      return Array.isArray(result) ? result : ensureSongArray(result.list)
+      const result = await getResonanceFeed()
+      return result.list
     }
 
     const result = await request<SongListResponse | Song[]>(`/api/feed?sort=${tab === 'hot' ? 'hot' : 'new'}`)
@@ -97,6 +107,27 @@ export async function getFeed(tab: FeedTab = 'resonance'): Promise<Song[]> {
   } catch (error) {
     console.warn('Feed API unavailable, fallback to mock feed.', error)
     return getMockFeed(tab)
+  }
+}
+
+export async function getResonanceFeed(name?: string): Promise<ResonanceFeedResponse & { list: Song[] }> {
+  if (USE_MOCK) {
+    return {
+      mood: { title: '松弛', style: 'lo-fi, chill, bedroom pop', tags: ['松弛', '夜晚', '治愈'] },
+      moodLabel: '同「松弛」频',
+      note: '今天和你同频的人，都在听一些慢下来的声音。',
+      intro: '今天和你同频的人，都在听一些慢下来的声音。',
+      moodTags: ['松弛', '夜晚', '治愈'],
+      list: getMockFeed('resonance'),
+    }
+  }
+
+  const query = name ? `?name=${encodeURIComponent(name)}` : ''
+  const result = await request<ResonanceFeedResponse | Song[]>(`/api/resonance${query}`)
+  if (Array.isArray(result)) return { list: result }
+  return {
+    ...result,
+    list: ensureSongArray(result.list ?? result.songs),
   }
 }
 
@@ -176,5 +207,18 @@ export async function collectSong(songId: string, playlistId?: string) {
   return request<{ collected: boolean; collectCount: number }>(`/api/collect/${songId}`, {
     method: 'POST',
     body: JSON.stringify({ playlistId }),
+  })
+}
+
+export async function getSongComments(songId: string): Promise<Comment[]> {
+  const result = await request<{ list?: Comment[] } | Comment[]>(`/api/comments/${songId}`)
+  if (Array.isArray(result)) return result
+  return Array.isArray(result.list) ? result.list : []
+}
+
+export async function addSongComment(songId: string, input: { text: string; anon?: boolean }) {
+  return request<{ comment: Comment }>(`/api/comments/${songId}`, {
+    method: 'POST',
+    body: JSON.stringify(input),
   })
 }

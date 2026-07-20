@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { generateSongReview, type SongReviewResult } from '../../api/ai'
 import { addSongToPlaylist, createPlaylist, getPlaylists } from '../../api/me'
-import { collectSong, likeSong } from '../../api/song'
+import { addSongComment, collectSong, getSongComments, likeSong } from '../../api/song'
+import type { Comment } from '../../types/comment'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
@@ -110,6 +111,13 @@ export function SongDetailPage({
   const [remixSubmitting, setRemixSubmitting] = useState(false)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [aiReview, setAiReview] = useState(formatAiReviewText(song.aiReview) ?? '')
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentsError, setCommentsError] = useState('')
+  const [commentText, setCommentText] = useState('')
+  const [commentAnon, setCommentAnon] = useState(false)
+  const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const [commentCount, setCommentCount] = useState(song.commentCount)
   const displayDescription =
     song.description ??
     `${formatMode(song.mode)}已经完成，当前可以继续试听、查看歌词，并决定是否发布到社区。`
@@ -118,8 +126,29 @@ export function SongDetailPage({
     setLiked(false)
     setLikeCount(song.likeCount)
     setCollectCount(song.collectCount)
+    setCommentCount(song.commentCount)
     setAiReview(formatAiReviewText(song.aiReview) ?? '')
-  }, [song.id, song.likeCount, song.collectCount, song.aiReview])
+  }, [song.id, song.likeCount, song.collectCount, song.commentCount, song.aiReview])
+
+  useEffect(() => {
+    async function hydrateComments() {
+      setCommentsLoading(true)
+      setCommentsError('')
+
+      try {
+        const nextComments = await getSongComments(song.id)
+        setComments(nextComments)
+      } catch (error) {
+        console.error(error)
+        setComments([])
+        setCommentsError('评论暂时读取失败，请稍后再试。')
+      } finally {
+        setCommentsLoading(false)
+      }
+    }
+
+    void hydrateComments()
+  }, [song.id])
 
   useEffect(() => {
     async function hydratePlaylists() {
@@ -274,6 +303,27 @@ export function SongDetailPage({
     }
   }
 
+  async function handleSubmitComment() {
+    const text = commentText.trim()
+    if (!text || commentSubmitting) return
+
+    setCommentSubmitting(true)
+      try {
+        const result = await addSongComment(song.id, { text, anon: commentAnon })
+        const nextCommentCount = commentCount + 1
+        setComments((current) => [result.comment, ...current])
+        setCommentText('')
+        setCommentAnon(false)
+        setCommentCount(nextCommentCount)
+        onSongUpdate?.({ ...song, commentCount: nextCommentCount })
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '留言失败，请稍后再试')
+    } finally {
+      setCommentSubmitting(false)
+    }
+  }
+
   return (
     <section className="page-stack song-detail-page">
       <style>{songDetailStyles}</style>
@@ -309,7 +359,7 @@ export function SongDetailPage({
                 <span>{formatCount(song.playCount)} 播放</span>
                 <span>{formatCount(likeCount)} 喜欢</span>
                 <span>{formatCount(collectCount)} 收藏</span>
-                <span>{formatCount(song.commentCount)} 评论</span>
+                <span>{formatCount(commentCount)} 评论</span>
               </div>
 
               <div className="song-detail-meta-grid">
@@ -469,6 +519,88 @@ export function SongDetailPage({
               {aiReview ||
                 '当前还没有生成 AI 乐评，后续这里可以继续接入创作解析、DJ 播报和风格总结。'}
             </p>
+          </section>
+
+          <section className="song-detail-panel song-detail-hole">
+            <div className="song-detail-panel__header">
+              <div>
+                <span>Tree Hole</span>
+                <h2>树洞 · 留言</h2>
+              </div>
+              <strong className="song-detail-hole__count">{formatCount(commentCount)} 条</strong>
+            </div>
+
+            <div className="song-detail-hole-form">
+              <textarea
+                value={commentText}
+                maxLength={240}
+                placeholder="把听完这首歌后的感受留在树洞里..."
+                disabled={commentSubmitting}
+                onChange={(event) => setCommentText(event.target.value)}
+              />
+              <div className="song-detail-hole-form__footer">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={commentAnon}
+                    disabled={commentSubmitting}
+                    onChange={(event) => setCommentAnon(event.target.checked)}
+                  />
+                  匿名留言
+                </label>
+                <span>{commentText.trim().length}/240</span>
+                <button
+                  type="button"
+                  className="song-detail-action is-primary"
+                  disabled={commentSubmitting || !commentText.trim()}
+                  onClick={() => void handleSubmitComment()}
+                >
+                  {commentSubmitting ? '发送中...' : '留在树洞'}
+                </button>
+              </div>
+            </div>
+
+            {commentsLoading ? <p>正在读取留言...</p> : null}
+            {commentsError ? <p>{commentsError}</p> : null}
+            {!commentsLoading && !commentsError && !comments.length ? (
+              <p>还没有人来过这个树洞，来当第一个吧。</p>
+            ) : null}
+
+            {comments.length ? (
+              <div className="song-detail-comments">
+                {comments.map((comment) => {
+                  const isHostComment =
+                    comment.userId === 'echo-host' || comment.text.startsWith('【主理人翻牌】')
+                  const text = comment.text.replace(/^【主理人翻牌】/, '')
+
+                  return (
+                    <article
+                      className={`song-detail-comment ${isHostComment ? 'is-host' : ''}`}
+                      key={comment.id}
+                    >
+                      <div className="song-detail-comment__avatar" aria-hidden="true">
+                        {isHostComment ? 'E' : (comment.userName || 'U').slice(0, 1)}
+                      </div>
+                      <div className="song-detail-comment__body">
+                        <div className="song-detail-comment__meta">
+                          <strong>
+                            {isHostComment
+                              ? 'Echo 主理人'
+                              : comment.anon
+                                ? '匿名听众'
+                                : comment.userName || '听众'}
+                          </strong>
+                          {isHostComment ? <span>主理人翻牌</span> : null}
+                          {!isHostComment && comment.anon ? <span>匿名</span> : null}
+                        </div>
+                        <p>{text}</p>
+                        <small>{formatDate(comment.createdAt)}</small>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            ) : null}
           </section>
 
         </div>

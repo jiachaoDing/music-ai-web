@@ -3,8 +3,8 @@ import './App.css'
 import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
-import type { FeedTab } from './api/song'
-import { getFeed, getGenerateTaskStatus, getMySongs, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
+import type { FeedTab, ResonanceFeedResponse } from './api/song'
+import { getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
@@ -63,6 +63,7 @@ function UserApp() {
   const [mySongs, setMySongs] = useState<Song[]>([])
   const [hostPage, setHostPage] = useState<HostPage | null>(null)
   const [curation, setCuration] = useState<HostCuration | null>(null)
+  const [resonance, setResonance] = useState<ResonanceFeedResponse | null>(null)
   const [feedTab, setFeedTab] = useState<FeedTab>('resonance')
   const [createMode, setCreateMode] = useState<SongMode>('song')
   const [createChallenge, setCreateChallenge] = useState<CreateChallengeContext | null>(null)
@@ -198,6 +199,17 @@ function UserApp() {
     }
   }
 
+  async function loadFeedSongs(tab: FeedTab = feedTab, currentUser: User | null = user) {
+    if (tab !== 'resonance') {
+      setResonance(null)
+      return getFeed(tab)
+    }
+
+    const result = await getResonanceFeed(currentUser?.nickname)
+    setResonance(result)
+    return result.list ?? []
+  }
+
   async function startPlayback(songId?: string) {
     const nextSongId = songId ?? currentSong?.id
     if (!nextSongId) return
@@ -262,7 +274,7 @@ function UserApp() {
 
   async function changeFeedTab(tab: FeedTab) {
     setFeedTab(tab)
-    setFeedSongs(await getFeed(tab))
+    setFeedSongs(await loadFeedSongs(tab))
   }
 
   function openCreateForm(mode: SongMode) {
@@ -476,7 +488,10 @@ function UserApp() {
         setActiveView('feed')
 
         try {
-          const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
+          const [nextFeedSongs, nextMySongs] = await Promise.all([
+            loadFeedSongs(feedTab, nextUser),
+            getMySongs(),
+          ])
           setFeedSongs(nextFeedSongs)
           setMySongs(nextMySongs)
           setCurrentSongId(undefined)
@@ -679,7 +694,10 @@ function UserApp() {
       setUser(nextUser)
       setActiveView('feed')
 
-      const [nextFeedSongs, nextMySongs] = await Promise.all([getFeed(feedTab), getMySongs()])
+      const [nextFeedSongs, nextMySongs] = await Promise.all([
+        loadFeedSongs(feedTab, nextUser),
+        getMySongs(),
+      ])
       setFeedSongs(nextFeedSongs)
       setMySongs(nextMySongs)
       setCurrentSongId(nextFeedSongs[0]?.id)
@@ -701,6 +719,7 @@ function UserApp() {
     setMySongs([])
     setHostPage(null)
     setCuration(null)
+    setResonance(null)
     setCurrentSongId(undefined)
     setPosterOpen(false)
     setCreateTask(null)
@@ -785,6 +804,7 @@ function UserApp() {
             songs={feedSongs}
             hostPage={hostPage}
             curation={curation}
+            resonance={resonance}
             onChangeTab={(tab) => void changeFeedTab(tab)}
             onCreate={() => setActiveView('create')}
             onOpenHost={() => setActiveView('host')}
