@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { generateSongReview, type SongReviewResult } from '../../api/ai'
 import { addSongToPlaylist, createPlaylist, getPlaylists } from '../../api/me'
 import { collectSong, likeSong } from '../../api/song'
 import type { Playlist } from '../../types/playlist'
@@ -17,6 +18,7 @@ type SongDetailPageProps = {
   onOpenPoster: () => void
   onPublish: () => void
   onSetPrivate: () => void
+  onSongUpdate?: (song: Song) => void
 }
 
 function getStatusCopy(song: Song) {
@@ -60,6 +62,25 @@ function formatDate(date?: string | null) {
   })
 }
 
+function formatAiReviewText(value?: string | null) {
+  return value?.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+}
+
+function getReviewPayload(result: SongReviewResult) {
+  return result.data ?? result
+}
+
+function pickReviewText(result: SongReviewResult) {
+  const payload = getReviewPayload(result)
+
+  return (
+    formatAiReviewText(payload.text) ||
+    formatAiReviewText(payload.aiReview) ||
+    formatAiReviewText(payload.review) ||
+    formatAiReviewText(payload.song?.aiReview)
+  )
+}
+
 export function SongDetailPage({
   song,
   canManage,
@@ -70,6 +91,7 @@ export function SongDetailPage({
   onOpenPoster,
   onPublish,
   onSetPrivate,
+  onSongUpdate,
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
   const coverUrl = resolveAssetUrl(song.coverUrl)
@@ -86,6 +108,8 @@ export function SongDetailPage({
   const [collectCount, setCollectCount] = useState(song.collectCount)
   const [djLoading, setDjLoading] = useState(false)
   const [remixSubmitting, setRemixSubmitting] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [aiReview, setAiReview] = useState(formatAiReviewText(song.aiReview) ?? '')
   const displayDescription =
     song.description ??
     `${formatMode(song.mode)}已经完成，当前可以继续试听、查看歌词，并决定是否发布到社区。`
@@ -94,7 +118,8 @@ export function SongDetailPage({
     setLiked(false)
     setLikeCount(song.likeCount)
     setCollectCount(song.collectCount)
-  }, [song.id, song.likeCount, song.collectCount])
+    setAiReview(formatAiReviewText(song.aiReview) ?? '')
+  }, [song.id, song.likeCount, song.collectCount, song.aiReview])
 
   useEffect(() => {
     async function hydratePlaylists() {
@@ -217,6 +242,35 @@ export function SongDetailPage({
       window.alert(error instanceof Error ? error.message : '二创任务提交失败，请稍后重试')
     } finally {
       setRemixSubmitting(false)
+    }
+  }
+
+  async function handleGenerateReview() {
+    if (reviewLoading) return
+
+    setReviewLoading(true)
+    try {
+      const result = await generateSongReview(song.id)
+      const payload = getReviewPayload(result)
+      const payloadReview = pickReviewText(result)
+      const nextReview =
+        formatAiReviewText(result.text) ||
+        formatAiReviewText(result.aiReview) ||
+        formatAiReviewText(result.review) ||
+        formatAiReviewText(result.song?.aiReview) ||
+        'AI 乐评已生成，但后端没有返回具体内容。'
+      setAiReview(nextReview)
+      if (payloadReview) {
+        setAiReview(payloadReview)
+      }
+      if (payload.song) {
+        onSongUpdate?.({ ...payload.song, aiReview: payloadReview ?? nextReview })
+      }
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : 'AI 乐评生成失败，请稍后重试')
+    } finally {
+      setReviewLoading(false)
     }
   }
 
@@ -400,11 +454,19 @@ export function SongDetailPage({
             <div className="song-detail-panel__header">
               <div>
                 <span>AI Review</span>
+                <button
+                  type="button"
+                  className="song-detail-panel__button"
+                  disabled={reviewLoading}
+                  onClick={() => void handleGenerateReview()}
+                >
+                  {reviewLoading ? '生成中...' : aiReview ? '重新生成' : '生成乐评'}
+                </button>
                 <h2>AI 乐评</h2>
               </div>
             </div>
             <p>
-              {song.aiReview ??
+              {aiReview ||
                 '当前还没有生成 AI 乐评，后续这里可以继续接入创作解析、DJ 播报和风格总结。'}
             </p>
           </section>
