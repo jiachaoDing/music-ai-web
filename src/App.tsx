@@ -6,6 +6,7 @@ import { getCuration, getHostPage, type HostCuration, type HostPage } from './ap
 import type { FeedTab, ResonanceFeedResponse } from './api/song'
 import { getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
+import { BackButton } from './components/BackButton'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
 import { AuthPage } from './pages/auth/AuthPage'
@@ -79,6 +80,7 @@ function UserApp() {
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackDuration, setPlaybackDuration] = useState(0)
   const [pendingPlaySongId, setPendingPlaySongId] = useState<string | null>(null)
+  const [songReturnView, setSongReturnView] = useState<AppView>('feed')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playerVisualizerCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -152,6 +154,9 @@ function UserApp() {
   }
 
   function openSong(songId: string) {
+    if (activeView !== 'songDetail' && activeView !== 'player') {
+      setSongReturnView(activeView)
+    }
     setCurrentSongId(songId)
     setActiveView('songDetail')
     void getSongDetail(songId)
@@ -848,17 +853,29 @@ function UserApp() {
         ) : null}
         {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}
         {activeView === 'createForm' ? (
-          <CreateFormPage
-            mode={createMode}
-            onSubmit={handleCreateSubmit}
-            submitting={createSubmitting}
-            initialPrompt={createMode === 'radio' || createMode === 'remix' ? radioPreset.prompt : ''}
-            initialStyle={createMode === 'radio' || createMode === 'remix' ? radioPreset.style : ''}
-            initialTitle={createMode === 'remix' ? radioPreset.title : ''}
-            initialLyrics={createMode === 'remix' ? radioPreset.lyrics : ''}
-            initialOriginId={createMode === 'remix' ? radioPreset.originId : undefined}
-            challenge={createChallenge}
-          />
+          <>
+            <div className="page-back-row">
+              <BackButton label={createChallenge ? '返回话题' : createMode === 'radio' ? '返回电台' : '返回创作'} onClick={() => {
+                if (createChallenge) {
+                  window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
+                  setActiveView('discover')
+                  return
+                }
+                setActiveView(createMode === 'radio' ? 'radio' : 'create')
+              }} />
+            </div>
+            <CreateFormPage
+              mode={createMode}
+              onSubmit={handleCreateSubmit}
+              submitting={createSubmitting}
+              initialPrompt={createMode === 'radio' || createMode === 'remix' ? radioPreset.prompt : ''}
+              initialStyle={createMode === 'radio' || createMode === 'remix' ? radioPreset.style : ''}
+              initialTitle={createMode === 'remix' ? radioPreset.title : ''}
+              initialLyrics={createMode === 'remix' ? radioPreset.lyrics : ''}
+              initialOriginId={createMode === 'remix' ? radioPreset.originId : undefined}
+              challenge={createChallenge}
+            />
+          </>
         ) : null}
         {activeView === 'radio' ? (
           <RadioPage
@@ -873,29 +890,39 @@ function UserApp() {
         ) : null}
         {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
         {activeView === 'task' && createTask ? (
-          <TaskPage
-            task={createTask}
-            onOpenSong={() => currentSong && openSong(currentSong.id)}
-            challengeTitle={createChallenge?.title}
-            onReturnToChallenge={createChallenge ? () => {
-              window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
-              setActiveView('discover')
-            } : undefined}
-          />
+          <>
+            <div className="page-back-row">
+              <BackButton label="返回创作" onClick={() => setActiveView('createForm')} />
+            </div>
+            <TaskPage
+              task={createTask}
+              onOpenSong={() => currentSong && openSong(currentSong.id)}
+              challengeTitle={createChallenge?.title}
+              onReturnToChallenge={createChallenge ? () => {
+                window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
+                setActiveView('discover')
+              } : undefined}
+            />
+          </>
         ) : null}
         {activeView === 'songDetail' && currentSong ? (
-          <SongDetailPage
-            song={currentSong}
-            canManage={currentSong.author.id === user.id}
-            publishing={publishSubmitting}
-            onPlay={() => void handlePlaySong(currentSong.id)}
-            onRemix={() => handleRemixSong(currentSong)}
-            onPlayDj={() => void handlePlayDjBroadcast(currentSong)}
-            onOpenPoster={() => setPosterOpen(true)}
-            onPublish={() => void handlePublishSong(true)}
-            onSetPrivate={() => void handlePublishSong(false)}
-            onSongUpdate={syncSong}
-          />
+          <>
+            <div className="page-back-row">
+              <BackButton label="返回上一页" onClick={() => setActiveView(songReturnView)} />
+            </div>
+            <SongDetailPage
+              song={currentSong}
+              canManage={currentSong.author.id === user.id}
+              publishing={publishSubmitting}
+              onPlay={() => void handlePlaySong(currentSong.id)}
+              onRemix={() => handleRemixSong(currentSong)}
+              onPlayDj={() => void handlePlayDjBroadcast(currentSong)}
+              onOpenPoster={() => setPosterOpen(true)}
+              onPublish={() => void handlePublishSong(true)}
+              onSetPrivate={() => void handlePublishSong(false)}
+              onSongUpdate={syncSong}
+            />
+          </>
         ) : null}
         {posterOpen && currentSong ? (
           <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />

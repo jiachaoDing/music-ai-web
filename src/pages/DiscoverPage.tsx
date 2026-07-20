@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { generateLyrics, generateLyricsWithFallback } from '../api/ai'
+import { BackButton } from '../components/BackButton'
 import {
   createBattle as createBattleRequest,
   getBattles,
@@ -67,11 +68,17 @@ function extractAiTitle(rawText?: string) {
 
 function extractAiLyrics(rawText?: string) {
   if (!rawText) return ''
-  const cleaned = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  const cleaned = rawText.replace(/<\/?think>/gi, '').trim()
+  const sections = [...cleaned.matchAll(/\[([^\]]+)\]/g)].filter((match) => {
+    const label = match[1].replace(/\s+/g, '').toLowerCase()
+    return label === 'verse' || label === 'verse1' || label === '主歌' || label === '主歌一' || label === '主歌1'
+  })
+  const finalDraftStart = sections.at(-1)
+  if (finalDraftStart?.index !== undefined) return cleaned.slice(finalDraftStart.index).trim()
+  const section = cleaned.match(/\[(?:Chorus|Bridge|副歌)[^\]]*\][\s\S]*/i)
+  if (section?.[0]?.trim()) return section[0].trim()
   const marker = cleaned.match(/(?:歌词|Lyrics)\s*[:：]\s*([\s\S]+)/i)
-  if (marker?.[1]?.trim()) return marker[1].trim()
-  const section = cleaned.match(/\[(?:Verse|Chorus|Bridge|主歌|副歌)[^\]]*\][\s\S]*/i)
-  return section?.[0]?.trim() ?? ''
+  return marker?.[1]?.trim() ?? ''
 }
 
 function usableVocalLyrics(lyrics?: string, rawText?: string) {
@@ -362,15 +369,17 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           : '请据此创作一首今日时运歌曲。标题要简洁、有画面感、与今日状态相关，不要使用“今日微光”；歌词需要完整并包含 Verse、Chorus 等段落。',
       ].join('\n')
       const styles = isInstrumental ? ['治愈', 'Lo-fi', '氛围纯音乐'] : ['治愈流行', 'Lo-fi']
-      let lyric = await generateLyrics({ mode: 'song', prompt: fortunePrompt, styles })
+      const lyricInput = { mode: 'song', prompt: fortunePrompt, styles }
+      let lyric = await generateLyrics(lyricInput).catch(() => generateLyricsWithFallback(lyricInput))
       let vocalLyrics = isInstrumental ? '' : usableVocalLyrics(lyric.lyrics, lyric.rawText)
 
       if (!isInstrumental && !vocalLyrics) {
-        const retry = await generateLyrics({
+        const retryInput = {
           mode: 'song',
           prompt: `${fortunePrompt}\n上一次没有返回可识别的歌词。请严格按照“标题：”“风格：”“歌词：”输出，并提供完整的 [Verse] 和 [Chorus]。`,
           styles,
-        })
+        }
+        const retry = await generateLyrics(retryInput).catch(() => generateLyricsWithFallback(retryInput))
         lyric = retry
         vocalLyrics = usableVocalLyrics(retry.lyrics, retry.rawText)
       }
@@ -391,11 +400,12 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
 
       let generatedTitle = isPlaceholderTitle(lyric.title) ? extractAiTitle(lyric.rawText) : lyric.title.trim()
       if (isPlaceholderTitle(generatedTitle)) {
-        const titleResult = await generateLyrics({
+        const titleInput = {
           mode: 'song',
           prompt: `${fortunePrompt}\n上一次没有生成有效歌名。请重新构思一个独特的中文歌名，并严格以“标题：歌名”开头。`,
           styles,
-        })
+        }
+        const titleResult = await generateLyrics(titleInput).catch(() => generateLyricsWithFallback(titleInput))
         generatedTitle = isPlaceholderTitle(titleResult.title) ? extractAiTitle(titleResult.rawText) : titleResult.title.trim()
       }
       const fallbackTitle = `${todayFortune.keyword}·${todayFortune.mood.name}`
@@ -420,7 +430,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   }
 
   return (
-    <section className="page-stack discover-suite">
+    <section className={`page-stack discover-suite discover-suite--${view}`}>
       <style>{discoverStyles}</style>
 
       <div className="discover-hero">
@@ -453,6 +463,12 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           </button>
         ))}
       </nav>
+
+      {view !== 'home' && view !== 'battleNew' ? (
+        <div className="discover-back-row">
+          <BackButton label="返回发现总览" onClick={() => navigate('home', '/discover')} />
+        </div>
+      ) : null}
 
       {view === 'home' ? (
         <DiscoverHomePage

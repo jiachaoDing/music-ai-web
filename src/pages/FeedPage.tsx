@@ -56,8 +56,10 @@ export function FeedPage({
       <section className="create-hero">
         <div className="create-hero__copy">
           <span>Echo AI Music Community</span>
-          <h1>把灵感变成 AI 音乐作品</h1>
-          <p>输入一句灵感，生成旋律、歌词和封面；也可以先逛逛社区里的新作品。</p>
+          <h1 className="feed-hero-title feed-hero-title--desktop">把灵感变成 AI 音乐作品</h1>
+          <h1 className="feed-hero-title feed-hero-title--mobile">把灵感写成歌</h1>
+          <p className="feed-hero-copy feed-hero-copy--desktop">输入一句灵感，生成旋律、歌词和封面；也可以先逛逛社区里的新作品。</p>
+          <p className="feed-hero-copy feed-hero-copy--mobile">写下一刻心情，让它成为你的旋律。</p>
         </div>
       </section>
 

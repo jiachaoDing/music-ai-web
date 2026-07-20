@@ -675,5 +675,14 @@ export const createStyles = `
     display: grid;
     grid-template-columns: 1fr;
   }
+
+  .page-shell:has(.create-suite) {
+    padding: 18px 16px 172px;
+  }
+
+  .create-suite {
+    gap: 22px;
+  }
 }
+
 `

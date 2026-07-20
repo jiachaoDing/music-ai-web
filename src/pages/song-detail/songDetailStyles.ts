@@ -900,4 +900,46 @@ export const songDetailStyles = `
     right: 18px;
   }
 }
+
+@media (max-width: 640px) {
+  .song-detail-page {
+    gap: 12px;
+  }
+
+  .song-detail-surface,
+  .song-detail-panel,
+  .song-detail-block {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .song-detail-copy h1,
+  .song-detail-side h2 {
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .song-detail-summary,
+  .song-detail-side p,
+  .song-detail-block p,
+  .song-detail-lyrics {
+    font-size: 13px;
+  }
+
+  .song-detail-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .song-detail-action {
+    min-height: 40px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .song-detail-lyrics {
+    min-height: 150px;
+    max-height: 240px;
+  }
+}
 `
