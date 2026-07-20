@@ -408,6 +408,24 @@ export const createStyles = `
   font-weight: 760;
 }
 
+.create-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.create-field-head em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.create-style-picker {
+  gap: 14px;
+}
+
 .create-field input,
 .create-field textarea {
   border-color: rgba(15, 23, 42, 0.1);
@@ -422,14 +440,14 @@ export const createStyles = `
 .create-tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 
 .create-tag-row button {
-  min-height: 32px;
+  min-height: 48px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 18px;
   color: var(--text);
   background: #ffffff;
   box-shadow: none;
@@ -441,6 +459,13 @@ export const createStyles = `
   color: var(--theme-dark);
   background: var(--theme-soft);
   box-shadow: none;
+}
+
+.create-tag-row button.is-active {
+  border-color: rgba(234, 76, 137, 0.42);
+  color: var(--theme-dark);
+  background: linear-gradient(180deg, rgba(234, 76, 137, 0.15), rgba(234, 76, 137, 0.07));
+  box-shadow: 0 12px 26px rgba(234, 76, 137, 0.12);
 }
 
 .create-upload-box {

@@ -1,9 +1,10 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { generateCover, generateDjBroadcast } from './api/ai'
+import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
+import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
 import type { FeedTab } from './api/song'
-import { generateSong, getFeed, getGenerateTaskStatus, getMySongs, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask, updateSong } from './api/song'
+import { getFeed, getGenerateTaskStatus, getMySongs, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
@@ -13,6 +14,7 @@ import { CreateFormPage } from './pages/create/CreateFormPage'
 import { CreatePage } from './pages/create/CreatePage'
 import { DiscoverPage } from './pages/DiscoverPage'
 import { FeedPage } from './pages/FeedPage'
+import { HostPage as HostProfilePage } from './pages/host/HostPage'
 import { MePage } from './pages/me/MePage'
 import { PlayerPage } from './pages/player/PlayerPage'
 import { RadioPage } from './pages/radio/RadioPage'
@@ -24,7 +26,7 @@ import { resolveAssetUrl } from './utils/asset'
 import type { NavKey } from './utils/constants'
 import { AdminPage } from './pages/admin/AdminPage'
 
-type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player'
+type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player' | 'host'
 
 type AuthMode = 'login' | 'register'
 
@@ -59,6 +61,8 @@ function UserApp() {
   const [user, setUser] = useState<User | null>(null)
   const [feedSongs, setFeedSongs] = useState<Song[]>([])
   const [mySongs, setMySongs] = useState<Song[]>([])
+  const [hostPage, setHostPage] = useState<HostPage | null>(null)
+  const [curation, setCuration] = useState<HostCuration | null>(null)
   const [feedTab, setFeedTab] = useState<FeedTab>('resonance')
   const [createMode, setCreateMode] = useState<SongMode>('song')
   const [radioPreset, setRadioPreset] = useState<CreatePreset>(EMPTY_CREATE_PRESET)
@@ -177,6 +181,18 @@ function UserApp() {
     setMySongs((currentSongs) => applyPlayCount(currentSongs))
   }
 
+  async function loadHostContent() {
+    const [hostResult, curationResult] = await Promise.allSettled([getHostPage(), getCuration()])
+
+    if (hostResult.status === 'fulfilled') {
+      setHostPage(hostResult.value)
+    }
+
+    if (curationResult.status === 'fulfilled') {
+      setCuration(curationResult.value)
+    }
+  }
+
   async function startPlayback(songId?: string) {
     const nextSongId = songId ?? currentSong?.id
     if (!nextSongId) return
@@ -267,10 +283,11 @@ function UserApp() {
     let taskSong: Song | undefined
     for (let attempt = 0; attempt < 60; attempt += 1) {
       const status = await getGenerateTaskStatus(taskId)
+      const taskError = typeof status.error === 'string' ? status.error : status.error?.message
       setCreateTask({
         status: status.status === 'error' || status.status === 'failed' ? 'error' : 'running',
         stage: status.stage || `正在生成${taskLabel}`,
-        description: status.status === 'queued' ? '任务正在排队，请稍等。' : `后端正在生成${taskLabel}和音频。`,
+        description: status.status === 'queued' ? '任务正在排队，请稍等。' : `后端正在生成${taskLabel}、音频、封面和乐评。`,
         progress: status.progress ?? Math.min(90, 12 + attempt * 2),
         canOpenSong: false,
       })
@@ -279,7 +296,7 @@ function UserApp() {
         break
       }
       if (status.status === 'error' || status.status === 'failed') {
-        throw new Error(status.error || `${taskLabel}生成失败。`)
+        throw new Error(taskError || `${taskLabel}生成失败。`)
       }
       await new Promise((resolve) => window.setTimeout(resolve, 2000))
     }
@@ -293,7 +310,7 @@ function UserApp() {
     setCreateTask({
       status: 'running',
       stage: '正在生成中',
-      description: '正在整理歌词、旋律和音频结果，完成后会继续生成封面。',
+      description: '正在提交生成任务，后端会继续生成音频、封面和乐评。',
       progress: 24,
       canOpenSong: false,
     })
@@ -314,48 +331,18 @@ function UserApp() {
         if (!task.taskId) throw new Error('后端没有返回电台生成任务 ID。')
         createdSong = await pollGenerateTask(task.taskId, '电台音乐')
       } else {
-        createdSong = await generateSong(payload)
+        const task = await submitGenerateTask(payload)
+        if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
+        createdSong = await pollGenerateTask(task.taskId, '歌曲')
       }
       syncSong(createdSong)
       setCreateTask({
-        status: 'running',
-        stage: '正在生成中',
-        description: '歌曲已经生成完成，正在继续生成封面，请再稍等一下。',
-        progress: 76,
-        canOpenSong: false,
+        status: 'done',
+        stage: '生成完成',
+        description: '歌曲、封面和乐评都已经准备好了，现在可以查看详情或继续发布。',
+        progress: 100,
+        canOpenSong: true,
       })
-
-      try {
-        const coverResult = await generateCover({
-          title: createdSong.title,
-          style: createdSong.style,
-          prompt: payload.prompt,
-        })
-
-        if (coverResult.imageUrl) {
-          const songWithCover = await updateSong(createdSong.id, {
-            coverUrl: coverResult.imageUrl,
-          })
-          syncSong(songWithCover)
-        }
-
-        setCreateTask({
-          status: 'done',
-          stage: '生成完成',
-          description: '歌曲和封面都已经准备好了，现在可以查看详情或继续发布。',
-          progress: 100,
-          canOpenSong: true,
-        })
-      } catch (coverError) {
-        console.error(coverError)
-        setCreateTask({
-          status: 'done',
-          stage: '生成完成',
-          description: '歌曲已经生成完成，但封面暂时没有成功生成，可以先查看详情。',
-          progress: 100,
-          canOpenSong: true,
-        })
-      }
     } catch (error) {
       console.error(error)
       setCreateTask({
@@ -382,8 +369,9 @@ function UserApp() {
 
     try {
       const result = await generateDjBroadcast(song.id)
-      const djText = result.djText ?? result.text ?? 'AI DJ 播报已生成。'
-      const djUrl = result.djUrl ?? result.audioUrl
+      const payload = result.data ?? result
+      const djText = payload.djText ?? payload.text ?? 'AI DJ 播报已生成。'
+      const djUrl = payload.djUrl ?? payload.audioUrl
 
       if (!djUrl) {
         window.alert(djText)
@@ -458,6 +446,7 @@ function UserApp() {
           setFeedSongs(nextFeedSongs)
           setMySongs(nextMySongs)
           setCurrentSongId(undefined)
+          void loadHostContent()
         } catch (error) {
           console.error(error)
           setFeedSongs([])
@@ -660,6 +649,7 @@ function UserApp() {
       setFeedSongs(nextFeedSongs)
       setMySongs(nextMySongs)
       setCurrentSongId(nextFeedSongs[0]?.id)
+      void loadHostContent()
     } catch (error) {
       console.error(error)
       window.alert(error instanceof Error ? error.message : '璁よ瘉澶辫触锛岃绋嶅悗閲嶈瘯')
@@ -675,6 +665,8 @@ function UserApp() {
     setActiveView('auth')
     setFeedSongs([])
     setMySongs([])
+    setHostPage(null)
+    setCuration(null)
     setCurrentSongId(undefined)
     setPosterOpen(false)
     setCreateTask(null)
@@ -705,6 +697,8 @@ function UserApp() {
   const activeNavKey =
     activeView === 'player' || activeView === 'songDetail'
       ? 'feed'
+      : activeView === 'host'
+        ? 'feed'
       : activeView === 'task' || activeView === 'createForm'
         ? 'create'
         : activeView === 'auth'
@@ -755,7 +749,19 @@ function UserApp() {
           <FeedPage
             activeTab={feedTab}
             songs={feedSongs}
+            hostPage={hostPage}
+            curation={curation}
             onChangeTab={(tab) => void changeFeedTab(tab)}
+            onCreate={() => setActiveView('create')}
+            onOpenHost={() => setActiveView('host')}
+            onOpenSong={openSong}
+          />
+        ) : null}
+        {activeView === 'host' ? (
+          <HostProfilePage
+            hostPage={hostPage}
+            curation={curation}
+            onBack={() => setActiveView('feed')}
             onCreate={() => setActiveView('create')}
             onOpenSong={openSong}
           />
@@ -807,6 +813,7 @@ function UserApp() {
             onOpenPoster={() => setPosterOpen(true)}
             onPublish={() => void handlePublishSong(true)}
             onSetPrivate={() => void handlePublishSong(false)}
+            onSongUpdate={syncSong}
           />
         ) : null}
         {posterOpen && currentSong ? (
