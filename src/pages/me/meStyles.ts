@@ -708,6 +708,8 @@ export const meStyles = `
 }
 
 .me-playlist-cover {
+  position: relative;
+  overflow: hidden;
   display: grid;
   align-content: end;
   min-height: 220px;
@@ -728,7 +730,26 @@ export const meStyles = `
     box-shadow 160ms ease;
 }
 
+.me-playlist-cover img,
+.me-playlist-detail-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.me-playlist-cover.has-image::after,
+.me-playlist-detail-cover.has-image::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(13, 12, 34, 0.02), rgba(13, 12, 34, 0.36));
+  content: '';
+}
+
 .me-playlist-cover span {
+  position: relative;
+  z-index: 1;
   justify-self: start;
   border-radius: 999px;
   padding: 5px 9px;
@@ -874,6 +895,8 @@ export const meStyles = `
 }
 
 .me-playlist-detail-cover {
+  position: relative;
+  overflow: hidden;
   display: grid;
   align-content: end;
   min-height: 160px;
@@ -890,6 +913,8 @@ export const meStyles = `
 }
 
 .me-playlist-detail-cover span {
+  position: relative;
+  z-index: 1;
   justify-self: start;
   border-radius: 999px;
   padding: 5px 9px;

@@ -4,6 +4,7 @@ export type Playlist = {
   id: string
   name: string
   color?: string
+  coverUrl?: string | null
   type: 'liked' | 'custom'
   isSystem: boolean
   songCount: number

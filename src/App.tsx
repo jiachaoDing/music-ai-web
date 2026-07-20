@@ -4,7 +4,7 @@ import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
 import type { FeedTab, ResonanceFeedResponse } from './api/song'
-import { getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
+import { getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { PosterModal } from './components/PosterModal'
@@ -154,6 +154,22 @@ function UserApp() {
   function openSong(songId: string) {
     setCurrentSongId(songId)
     setActiveView('songDetail')
+    void getSongDetail(songId)
+      .then((nextSong) => {
+        const updateIfExists = (list: Song[]) =>
+          list.map((song) => (song.id === nextSong.id ? nextSong : song))
+
+        setFeedSongs((currentSongs) =>
+          currentSongs.some((song) => song.id === nextSong.id)
+            ? updateIfExists(currentSongs)
+            : [nextSong, ...currentSongs],
+        )
+        setMySongs(updateIfExists)
+        setCurrentSongId(nextSong.id)
+      })
+      .catch((error) => {
+        console.error(error)
+      })
   }
 
   function replaceSongInList(list: Song[], nextSong: Song) {

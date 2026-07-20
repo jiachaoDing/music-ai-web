@@ -1634,13 +1634,59 @@ textarea:focus {
 
   .host-panel {
     grid-template-columns: 1fr;
-    padding: 18px;
+    gap: 14px;
+    padding: 16px;
     border-radius: 12px;
   }
 
   .host-panel__header,
   .host-panel__footer {
     display: grid;
+    gap: 10px;
+  }
+
+  .host-panel__copy h3 {
+    margin: 4px 0;
+    font-size: 28px;
+  }
+
+  .host-panel__copy p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .host-panel__entry {
+    width: fit-content;
+    min-height: 36px;
+    padding: 0 16px;
+  }
+
+  .host-panel__today {
+    gap: 10px;
+  }
+
+  .host-panel__feature {
+    min-height: 92px;
+    gap: 5px;
+    padding: 12px;
+  }
+
+  .host-panel__feature strong {
+    font-size: 18px;
+  }
+
+  .host-panel__feature small {
+    font-size: 13px;
+    line-height: 1.35;
+    -webkit-line-clamp: 1;
+  }
+
+  .host-panel__meta strong {
+    font-size: 18px;
+  }
+
+  .host-panel__topics {
+    justify-content: flex-start;
   }
 
   .host-panel__today {
@@ -1861,6 +1907,64 @@ textarea:focus {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .host-panel {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .host-panel__copy span,
+  .host-panel__feature span {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .host-panel__copy h3 {
+    font-size: 24px;
+  }
+
+  .host-panel__copy p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .host-panel__entry {
+    width: 100%;
+    min-height: 34px;
+    justify-content: center;
+    box-shadow: none;
+  }
+
+  .host-panel__today {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .host-panel__feature {
+    min-height: 76px;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: none;
+  }
+
+  .host-panel__feature strong {
+    overflow: hidden;
+    font-size: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .host-panel__feature small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-line-clamp: 1;
+  }
+
+  .host-panel__footer {
+    display: none;
   }
 
   .feed-controls {
