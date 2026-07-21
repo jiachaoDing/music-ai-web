@@ -39,11 +39,23 @@ type AuthValues = {
 }
 
 type CreateTaskState = {
-  status: 'running' | 'done' | 'error'
+  status: 'queued' | 'running' | 'done' | 'error'
   stage: string
   description: string
   progress: number
   canOpenSong: boolean
+  queueAhead?: number
+  active?: number
+  maxConcurrency?: number
+}
+
+type PendingCreateTask = {
+  taskId: string
+  taskLabel: string
+  userId: string
+  createdAt: string
+  challengeId?: string
+  challengeTitle?: string
 }
 
 type CreatePreset = {
@@ -59,7 +71,62 @@ type RepeatMode = 'off' | 'all' | 'one'
 const AUTH_STORAGE_KEY = 'echo-auth-user'
 const REPEAT_STORAGE_KEY = 'echo-repeat-mode'
 const SHUFFLE_STORAGE_KEY = 'echo-shuffle-enabled'
+const PENDING_CREATE_TASK_KEY = 'echo-pending-create-task'
 const EMPTY_CREATE_PRESET: CreatePreset = { prompt: '', style: '' }
+
+function waitForNextPoll(delay: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Polling aborted', 'AbortError'))
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener('abort', handleAbort)
+      resolve()
+    }, delay)
+    const handleAbort = () => {
+      window.clearTimeout(timer)
+      reject(new DOMException('Polling aborted', 'AbortError'))
+    }
+    signal.addEventListener('abort', handleAbort, { once: true })
+  })
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function isTerminalTaskLookupError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : ''
+  return message.includes('task not found') || message.includes('forbidden') || message.includes('unauthorized')
+}
+
+function formatGenerateStage(stage: string | undefined, taskLabel: string) {
+  if (!stage) return `正在生成${taskLabel}`
+  if (stage === 'generating music') return '正在生成音乐'
+  if (stage === 'generating cover') return '正在生成封面'
+  if (stage === 'generating review') return '正在生成 AI 乐评'
+  if (stage === 'generating remix music') return '正在生成翻唱二创'
+  if (stage === 'album running') return '正在策划专辑'
+  if (stage === 'done') return '生成完成'
+  if (stage === 'failed') return '生成失败'
+
+  const albumStage = stage.match(/^creating track (\d+)\/(\d+)(?:: (.+))?$/)
+  if (albumStage) {
+    const action = albumStage[3] === 'generating lyrics' ? '生成歌词' : albumStage[3] === 'generating music' ? '生成音乐' : '制作歌曲'
+    return `正在${action} ${albumStage[1]}/${albumStage[2]}`
+  }
+
+  return stage
+}
+
+function describeRunningStage(stage: string, taskLabel: string) {
+  if (stage.includes('封面')) return '音乐已经生成，AI 正在制作作品封面。'
+  if (stage.includes('乐评')) return '音乐和封面已经就绪，AI 正在撰写乐评。'
+  if (stage.includes('歌词')) return 'AI 正在根据主题和风格创作歌词。'
+  return `AI 正在生成${taskLabel}，完成后会自动展示结果。`
+}
 
 function getSavedRepeatMode(): RepeatMode {
   const savedMode = window.localStorage.getItem(REPEAT_STORAGE_KEY)
@@ -122,6 +189,9 @@ function UserApp() {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null)
   const analyserDataRef = useRef<Uint8Array | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const activeViewRef = useRef<AppView>(activeView)
+  const taskPollingControllerRef = useRef<AbortController | null>(null)
+  const pollingTaskIdRef = useRef<string | null>(null)
   const djFollowSongIdRef = useRef<string | null>(null)
   const sharedSongIdRef = useRef<string | null>(getSharedSongId())
 
@@ -545,30 +615,110 @@ function UserApp() {
     openCreateForm('remix')
   }
 
+  function showSubmittedTask(task: Awaited<ReturnType<typeof submitGenerateTask>>, taskLabel: string) {
+    const queueAhead = task.queueAhead ?? task.queuePos ?? 0
+    const maxConcurrency = task.maxConcurrency ?? task.concurrency
+    setCreateTask({
+      status: 'queued',
+      stage: queueAhead > 0 ? '等待生成' : '正在分配生成资源',
+      description: queueAhead > 0
+        ? `请求已进入 AI 队列，前面还有 ${queueAhead} 个请求。`
+        : `任务已提交，正在等待生成${taskLabel}。`,
+      progress: 10,
+      canOpenSong: false,
+      queueAhead,
+      active: task.active,
+      maxConcurrency,
+    })
+  }
+
+  function rememberPendingTask(
+    taskId: string,
+    taskLabel: string,
+    challenge?: { id: string; title?: string },
+  ) {
+    if (!user) return
+    window.localStorage.setItem(PENDING_CREATE_TASK_KEY, JSON.stringify({
+      taskId,
+      taskLabel,
+      userId: user.id,
+      createdAt: new Date().toISOString(),
+      challengeId: challenge?.id,
+      challengeTitle: challenge?.title,
+    } satisfies PendingCreateTask))
+  }
+
+  function clearPendingTask(taskId: string) {
+    const saved = window.localStorage.getItem(PENDING_CREATE_TASK_KEY)
+    if (!saved) return
+    try {
+      const pending = JSON.parse(saved) as PendingCreateTask
+      if (pending.taskId === taskId) window.localStorage.removeItem(PENDING_CREATE_TASK_KEY)
+    } catch {
+      window.localStorage.removeItem(PENDING_CREATE_TASK_KEY)
+    }
+  }
+
   async function pollGenerateTask(taskId: string, taskLabel: string) {
-    let taskSong: Song | undefined
-    for (let attempt = 0; attempt < 60; attempt += 1) {
-      const status = await getGenerateTaskStatus(taskId)
+    taskPollingControllerRef.current?.abort()
+    const controller = new AbortController()
+    taskPollingControllerRef.current = controller
+    pollingTaskIdRef.current = taskId
+    let transientFailures = 0
+
+    try {
+      while (!controller.signal.aborted) {
+      let status
+      try {
+        status = await getGenerateTaskStatus(taskId, controller.signal)
+        transientFailures = 0
+      } catch (error) {
+        if (isAbortError(error)) throw error
+        if (isTerminalTaskLookupError(error)) throw error
+        transientFailures += 1
+        const retryDelay = [3000, 5000, 10000, 15000][Math.min(transientFailures - 1, 3)]
+        await waitForNextPoll(retryDelay, controller.signal)
+        continue
+      }
       const taskError = typeof status.error === 'string' ? status.error : status.error?.message
+      const queueAhead = status.queueAhead ?? status.queuePos ?? 0
+      const maxConcurrency = status.maxConcurrency ?? status.concurrency
+      const isQueued = status.status === 'queued'
+      const displayStage = isQueued ? '等待生成' : formatGenerateStage(status.stage, taskLabel)
       setCreateTask({
-        status: status.status === 'error' || status.status === 'failed' ? 'error' : 'running',
-        stage: status.stage || `正在生成${taskLabel}`,
-        description: status.status === 'queued' ? '任务正在排队，请稍等。' : `正在生成${taskLabel}、音频、封面和乐评。`,
-        progress: status.progress ?? Math.min(90, 12 + attempt * 2),
+        status: status.status === 'error' || status.status === 'failed' ? 'error' : isQueued ? 'queued' : 'running',
+        stage: displayStage,
+        description: isQueued
+          ? queueAhead > 0
+            ? `当前生成资源繁忙，前面还有 ${queueAhead} 个 AI 请求。`
+            : '队列即将轮到你，正在分配生成资源。'
+          : describeRunningStage(displayStage, taskLabel),
+        progress: isQueued ? Math.min(status.progress ?? 10, 20) : status.progress ?? 40,
         canOpenSong: false,
+        queueAhead,
+        active: status.active,
+        maxConcurrency,
       })
       if (status.status === 'done') {
-        taskSong = status.result?.song
-        break
+        const taskSong = status.result?.song
+        if (!taskSong) throw new Error(`${taskLabel}已经完成，但暂时无法读取生成结果。`)
+        clearPendingTask(taskId)
+        return taskSong
       }
       if (status.status === 'error' || status.status === 'failed') {
+        clearPendingTask(taskId)
         throw new Error(taskError || `${taskLabel}生成失败。`)
       }
-      await new Promise((resolve) => window.setTimeout(resolve, 2000))
-    }
 
-    if (!taskSong) throw new Error(`${taskLabel}仍在生成，请稍后在我的作品中查看。`)
-    return taskSong
+        const pollDelay = document.hidden ? 15000 : activeViewRef.current === 'task' ? 2500 : 8000
+        await waitForNextPoll(pollDelay, controller.signal)
+      }
+
+      throw new DOMException('Polling aborted', 'AbortError')
+    } finally {
+      if (pollingTaskIdRef.current === taskId) pollingTaskIdRef.current = null
+      if (taskPollingControllerRef.current === controller) taskPollingControllerRef.current = null
+    }
   }
 
   async function handleCreateSubmit(payload: CreateSubmission) {
@@ -592,15 +742,26 @@ function UserApp() {
           prompt: payload.prompt || `翻唱二创《${payload.title}》`,
         })
         if (!task.taskId) throw new Error('二创任务提交失败，请稍后重试。')
+        rememberPendingTask(task.taskId, '翻唱二创')
+        showSubmittedTask(task, '翻唱二创')
         createdSong = await pollGenerateTask(task.taskId, '翻唱二创')
       } else if (payload.mode === 'radio' || payload.challengeId) {
         const task = await submitGenerateTask(payload)
         if (!task.taskId) throw new Error('歌曲生成任务提交失败，请稍后重试。')
-        createdSong = await pollGenerateTask(task.taskId, payload.challengeId ? '话题挑战歌曲' : '电台音乐')
+        const taskLabel = payload.challengeId ? '话题挑战歌曲' : '电台音乐'
+        rememberPendingTask(
+          task.taskId,
+          taskLabel,
+          payload.challengeId ? { id: payload.challengeId, title: createChallenge?.title } : undefined,
+        )
+        showSubmittedTask(task, taskLabel)
+        createdSong = await pollGenerateTask(task.taskId, taskLabel)
         if (payload.challengeId) createdSong = { ...createdSong, challengeId: payload.challengeId }
       } else {
         const task = await submitGenerateTask(payload)
         if (!task.taskId) throw new Error('歌曲生成任务提交失败，请稍后重试。')
+        rememberPendingTask(task.taskId, '歌曲')
+        showSubmittedTask(task, '歌曲')
         createdSong = await pollGenerateTask(task.taskId, '歌曲')
       }
       syncSong(createdSong, { makeCurrent: true })
@@ -631,6 +792,7 @@ function UserApp() {
         canOpenSong: true,
       })
     } catch (error) {
+      if (isAbortError(error)) return
       console.error(error)
       setCreateTask({
         status: 'error',
@@ -745,6 +907,72 @@ function UserApp() {
   }
 
   useEffect(() => {
+    activeViewRef.current = activeView
+  }, [activeView])
+
+  useEffect(() => {
+    if (!user || pollingTaskIdRef.current) return
+    const saved = window.localStorage.getItem(PENDING_CREATE_TASK_KEY)
+    if (!saved) return
+
+    let pending: PendingCreateTask
+    try {
+      pending = JSON.parse(saved) as PendingCreateTask
+    } catch {
+      window.localStorage.removeItem(PENDING_CREATE_TASK_KEY)
+      return
+    }
+    if (!pending.taskId || pending.userId !== user.id) return
+
+    setCreateSubmitting(true)
+    setCreateTask({
+      status: 'queued',
+      stage: '正在恢复生成任务',
+      description: '已找到未完成的任务，正在同步最新生成进度。',
+      progress: 10,
+      canOpenSong: false,
+    })
+    setActiveView('task')
+
+    void pollGenerateTask(pending.taskId, pending.taskLabel || '歌曲')
+      .then(async (createdSong) => {
+        let completedSong = createdSong
+        let description = '歌曲、封面和乐评都已经准备好了，现在可以查看详情或继续发布。'
+        if (pending.challengeId) {
+          const publishedSong = await publishSong(createdSong.id, {
+            published: true,
+            copyrightConfirmed: true,
+          })
+          completedSong = {
+            ...createdSong,
+            ...publishedSong,
+            challengeId: pending.challengeId,
+          }
+          description = `歌曲已经发布，并成功加入话题「${pending.challengeTitle ?? '话题挑战'}」。`
+        }
+        syncSong(completedSong, { makeCurrent: true })
+        setCreateTask({
+          status: 'done',
+          stage: '生成完成',
+          description,
+          progress: 100,
+          canOpenSong: true,
+        })
+      })
+      .catch((error) => {
+        if (isAbortError(error)) return
+        setCreateTask({
+          status: 'error',
+          stage: '生成失败',
+          description: error instanceof Error ? error.message : '恢复生成任务失败，请稍后重试。',
+          progress: 100,
+          canOpenSong: false,
+        })
+      })
+      .finally(() => setCreateSubmitting(false))
+  }, [user])
+
+  useEffect(() => {
     async function bootstrap() {
       const savedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
       if (!savedToken) {
@@ -794,6 +1022,7 @@ function UserApp() {
 
   useEffect(() => {
     return () => {
+      taskPollingControllerRef.current?.abort()
       if (animationFrameRef.current) {
         window.cancelAnimationFrame(animationFrameRef.current)
       }
@@ -998,6 +1227,9 @@ function UserApp() {
   }
 
   function handleLogout() {
+    taskPollingControllerRef.current?.abort()
+    taskPollingControllerRef.current = null
+    pollingTaskIdRef.current = null
     clearToken()
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     setUser(null)

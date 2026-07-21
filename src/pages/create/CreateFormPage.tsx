@@ -347,7 +347,7 @@ export function CreateFormPage({
 
         <section className="create-form-panel create-result-panel">
           <div className="create-panel-heading">
-            <span>{mode === 'radio' ? '标题生成' : '歌词编辑'}</span>
+            <span>{mode === 'radio' ? '标题生成 · AI生成' : '歌词编辑 · AI生成'}</span>
             <h2>{mode === 'radio' ? '让 AI 为这段纯音乐命名' : '生成后可以继续修改'}</h2>
           </div>
 
@@ -386,6 +386,16 @@ export function CreateFormPage({
               )}
             </button>
           </div>
+
+          <aside className="create-copyright-notice" aria-label="AI 生成内容与版权说明">
+            <strong>AI 生成内容与版权说明</strong>
+            <p>
+              你可以在 Echo 中保存、发布和分享生成的音乐，但 AI 生成内容不一定自动享有完整、独占版权；你原创或实质修改的内容，相关权利依法归你。
+            </p>
+            <p>
+              请确保输入及参考素材已获得合法授权，不得复制他人作品或模仿特定歌手音色。所有 AI 生成内容均标注“AI生成”，请勿删除或篡改。
+            </p>
+          </aside>
         </section>
       </form>
     </section>

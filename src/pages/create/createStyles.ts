@@ -573,6 +573,25 @@ export const createStyles = `
   background: #ffffff;
 }
 
+.create-copyright-notice {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid rgba(13, 12, 34, 0.08);
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.create-copyright-notice strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.create-copyright-notice p {
+  margin: 0;
+}
+
 @keyframes create-record-spin {
   from {
     transform: rotate(0deg);

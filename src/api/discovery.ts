@@ -17,6 +17,9 @@ export type DayLyricResult = {
 
 export type GenerateTaskResult = {
   taskId: string
+  queueAhead?: number
+  active?: number
+  maxConcurrency?: number
 }
 
 export type GenerateTaskStatus = {
@@ -24,6 +27,9 @@ export type GenerateTaskStatus = {
   status: 'queued' | 'running' | 'done' | 'error'
   stage?: string
   progress?: number
+  queueAhead?: number
+  active?: number
+  maxConcurrency?: number
   result?: {
     song?: Song
   }
@@ -300,7 +306,16 @@ export async function submitFortuneSong(input: {
       body: JSON.stringify({ ...input, mode: 'fortune', originId: null }),
     }),
   )
-  return { taskId: asString(result.taskId ?? result.id) }
+  return {
+    taskId: asString(result.taskId ?? result.id),
+    queueAhead: typeof (result.queueAhead ?? result.queuePos) === 'number'
+      ? Number(result.queueAhead ?? result.queuePos)
+      : undefined,
+    active: typeof result.active === 'number' ? result.active : undefined,
+    maxConcurrency: typeof (result.maxConcurrency ?? result.concurrency) === 'number'
+      ? Number(result.maxConcurrency ?? result.concurrency)
+      : undefined,
+  }
 }
 
 export async function getGenerateTask(taskId: string): Promise<GenerateTaskStatus> {
@@ -312,6 +327,13 @@ export async function getGenerateTask(taskId: string): Promise<GenerateTaskStatu
     status: status === 'queued' || status === 'done' || status === 'error' ? status : 'running',
     stage: asString(result.stage) || undefined,
     progress: typeof result.progress === 'number' ? result.progress : undefined,
+    queueAhead: typeof (result.queueAhead ?? result.queuePos) === 'number'
+      ? Number(result.queueAhead ?? result.queuePos)
+      : undefined,
+    active: typeof result.active === 'number' ? result.active : undefined,
+    maxConcurrency: typeof (result.maxConcurrency ?? result.concurrency) === 'number'
+      ? Number(result.maxConcurrency ?? result.concurrency)
+      : undefined,
     result: asRecord(result.result) as GenerateTaskStatus['result'],
     error: asString(errorRecord.message ?? result.error) || null,
   }

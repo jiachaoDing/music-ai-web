@@ -395,6 +395,13 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
         localStorage.removeItem(pendingFortuneTaskKey(user.id))
         throw new Error(status.error || '时运曲生成失败。')
       }
+      if (status.status === 'queued') {
+        setMessage((status.queueAhead ?? 0) > 0
+          ? `时运曲正在排队，前面还有 ${status.queueAhead} 个 AI 请求。`
+          : '时运曲即将开始生成，正在分配生成资源。')
+      } else {
+        setMessage('时运曲正在生成，请稍候。')
+      }
       await new Promise((resolve) => window.setTimeout(resolve, 2000))
     }
     throw new Error('时运曲仍在后台生成。任务进度已经保存，重新进入时运页面后会继续查询。')
@@ -500,6 +507,9 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
         isInstrumental,
       })
       if (!task.taskId) throw new Error('生成任务提交失败，请稍后重试。')
+      setMessage((task.queueAhead ?? 0) > 0
+        ? `时运曲已进入队列，前面还有 ${task.queueAhead} 个 AI 请求。`
+        : '时运曲任务已提交，正在等待生成资源。')
       localStorage.setItem(pendingFortuneTaskKey(user.id), JSON.stringify({
         taskId: task.taskId,
         fortuneDate: selectedFortune.date,

@@ -1,10 +1,13 @@
 type TaskPageProps = {
   task: {
-    status: 'running' | 'done' | 'error'
+    status: 'queued' | 'running' | 'done' | 'error'
     stage: string
     description: string
     progress: number
     canOpenSong: boolean
+    queueAhead?: number
+    active?: number
+    maxConcurrency?: number
   }
   onOpenSong: () => void
   onReturnToChallenge?: () => void
@@ -27,10 +30,26 @@ export function TaskPage({ task, onOpenSong, onReturnToChallenge, challengeTitle
         <p>{task.description}</p>
       </div>
       <section className="task-panel">
+        {task.status === 'queued' ? (
+          <div className="task-queue" aria-label="任务排队状态">
+            <div>
+              <span>前方请求</span>
+              <strong>{task.queueAhead ?? 0}</strong>
+            </div>
+            <div>
+              <span>占用通道</span>
+              <strong>{task.active ?? '--'}</strong>
+            </div>
+            <div>
+              <span>通道上限</span>
+              <strong>{task.maxConcurrency ?? '--'}</strong>
+            </div>
+          </div>
+        ) : null}
         <div className="progress-bar">
           <span style={{ width: `${task.progress}%` }} />
         </div>
-        <strong>{task.progress}%</strong>
+        <strong className="task-progress-value">{task.progress}%</strong>
         <button type="button" disabled={!task.canOpenSong} onClick={onOpenSong}>
           {buttonLabel}
         </button>

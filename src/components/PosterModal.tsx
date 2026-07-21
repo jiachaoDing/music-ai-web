@@ -132,7 +132,7 @@ export function PosterModal({ song, onClose }: PosterModalProps) {
 
         context.fillStyle = 'rgba(255,255,255,0.92)'
         context.font = '600 24px Microsoft YaHei, sans-serif'
-        context.fillText('Echo · 用 AI 做的歌', pad + 16, coverTop + 52)
+        context.fillText('AI生成 · Echo', pad + 16, coverTop + 52)
 
         context.font = '900 48px Microsoft YaHei, sans-serif'
         context.fillStyle = '#ffffff'
@@ -182,7 +182,7 @@ export function PosterModal({ song, onClose }: PosterModalProps) {
         context.fillText('扫码即可来听这首歌', pad, captionY - 6)
         context.fillStyle = '#8a83a5'
         context.font = '500 18px Microsoft YaHei, sans-serif'
-        context.fillText('也来做一首属于你的歌', pad, captionY + 28)
+        context.fillText('AI 生成内容 · 请理性使用与分享', pad, captionY + 28)
       } catch (nextError) {
         console.error(nextError)
         setError('海报生成失败，请稍后重试')

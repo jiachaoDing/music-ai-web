@@ -65,6 +65,35 @@ export const songDetailStyles = `
     0 18px 34px rgba(234, 76, 137, 0.12);
 }
 
+.song-detail-ai-badge {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: #ffffff;
+  background: rgba(13, 12, 34, 0.7);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+}
+
+.song-detail-inline-ai {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  border: 1px solid rgba(234, 76, 137, 0.18);
+  border-radius: 4px;
+  padding: 3px 6px;
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.07);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .song-detail-cover img {
   position: absolute;
   inset: 0;
