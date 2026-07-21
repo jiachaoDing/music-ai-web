@@ -66,13 +66,13 @@ export function ChallengeDetailPage({
           <div className="challenge-prompt-card">
             <span>创作提示</span>
             <strong>围绕这个话题创作一首新歌，生成后自动加入挑战。</strong>
-            <p>作品生成时会携带话题 ID；发布后，其他用户可以在下方看到歌曲和作者。</p>
+            <p>完成创作后，作品会自动加入当前话题。</p>
           </div>
 
           <section className="dashed-box dashed-box--pink challenge-form-panel">
             <span>Join</span>
             <h3>{hasParticipated ? '已参与这个话题' : '参与创作'}</h3>
-            <p>进入创作页后填写灵感、生成歌词和歌曲。生成请求会自动关联当前话题。</p>
+            <p>进入创作页，围绕当前话题完成一首歌。</p>
             <button type="button" onClick={onJoin}>{hasParticipated ? '继续围绕话题创作' : '围绕话题创作'}</button>
           </section>
         </section>

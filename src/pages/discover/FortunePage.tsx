@@ -13,9 +13,10 @@ type FortunePageProps = {
   selectedDate: string
   generatedSongs: FortuneSongDraft[]
   generating: boolean
+  checkingIn: boolean
   checkedInToday: boolean
   onSelectDate: (date: string) => void
-  onGenerateSong: (mode: FortuneMode) => void
+  onGenerateSong: (mode: FortuneMode, fortune: FortuneRecord) => void
   onCheckin: (message: string) => void
   onCheckinToday: () => void
 }
@@ -79,6 +80,7 @@ export function FortunePage({
   selectedDate,
   generatedSongs,
   generating,
+  checkingIn,
   checkedInToday,
   onSelectDate,
   onGenerateSong,
@@ -98,6 +100,24 @@ export function FortunePage({
   const [sharing, setSharing] = useState(false)
   const [shareError, setShareError] = useState('')
   const today = new Date().toLocaleDateString('en-CA')
+  const isPlaceholder = selectedFortune.id.startsWith('placeholder_') || selectedFortune.keyword === '待打卡'
+  const isPastMissed = isPlaceholder && selectedFortune.date < today
+  const isFuture = selectedFortune.date > today
+  const isTodayPending = isPlaceholder && selectedFortune.date === today
+  const fortuneUnavailableMessage = isPastMissed
+    ? '当日未打卡，暂无时运记录'
+    : isFuture
+      ? '时运尚未开启'
+      : isTodayPending
+        ? '今日尚未打卡'
+        : ''
+  const canUseFortune = !isPlaceholder && !isFuture
+
+  useEffect(() => {
+    setShowShareCard(false)
+    setShareQrUrl('')
+    setShareError('')
+  }, [selectedFortune.date])
 
   useEffect(() => {
     if (!showShareCard || !shareQrUrl) return
@@ -238,7 +258,7 @@ export function FortunePage({
       onCheckin('未来日期暂时不能打卡，请到当天再来。')
       return
     }
-    if (checkedInToday) {
+    if (checkedInToday || checkingIn) {
       onCheckin('今天已经打卡，无需重复操作。')
       return
     }
@@ -246,6 +266,10 @@ export function FortunePage({
   }
 
   async function openShareCard() {
+    if (!canUseFortune) {
+      onCheckin(fortuneUnavailableMessage || '当前日期暂无可分享的时运记录。')
+      return
+    }
     setShowShareCard(true)
     setShareError('')
     setSharing(true)
@@ -356,18 +380,20 @@ export function FortunePage({
             <img className="fortune-daily__art" src={resolveAssetUrl(selectedFortune.img)} alt={`${selectedFortune.date} 每日治愈插画`} />
           ) : null}
           <span>{selectedFortune.date}</span>
-          <h2>{selectedFortune.keyword}日卡</h2>
-          <p>{selectedFortune.encourage}</p>
-          <div className="metric-row">
-            <strong>电量 {selectedFortune.battery}%</strong>
-            <strong>连续 {selectedFortune.streak} 天</strong>
-            <strong>{selectedFortune.luckyColor.name}</strong>
-          </div>
+          <h2>{fortuneUnavailableMessage || `${selectedFortune.keyword}日卡`}</h2>
+          <p>{fortuneUnavailableMessage ? (isPastMissed ? '过去未完成打卡的日期无法补签。' : isFuture ? '请在当天到来后查看时运。' : '点击下方按钮开启今天的时运。') : selectedFortune.encourage}</p>
+          {canUseFortune ? (
+            <div className="metric-row">
+              <strong>电量 {selectedFortune.battery}%</strong>
+              <strong>连续 {selectedFortune.streak} 天</strong>
+              <strong>{selectedFortune.luckyColor.name}</strong>
+            </div>
+          ) : null}
           <div className="fortune-actions">
-            <button type="button" className={selectedFortune.date === today && checkedInToday ? 'is-checked' : ''} onClick={checkIn}>
-              {selectedFortune.date < today ? '过往日期不可打卡' : selectedFortune.date > today ? '未来日期不可打卡' : checkedInToday ? '今日已打卡' : '今日打卡'}
+            <button type="button" disabled={selectedFortune.date !== today || checkingIn || checkedInToday} className={selectedFortune.date === today && checkedInToday ? 'is-checked' : ''} onClick={checkIn}>
+              {selectedFortune.date < today ? '过往日期不可打卡' : selectedFortune.date > today ? '未来日期不可打卡' : checkingIn ? '正在打卡…' : checkedInToday ? '今日已打卡' : '今日打卡'}
             </button>
-            <button type="button" disabled={generating} onClick={() => onGenerateSong('vocal')}>
+            <button type="button" disabled={generating || !canUseFortune} onClick={() => onGenerateSong('vocal', selectedFortune)}>
               {generating ? '正在生成…' : (
                 <>
                   生成演唱版
@@ -375,7 +401,7 @@ export function FortunePage({
                 </>
               )}
             </button>
-            <button type="button" disabled={generating} onClick={() => onGenerateSong('instrumental')}>
+            <button type="button" disabled={generating || !canUseFortune} onClick={() => onGenerateSong('instrumental', selectedFortune)}>
               {generating ? '正在生成…' : (
                 <>
                   生成纯音乐版
@@ -403,13 +429,22 @@ export function FortunePage({
                 onClick={() => onSelectDate(fortune.date)}
               >
                 <strong>{Number(fortune.date.slice(-2))}</strong>
-                <span>{fortune.keyword}</span>
+                <span>{fortune.id.startsWith('placeholder_') || fortune.keyword === '待打卡' ? (fortune.date < today ? '未打卡' : fortune.date > today ? '未开启' : '待打卡') : fortune.keyword}</span>
               </button>
             ))}
           </div>
         </section>
       </div>
 
+      {!canUseFortune ? (
+        <section className="fortune-draft-card">
+          <div>
+            <span>时运状态</span>
+            <h2>{fortuneUnavailableMessage}</h2>
+            <p>{isPastMissed ? '该日期已经无法补打卡。' : isFuture ? '请在当天到来后查看时运。' : '完成今日打卡后即可生成歌曲和分享卡。'}</p>
+          </div>
+        </section>
+      ) : (
       <section className="fortune-draft-card">
         <div>
           <span>{latestSong?.isInstrumental ? '旋律提示' : '时运曲草稿'}</span>
@@ -417,16 +452,17 @@ export function FortunePage({
           <pre>
             {latestSong
               ? latestSong.lyrics || `${latestSong.title}\n风格：${latestSong.style}\n提示词：${selectedFortune.keyword}、${selectedFortune.mood.name}、${selectedFortune.recharge}、柔和合成器`
-              : '点击“生成演唱版”或“生成纯音乐版”，这里会出现今天的歌词和旋律草稿。'}
+              : '点击“生成演唱版”或“生成纯音乐版”，这里会出现所选日期的歌词和旋律草稿。'}
           </pre>
         </div>
         <aside className="fortune-poster">
           <span>今日提示</span>
           <strong>{selectedFortune.mood.name} · 幸运数字 {selectedFortune.luckyNumber}</strong>
-          <p>宜：{selectedFortune.dos?.join('、')}。忌：{selectedFortune.donts?.join('、')}。</p>
+          <p>宜：{selectedFortune.dos?.join('、') || '暂无'}。忌：{selectedFortune.donts?.join('、') || '暂无'}。</p>
           <button type="button" onClick={() => void openShareCard()}>生成分享卡</button>
         </aside>
       </section>
+      )}
 
       {showShareCard ? (
         <section className="share-card-panel">

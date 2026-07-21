@@ -144,7 +144,7 @@ export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong }: RadioPa
             <span className="radio-time">ECHO RADIO · NOW PLAYING</span>
           </div>
           <p className="radio-greeting">{greeting}</p>
-          {loadError ? <small className="radio-load-error">{loadError}，当前显示本地预设。</small> : null}
+          {loadError ? <small className="radio-load-error">暂时无法获取最新频道，已为你准备推荐频道。</small> : null}
           <h1>给当下，调个频道</h1>
           <p className="radio-intro">从当下的心情出发，挑选一个场景。Echo 会为你编织一段不打扰思绪的纯音乐。</p>
           <div className="radio-now-meta">
@@ -217,7 +217,7 @@ export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong }: RadioPa
         <div className="radio-create-copy">
           <span>INSTRUMENTAL GENERATOR</span>
           <h2>把“{activeTheme.name}”变成一段旋律</h2>
-          <p>{activeTheme.description}。无需歌词，生成后会进入统一的任务进度页。</p>
+          <p>将根据当前频道生成一首纯音乐。</p>
           <div className="radio-create-tags"><i>{activeTheme.note}</i><i>纯音乐</i><i>约 2–3 分钟</i></div>
         </div>
         <button className="radio-generate" type="button" onClick={() => onGenerate?.({ prompt: `${activeTheme.name}：${activeTheme.prompt}`, style: activeTheme.note.replace(' · ', ' / ') })}>

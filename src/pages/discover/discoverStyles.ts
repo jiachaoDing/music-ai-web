@@ -440,6 +440,41 @@ export const discoverStyles = `
   gap: 14px;
 }
 
+.stage-heading__actions,
+.battle-delete-confirm__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stage-heading .battle-delete-button,
+.battle-delete-confirm .battle-delete-button {
+  border-color: rgba(220, 38, 38, 0.22);
+  color: #c0262d;
+  background: #fff5f5;
+}
+
+.stage-heading .battle-delete-button:hover,
+.battle-delete-confirm .battle-delete-button:hover {
+  border-color: #dc2626;
+  color: #ffffff;
+  background: #dc2626;
+}
+
+.battle-missing-state {
+  min-height: 280px;
+}
+
+.battle-delete-confirm__actions {
+  width: 100%;
+}
+
+.battle-delete-confirm__actions button {
+  flex: 1 1 140px;
+}
+
 .battle-duel-frame {
   position: relative;
   display: grid;
@@ -619,6 +654,84 @@ export const discoverStyles = `
 .challenge-rail {
   position: sticky;
   top: 88px;
+}
+
+@media (min-width: 1181px) {
+  .challenge-rail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    height: min(680px, calc(100vh - 190px));
+    max-height: min(680px, calc(100vh - 190px));
+    padding: 14px 12px 22px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    scrollbar-color: rgba(234, 76, 137, 0.56) rgba(234, 76, 137, 0.08);
+    scrollbar-width: auto;
+    mask-image: none;
+  }
+
+  .challenge-rail::-webkit-scrollbar {
+    display: block;
+    width: 9px;
+  }
+
+  .challenge-rail::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(234, 76, 137, 0.08);
+  }
+
+  .challenge-rail::-webkit-scrollbar-thumb {
+    min-height: 48px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    background: rgba(234, 76, 137, 0.55);
+  }
+
+  .challenge-rail .rail-title {
+    position: sticky;
+    z-index: 2;
+    top: -14px;
+    margin: -2px -2px 0;
+    padding: 10px 4px 8px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+  }
+
+  .challenge-rail .rail-card {
+    width: 100%;
+    min-height: 210px;
+    align-content: start;
+    gap: 10px;
+    border: 1px solid rgba(234, 76, 137, 0.12);
+    border-radius: 16px;
+    padding: 14px 12px 16px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .challenge-rail .rail-card:hover,
+  .challenge-rail .rail-card.is-active {
+    border-color: rgba(234, 76, 137, 0.34);
+    background: linear-gradient(135deg, rgba(255, 240, 246, 0.96), rgba(255, 249, 242, 0.92));
+  }
+
+  .challenge-rail .rail-cover {
+    width: 82px;
+  }
+
+  .challenge-rail .rail-card strong {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .challenge-rail .rail-card small {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    font-size: 11px;
+    line-height: 1.55;
+  }
 }
 
 .challenge-empty-work{grid-column:1/-1;border:1px dashed var(--line-soft);border-radius:12px;padding:24px;color:var(--muted);text-align:center;background:rgba(255,255,255,.56)}
