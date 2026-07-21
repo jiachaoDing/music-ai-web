@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, MouseEvent } from 'react'
 import type { Song } from '../types/song'
 import { resolveAssetUrl } from '../utils/asset'
 import { formatCount, formatDuration } from '../utils/format'
@@ -6,33 +6,45 @@ import { formatCount, formatDuration } from '../utils/format'
 type SongCardProps = {
   song: Song
   onOpen?: (songId: string) => void
+  onPlay?: (songId: string) => void
   coverAspect?: 'default' | 'portrait'
 }
 
 export function SongCard({
   song,
   onOpen,
+  onPlay,
   coverAspect = 'default',
 }: SongCardProps) {
   const coverUrl = resolveAssetUrl(song.coverUrl)
   const coverStyle = {
     '--cover-color': song.author.color,
   } as CSSProperties
+  const handleOpen = () => onOpen?.(song.id)
+  const handlePlay = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    ;(onPlay ?? onOpen)?.(song.id)
+  }
 
   return (
-    <article className="song-card">
+    <article className="song-card" onClick={handleOpen}>
       <div className="song-card__cover-wrap">
-        <button
+        <div
           aria-label={`打开作品 ${song.title}`}
           className={`song-cover${coverAspect === 'portrait' ? ' song-cover--portrait' : ''}`}
           style={coverStyle}
-          type="button"
-          onClick={() => onOpen?.(song.id)}
         >
           {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
           <span className="song-cover__eyebrow">{song.mode}</span>
-          <i aria-hidden="true" />
-        </button>
+          <button
+            aria-label={`播放 ${song.title}`}
+            className="song-cover__play"
+            type="button"
+            onClick={handlePlay}
+          >
+            <i aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div className="song-card__body">
         <div className="song-card__title-row">

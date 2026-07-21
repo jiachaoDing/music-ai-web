@@ -306,6 +306,19 @@ export const createStyles = `
   line-height: 1.35;
 }
 
+.create-mode-cost {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 6px;
+  border: 1px solid rgba(234, 76, 137, 0.18);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--theme-dark);
+  background: rgba(255, 240, 246, 0.88);
+  font-size: 11px;
+  font-weight: 760;
+}
+
 .create-mode-star--1 {
   top: 10%;
   left: 42%;

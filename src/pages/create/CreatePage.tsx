@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties } from 'react'
 import type { SongMode } from '../../types/song'
+import { ECHO_COSTS, formatEchoCost } from '../../utils/echoCost'
 import { createStyles } from './createStyles'
 
 type CreateModeCard = {
@@ -90,6 +91,7 @@ export function CreatePage({ onOpenForm }: CreatePageProps) {
         </div>
         <button type="button" onClick={() => onOpenForm('album')}>
           开始制作
+          <span className="cost-tag">· {formatEchoCost(ECHO_COSTS.album)}</span>
         </button>
       </section>
 
@@ -124,6 +126,7 @@ export function CreatePage({ onOpenForm }: CreatePageProps) {
                 <div>
                   <strong>{mode.title}</strong>
                   <p>{mode.inputHint}</p>
+                  <small className="create-mode-cost">消耗 {formatEchoCost(ECHO_COSTS[mode.key])}</small>
                 </div>
               </button>
             ))}

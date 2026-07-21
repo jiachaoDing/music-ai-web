@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { getQrCode } from '../../api/discovery'
 import { resolveAssetUrl } from '../../utils/asset'
+import { ECHO_COSTS, formatEchoCost } from '../../utils/echoCost'
 import type { FortuneRecord, FortuneSongDraft } from './types'
 
 type FortuneMode = 'vocal' | 'instrumental'
@@ -169,10 +170,20 @@ export function FortunePage({
               {selectedFortune.date < today ? '过往日期不可打卡' : selectedFortune.date > today ? '未来日期不可打卡' : checkedInToday ? '今日已打卡' : '今日打卡'}
             </button>
             <button type="button" disabled={generating} onClick={() => onGenerateSong('vocal')}>
-              {generating ? '正在生成…' : '生成演唱版'}
+              {generating ? '正在生成…' : (
+                <>
+                  生成演唱版
+                  <span className="cost-tag">· {formatEchoCost(ECHO_COSTS.fortune)}</span>
+                </>
+              )}
             </button>
             <button type="button" disabled={generating} onClick={() => onGenerateSong('instrumental')}>
-              {generating ? '正在生成…' : '生成纯音乐版'}
+              {generating ? '正在生成…' : (
+                <>
+                  生成纯音乐版
+                  <span className="cost-tag">· {formatEchoCost(ECHO_COSTS.fortune)}</span>
+                </>
+              )}
             </button>
           </div>
         </article>

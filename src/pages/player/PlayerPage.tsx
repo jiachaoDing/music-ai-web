@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { RefObject } from 'react'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
@@ -12,11 +12,15 @@ type PlayerPageProps = {
   shuffleEnabled?: boolean
   currentTime?: number
   duration?: number
+  queueSongs?: Song[]
+  currentSongId?: string
   visualizerCanvasRef?: RefObject<HTMLCanvasElement | null>
   onTogglePlay?: () => void
   onPlayPrev?: () => void
   onPlayNext?: () => void
   onCycleRepeat?: () => void
+  onPlayQueueSong?: (songId: string) => void
+  onRemoveQueueSong?: (songId: string) => void
   onSeek?: (progress: number) => void
   onClose?: () => void
   onBackHome?: () => void
@@ -31,13 +35,13 @@ function PlayerIcon({
   name,
   size = 22,
 }: {
-  name: 'shuffle' | 'repeat' | 'repeat-one' | 'prev' | 'next' | 'play' | 'pause'
+  name: 'shuffle' | 'repeat' | 'repeat-one' | 'prev' | 'next' | 'play' | 'pause' | 'queue'
   size?: number
 }) {
   if (name === 'pause') {
     return (
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-        <path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor" />
+        <path d="M7.5 5h3.2v14H7.5zM13.3 5h3.2v14h-3.2z" fill="currentColor" />
       </svg>
     )
   }
@@ -45,7 +49,7 @@ function PlayerIcon({
   if (name === 'play') {
     return (
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-        <path d="M8 5v14l11-7z" fill="currentColor" />
+        <path d="M8 5.5v13l10-6.5z" fill="currentColor" />
       </svg>
     )
   }
@@ -53,7 +57,7 @@ function PlayerIcon({
   if (name === 'prev') {
     return (
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-        <path d="M6 5h2v14H6zM9 12l10 7V5z" fill="currentColor" />
+        <path d="M6 5h2.2v14H6zM18 6.3v11.4L9.2 12z" fill="currentColor" />
       </svg>
     )
   }
@@ -61,7 +65,7 @@ function PlayerIcon({
   if (name === 'next') {
     return (
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-        <path d="M16 5h2v14h-2zM5 5v14l10-7z" fill="currentColor" />
+        <path d="M15.8 5H18v14h-2.2zM6 6.3v11.4l8.8-5.7z" fill="currentColor" />
       </svg>
     )
   }
@@ -79,22 +83,31 @@ function PlayerIcon({
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
       {name === 'repeat' ? (
         <>
-          <path d="M5 8h10.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-          <path d="M13.5 5.5 17 8l-3.5 2.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M19 16H8.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-          <path d="M10.5 13.5 7 16l3.5 2.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M17 3.8 20.2 7 17 10.2" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4 9V8.4C4 7.5 4.4 6.6 5 6s1.5-1 2.4-1h12.4" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7 20.2 3.8 17 7 13.8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20 15v.6c0 .9-.4 1.8-1 2.4s-1.5 1-2.4 1H4.2" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
         </>
       ) : (
         <>
-          <path d="M7.2 8.2h7.4c1.6 0 2.9 1.3 2.9 2.9v.9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          <path d="M15 5.7 18.2 8.2 15 10.7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M16.8 15.8H9.4c-1.6 0-2.9-1.3-2.9-2.9V12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          <path d="M9 18.3 5.8 15.8 9 13.3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          <text x="12" y="14.5" textAnchor="middle" fontSize="7" fontWeight="900" fill="currentColor">
+          <path d="M17 3.8 20.2 7 17 10.2" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4 9V8.4C4 7.5 4.4 6.6 5 6s1.5-1 2.4-1h12.4" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7 20.2 3.8 17 7 13.8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20 15v.6c0 .9-.4 1.8-1 2.4s-1.5 1-2.4 1H4.2" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <text x="12" y="14.6" textAnchor="middle" fontSize="7.2" fontWeight="900" fill="currentColor">
             1
           </text>
         </>
       )}
+    </svg>
+  )
+}
+
+function QueueIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <path d="M6 7h12M6 12h12M6 17h8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
+      <path d="M3.5 7h.1M3.5 12h.1M3.5 17h.1" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
 }
@@ -118,21 +131,28 @@ export function PlayerPage({
   shuffleEnabled = false,
   currentTime = 0,
   duration = 0,
+  queueSongs = [],
+  currentSongId,
   visualizerCanvasRef,
   onTogglePlay,
   onPlayPrev,
   onPlayNext,
   onCycleRepeat,
+  onPlayQueueSong,
+  onRemoveQueueSong,
   onSeek,
   onClose,
   onBackHome,
 }: PlayerPageProps) {
+  const [queueOpen, setQueueOpen] = useState(false)
   const coverUrl = resolveAssetUrl(song?.coverUrl)
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
   const playModeTitle = shuffleEnabled ? '随机播放' : repeatMode === 'one' ? '单曲循环' : '列表循环'
   const playModeIcon = shuffleEnabled ? 'shuffle' : repeatMode === 'one' ? 'repeat-one' : 'repeat'
 
   const lyricLines = useMemo(() => parseLyrics(song?.lyrics), [song?.lyrics])
+  const queueList = queueSongs.length ? queueSongs : song ? [song] : []
+  const activeSongId = currentSongId ?? song?.id
 
   return (
     <section className={`immersive-player${isPlaying ? ' is-playing' : ''}`}>
@@ -203,12 +223,22 @@ export function PlayerPage({
           <div className="immersive-player__controls">
             <button
               type="button"
+              className="immersive-player__control immersive-player__control--repeat is-active"
+              onClick={onCycleRepeat}
+              disabled={!song}
+              aria-label={playModeTitle}
+              title={playModeTitle}
+            >
+              <PlayerIcon name={playModeIcon} size={22} />
+            </button>
+            <button
+              type="button"
               className="immersive-player__control immersive-player__control--small"
               onClick={onPlayPrev}
               disabled={!song}
               aria-label="上一首"
             >
-              <PlayerIcon name="prev" size={19} />
+              <PlayerIcon name="prev" size={22} />
             </button>
             <button
               type="button"
@@ -217,7 +247,7 @@ export function PlayerPage({
               disabled={!song}
               aria-label={isPlaying ? '暂停' : '播放'}
             >
-              <PlayerIcon name={isPlaying ? 'pause' : 'play'} size={19} />
+              <PlayerIcon name={isPlaying ? 'pause' : 'play'} size={24} />
             </button>
             <button
               type="button"
@@ -226,17 +256,18 @@ export function PlayerPage({
               disabled={!song}
               aria-label="下一首"
             >
-              <PlayerIcon name="next" size={19} />
+              <PlayerIcon name="next" size={22} />
             </button>
             <button
               type="button"
-              className="immersive-player__control immersive-player__control--repeat is-active"
-              onClick={onCycleRepeat}
+              className={`immersive-player__control immersive-player__control--queue${queueOpen ? ' is-active' : ''}`}
+              onClick={() => setQueueOpen((open) => !open)}
               disabled={!song}
-              aria-label={playModeTitle}
-              title={playModeTitle}
+              aria-label="播放列表"
+              title="播放列表"
+              aria-expanded={queueOpen}
             >
-              <PlayerIcon name={playModeIcon} size={19} />
+              <QueueIcon size={21} />
             </button>
           </div>
 
@@ -247,6 +278,49 @@ export function PlayerPage({
           </div>
         </div>
       </div>
+
+      {queueOpen ? (
+        <aside className="immersive-player__queue" aria-label="待播清单">
+          <div className="immersive-player__queue-head">
+            <div>
+              <span>Queue</span>
+              <h2>待播清单</h2>
+            </div>
+            <strong>{queueList.length} 首</strong>
+          </div>
+
+          <div className="immersive-player__queue-list">
+            {queueList.map((queuedSong) => {
+              const queuedCover = resolveAssetUrl(queuedSong.coverUrl)
+              const active = queuedSong.id === activeSongId
+
+              return (
+                <div key={queuedSong.id} className={`immersive-player__queue-item${active ? ' is-current' : ''}`}>
+                  <button type="button" className="immersive-player__queue-play" onClick={() => onPlayQueueSong?.(queuedSong.id)}>
+                    <span className="immersive-player__queue-cover">
+                      {queuedCover ? <img src={queuedCover} alt="" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
+                    </span>
+                    <span className="immersive-player__queue-meta">
+                      <b>{queuedSong.title}</b>
+                      <small>{queuedSong.author.nickname}</small>
+                    </span>
+                    <em>{formatDuration(queuedSong.duration)}</em>
+                  </button>
+                  <button
+                    type="button"
+                    className="immersive-player__queue-remove"
+                    onClick={() => onRemoveQueueSong?.(queuedSong.id)}
+                    aria-label={`从待播清单移除 ${queuedSong.title}`}
+                    title="移除"
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </aside>
+      ) : null}
     </section>
   )
 }

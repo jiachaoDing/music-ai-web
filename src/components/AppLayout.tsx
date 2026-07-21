@@ -10,6 +10,8 @@ type AppLayoutProps = {
   active: NavKey
   user: User
   currentSong?: Song
+  queueSongs?: Song[]
+  currentSongId?: string
   isPlaying?: boolean
   repeatMode?: 'off' | 'all' | 'one'
   shuffleEnabled?: boolean
@@ -21,6 +23,8 @@ type AppLayoutProps = {
   onPlayPrev?: () => void
   onPlayNext?: () => void
   onCycleRepeat?: () => void
+  onPlayQueueSong?: (songId: string) => void
+  onRemoveQueueSong?: (songId: string) => void
   onLogout: () => void
 }
 
@@ -28,6 +32,8 @@ export function AppLayout({
   active,
   user,
   currentSong,
+  queueSongs = [],
+  currentSongId,
   isPlaying = false,
   repeatMode = 'off',
   shuffleEnabled = false,
@@ -39,6 +45,8 @@ export function AppLayout({
   onPlayPrev,
   onPlayNext,
   onCycleRepeat,
+  onPlayQueueSong,
+  onRemoveQueueSong,
   onLogout,
 }: AppLayoutProps) {
   return (
@@ -47,6 +55,8 @@ export function AppLayout({
       <main className="page-shell">{children}</main>
       <MiniPlayer
         song={currentSong}
+        queueSongs={queueSongs}
+        currentSongId={currentSongId}
         isPlaying={isPlaying}
         repeatMode={repeatMode}
         shuffleEnabled={shuffleEnabled}
@@ -56,6 +66,8 @@ export function AppLayout({
         onPlayPrev={onPlayPrev}
         onPlayNext={onPlayNext}
         onCycleRepeat={onCycleRepeat}
+        onPlayQueueSong={onPlayQueueSong}
+        onRemoveQueueSong={onRemoveQueueSong}
       />
       <BottomNav active={active} onNavigate={onNavigate} />
     </div>
