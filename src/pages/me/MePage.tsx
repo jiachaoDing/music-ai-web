@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   createPlaylist,
+  deletePlaylist,
   getMeProfile,
   getPointsLedger,
   getPlaylistDetail,
   removeSongFromPlaylist,
+  renamePlaylist,
   type PointsLedgerItem,
 } from '../../api/me'
 import { EmptyState } from '../../components/EmptyState'
@@ -73,6 +75,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [selectedPlaylistSongs, setSelectedPlaylistSongs] = useState<Song[]>([])
   const [playlistDetailLoading, setPlaylistDetailLoading] = useState(false)
   const [playlistActionLoading, setPlaylistActionLoading] = useState(false)
+  const [playlistRenameValue, setPlaylistRenameValue] = useState('')
 
   useEffect(() => {
     setProfileUser(user)
@@ -173,12 +176,14 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
 
   async function openPlaylistDetail(playlist: Playlist) {
     setSelectedPlaylist(playlist)
+    setPlaylistRenameValue(playlist.name)
     setSelectedPlaylistSongs([])
     setPlaylistDetailLoading(true)
 
     try {
       const detail = await getPlaylistDetail(playlist.id)
       setSelectedPlaylist(detail.playlist)
+      setPlaylistRenameValue(detail.playlist.name)
       setSelectedPlaylistSongs(detail.songs)
       setPlaylists((current) =>
         current.map((item) => (item.id === detail.playlist.id ? detail.playlist : item)),
@@ -189,6 +194,52 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
       setSelectedPlaylist(null)
     } finally {
       setPlaylistDetailLoading(false)
+    }
+  }
+
+  async function handleRenamePlaylist() {
+    if (!selectedPlaylist) return
+    const nextName = playlistRenameValue.trim()
+    if (!nextName) {
+      window.alert('请先输入歌单名称')
+      return
+    }
+    if (nextName === selectedPlaylist.name) return
+
+    setPlaylistActionLoading(true)
+
+    try {
+      const updatedPlaylist = await renamePlaylist(selectedPlaylist.id, nextName)
+      setSelectedPlaylist(updatedPlaylist)
+      setPlaylistRenameValue(updatedPlaylist.name)
+      setPlaylists((current) =>
+        current.map((item) => (item.id === updatedPlaylist.id ? updatedPlaylist : item)),
+      )
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '重命名歌单失败，请稍后重试')
+    } finally {
+      setPlaylistActionLoading(false)
+    }
+  }
+
+  async function handleDeletePlaylist() {
+    if (!selectedPlaylist) return
+    const confirmed = window.confirm(`确定删除歌单「${selectedPlaylist.name}」吗？歌单内的歌曲不会被删除。`)
+    if (!confirmed) return
+
+    setPlaylistActionLoading(true)
+
+    try {
+      await deletePlaylist(selectedPlaylist.id)
+      setPlaylists((current) => current.filter((item) => item.id !== selectedPlaylist.id))
+      setSelectedPlaylist(null)
+      setSelectedPlaylistSongs([])
+    } catch (error) {
+      console.error(error)
+      window.alert(error instanceof Error ? error.message : '删除歌单失败，请稍后重试')
+    } finally {
+      setPlaylistActionLoading(false)
     }
   }
 
@@ -494,16 +545,53 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                 <p>
                   创建于 {new Date(selectedPlaylist.createdAt).toLocaleDateString('zh-CN')}
                 </p>
-                <button
-                  type="button"
-                  className="me-playlist-play-all"
-                  disabled={!selectedPlaylistSongs.length}
-                  onClick={() => handlePlayPlaylist()}
-                >
-                  播放全部
-                </button>
+                <div className="me-playlist-detail-actions">
+                  <button
+                    type="button"
+                    className="me-playlist-play-all"
+                    disabled={!selectedPlaylistSongs.length}
+                    onClick={() => handlePlayPlaylist()}
+                  >
+                    播放全部
+                  </button>
+                  {!selectedPlaylist.isSystem ? (
+                    <button
+                      type="button"
+                      className="me-playlist-danger"
+                      disabled={playlistActionLoading}
+                      onClick={() => void handleDeletePlaylist()}
+                    >
+                      删除歌单
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
+
+            {!selectedPlaylist.isSystem ? (
+              <div className="me-playlist-rename">
+                <label>
+                  <span>歌单名称</span>
+                  <input
+                    value={playlistRenameValue}
+                    disabled={playlistActionLoading}
+                    onChange={(event) => setPlaylistRenameValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        void handleRenamePlaylist()
+                      }
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={playlistActionLoading || playlistRenameValue.trim() === selectedPlaylist.name}
+                  onClick={() => void handleRenamePlaylist()}
+                >
+                  保存名称
+                </button>
+              </div>
+            ) : null}
 
             {playlistDetailLoading ? (
               <div className="me-playlist-empty">正在加载歌单歌曲...</div>
