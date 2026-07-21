@@ -381,6 +381,15 @@ export const playerStyles = `
   box-shadow: none;
 }
 
+.immersive-player__queue-play:hover,
+.immersive-player__queue-play:focus-visible {
+  transform: none;
+  border-color: transparent;
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+}
+
 .immersive-player__queue-cover {
   display: grid;
   place-items: center;

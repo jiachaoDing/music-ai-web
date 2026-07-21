@@ -1,6 +1,6 @@
 import type { Song } from '../types/song'
 import type { BattleRecord, ChallengeParticipant, ChallengeRecord, ChallengeSongRef, FortuneRecord, VoteSide } from '../pages/discover/types'
-import { request } from './request'
+import { buildApiUrl, request } from './request'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -301,8 +301,6 @@ export async function getGenerateTask(taskId: string): Promise<GenerateTaskStatu
 }
 
 export async function getQrCode(text: string, url: string): Promise<string> {
-  const result = asRecord(
-    await request<unknown>(`/api/qr?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`),
-  )
-  return asString(result.qrUrl ?? result.url)
+  const target = url || text
+  return buildApiUrl(`/api/qr?text=${encodeURIComponent(target)}`)
 }

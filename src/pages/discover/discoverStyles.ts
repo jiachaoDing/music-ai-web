@@ -1078,41 +1078,26 @@ export const discoverStyles = `
 
 .share-card-preview {
   display: grid;
-  align-content: end;
   gap: 12px;
-  min-height: 360px;
   border-radius: 18px;
-  padding: 24px;
+  padding: 14px;
   color: var(--text);
-  background:
-    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--feature-color) 26%, white), transparent 34%),
-    linear-gradient(145deg, #ffffff, #fff5fa);
+  background: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
 }
 
-.share-card-preview h2 {
-  margin: 0;
-  font-size: clamp(28px, 4vw, 44px);
-  line-height: 1;
+.share-card-canvas {
+  width: 100%;
+  aspect-ratio: 640 / 900;
+  border-radius: 14px;
+  background: #0a0813;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
 }
 
-.share-card-preview p {
-  margin: 0;
+.share-card-preview small {
   color: var(--muted);
-  line-height: 1.6;
-}
-
-.share-card-preview div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.share-card-preview strong {
-  border-radius: 999px;
-  padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.78);
-  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .generated-song {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { getQrCode } from '../../api/discovery'
 import { resolveAssetUrl } from '../../utils/asset'
@@ -22,6 +22,57 @@ type FortunePageProps = {
 
 const scale = [261.63, 293.66, 329.63, 392, 440, 493.88, 523.25, 587.33]
 
+function loadImage(src?: string) {
+  return new Promise<HTMLImageElement | null>((resolve) => {
+    if (!src) {
+      resolve(null)
+      return
+    }
+
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => resolve(image)
+    image.onerror = () => resolve(null)
+    image.src = src
+  })
+}
+
+function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  context.beginPath()
+  context.moveTo(x + radius, y)
+  context.arcTo(x + width, y, x + width, y + height, radius)
+  context.arcTo(x + width, y + height, x, y + height, radius)
+  context.arcTo(x, y + height, x, y, radius)
+  context.arcTo(x, y, x + width, y, radius)
+  context.closePath()
+}
+
+function wrapLines(context: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) {
+  const chars = (text || '').split('')
+  const lines: string[] = []
+  let line = ''
+
+  chars.forEach((char) => {
+    if (context.measureText(line + char).width > maxWidth && line) {
+      lines.push(line)
+      line = char
+      return
+    }
+    line += char
+  })
+
+  if (line) lines.push(line)
+  if (lines.length <= maxLines) return lines
+
+  const nextLines = lines.slice(0, maxLines)
+  let lastLine = nextLines[maxLines - 1] ?? ''
+  while (lastLine && context.measureText(`${lastLine}...`).width > maxWidth) {
+    lastLine = lastLine.slice(0, -1)
+  }
+  nextLines[maxLines - 1] = `${lastLine}...`
+  return nextLines
+}
+
 export function FortunePage({
   fortunes,
   month,
@@ -39,6 +90,7 @@ export function FortunePage({
   const latestSong = selectedSongs[0]?.song
   const audioContextRef = useRef<AudioContext | null>(null)
   const generatedAudioRef = useRef<HTMLAudioElement | null>(null)
+  const shareCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const timersRef = useRef<number[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
@@ -46,6 +98,136 @@ export function FortunePage({
   const [sharing, setSharing] = useState(false)
   const [shareError, setShareError] = useState('')
   const today = new Date().toLocaleDateString('en-CA')
+
+  useEffect(() => {
+    if (!showShareCard || !shareQrUrl) return
+
+    let cancelled = false
+
+    async function drawShareCard() {
+      const canvas = shareCanvasRef.current
+      const context = canvas?.getContext('2d')
+      if (!canvas || !context) return
+
+      setSharing(true)
+      setShareError('')
+
+      const [art, qr] = await Promise.all([
+        loadImage(selectedFortune.img ? resolveAssetUrl(selectedFortune.img) : undefined),
+        loadImage(shareQrUrl),
+      ])
+      if (cancelled) return
+
+      try {
+        const width = canvas.width
+        const height = canvas.height
+        const pad = 48
+        const accent = selectedFortune.luckyColor.hex || '#ea4c89'
+
+        context.clearRect(0, 0, width, height)
+        const bg = context.createLinearGradient(0, 0, width, height)
+        bg.addColorStop(0, '#0a0813')
+        bg.addColorStop(1, '#15101f')
+        context.fillStyle = bg
+        context.fillRect(0, 0, width, height)
+
+        const glow = context.createRadialGradient(110, 80, 20, 110, 80, 420)
+        glow.addColorStop(0, `${accent}66`)
+        glow.addColorStop(1, `${accent}00`)
+        context.fillStyle = glow
+        context.fillRect(0, 0, width, height)
+
+        context.fillStyle = 'rgba(255,255,255,0.88)'
+        context.font = '600 24px Microsoft YaHei, sans-serif'
+        context.fillText(`Echo Fortune · ${selectedFortune.date}`, pad, 78)
+
+        const artY = 110
+        const artHeight = 360
+        context.save()
+        roundRect(context, pad, artY, width - pad * 2, artHeight, 28)
+        context.clip()
+        if (art) {
+          const scaleSize = Math.max((width - pad * 2) / art.width, artHeight / art.height)
+          const drawWidth = art.width * scaleSize
+          const drawHeight = art.height * scaleSize
+          context.drawImage(art, pad + (width - pad * 2 - drawWidth) / 2, artY + (artHeight - drawHeight) / 2, drawWidth, drawHeight)
+          context.fillStyle = 'rgba(10,8,19,0.2)'
+          context.fillRect(pad, artY, width - pad * 2, artHeight)
+        } else {
+          const fallback = context.createLinearGradient(pad, artY, width - pad, artY + artHeight)
+          fallback.addColorStop(0, accent)
+          fallback.addColorStop(1, '#ea4c89')
+          context.fillStyle = fallback
+          context.fillRect(pad, artY, width - pad * 2, artHeight)
+          context.textAlign = 'center'
+          context.font = '120px serif'
+          context.fillStyle = 'rgba(255,255,255,0.86)'
+          context.fillText(selectedFortune.mood.emoji || '✦', width / 2, artY + artHeight / 2 + 42)
+          context.textAlign = 'left'
+        }
+        context.restore()
+
+        context.fillStyle = '#ffffff'
+        context.font = '900 46px Microsoft YaHei, sans-serif'
+        context.fillText(`${selectedFortune.keyword}日签`, pad, artY + artHeight + 70)
+        context.fillStyle = accent
+        context.font = '600 26px Microsoft YaHei, sans-serif'
+        context.fillText(`今日基调 · ${selectedFortune.mood.name}`, pad, artY + artHeight + 110)
+
+        const batteryY = artY + artHeight + 150
+        context.fillStyle = 'rgba(255,255,255,0.86)'
+        context.font = '600 24px Microsoft YaHei, sans-serif'
+        context.fillText('今日社交电量', pad, batteryY)
+        context.fillStyle = '#ffffff'
+        context.font = '800 24px Microsoft YaHei, sans-serif'
+        context.fillText(`${selectedFortune.battery}%`, width - pad - 66, batteryY)
+        context.fillStyle = 'rgba(255,255,255,0.13)'
+        roundRect(context, pad, batteryY + 16, width - pad * 2, 18, 9)
+        context.fill()
+        context.fillStyle = accent
+        roundRect(context, pad, batteryY + 16, (width - pad * 2) * selectedFortune.battery / 100, 18, 9)
+        context.fill()
+
+        context.fillStyle = '#e8e4f5'
+        context.font = '600 28px Microsoft YaHei, sans-serif'
+        wrapLines(context, `「${selectedFortune.encourage || '把今天慢慢过成自己的节奏。'}」`, width - pad * 2, 2)
+          .forEach((line, index) => context.fillText(line, pad, batteryY + 86 + index * 40))
+
+        context.fillStyle = 'rgba(255,255,255,0.72)'
+        context.font = '500 20px Microsoft YaHei, sans-serif'
+        const actionText = selectedFortune.action || selectedFortune.recharge || selectedFortune.dos?.[0] || '留一点时间给自己'
+        wrapLines(context, `今日行动：${actionText}`, width - pad * 2 - 170, 2)
+          .forEach((line, index) => context.fillText(line, pad, batteryY + 178 + index * 30))
+
+        const qrSize = 120
+        const qrX = width - pad - qrSize
+        const qrY = height - pad - qrSize
+        context.fillStyle = '#ffffff'
+        roundRect(context, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 16)
+        context.fill()
+        if (qr) context.drawImage(qr, qrX, qrY, qrSize, qrSize)
+
+        const captionY = qrY + qrSize / 2
+        context.fillStyle = '#efeaff'
+        context.font = '600 24px Microsoft YaHei, sans-serif'
+        context.fillText('扫码也来测测', pad, captionY - 6)
+        context.fillStyle = '#8a83a5'
+        context.font = '500 18px Microsoft YaHei, sans-serif'
+        context.fillText('给 i 人的能量日历', pad, captionY + 28)
+      } catch (error) {
+        console.error(error)
+        setShareError('分享卡生成失败，请稍后重试')
+      } finally {
+        setSharing(false)
+      }
+    }
+
+    void drawShareCard()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedFortune, shareQrUrl, showShareCard])
 
   function checkIn() {
     if (selectedFortune.date < today) {
@@ -68,10 +250,26 @@ export function FortunePage({
     setShareError('')
     setSharing(true)
     try {
-      const qrUrl = await getQrCode(`${selectedFortune.keyword}日签`, window.location.href)
+      const qrUrl = await getQrCode(`${selectedFortune.keyword}日签`, window.location.origin)
       setShareQrUrl(qrUrl)
     } catch (error) {
       setShareError(error instanceof Error ? error.message : '二维码生成失败')
+      setSharing(false)
+    }
+  }
+
+  function downloadShareCard() {
+    const canvas = shareCanvasRef.current
+    if (!canvas) return
+
+    try {
+      const link = document.createElement('a')
+      link.download = `echo-fortune-${selectedFortune.date}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch (error) {
+      console.error(error)
+      setShareError('下载失败，请检查图片是否允许跨域访问')
     } finally {
       setSharing(false)
     }
@@ -233,23 +431,11 @@ export function FortunePage({
       {showShareCard ? (
         <section className="share-card-panel">
           <article className="share-card-preview" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
-            {selectedFortune.img ? (
-              <img className="share-card-preview__art" src={resolveAssetUrl(selectedFortune.img)} alt="今日治愈插画" />
-            ) : null}
-            <span>Echo Fortune</span>
-            <h2>{selectedFortune.keyword}日签</h2>
-            <p>{selectedFortune.encourage}</p>
-            <div>
-              <strong>{selectedFortune.mood.name}</strong>
-              <strong>幸运数字 {selectedFortune.luckyNumber}</strong>
-              <strong>{selectedFortune.luckyColor.name}</strong>
-            </div>
-            {sharing ? <small>正在生成二维码…</small> : null}
-            {shareQrUrl ? <img className="share-card-preview__qr" src={resolveAssetUrl(shareQrUrl)} alt="时运分享二维码" /> : null}
-            {shareError ? <small>{shareError}</small> : null}
+            <canvas ref={shareCanvasRef} className="share-card-canvas" width={640} height={900} />
+            <small>{sharing ? '正在生成分享卡...' : shareError || '长按图片保存 · 扫码也来测测'}</small>
           </article>
           <div className="share-card-actions">
-            <button type="button" onClick={() => onCheckin('分享卡已生成，可以截图保存。')}>提示保存</button>
+            <button type="button" disabled={sharing} onClick={downloadShareCard}>下载 PNG</button>
             <button type="button" onClick={() => setShowShareCard(false)}>收起分享卡</button>
           </div>
         </section>
