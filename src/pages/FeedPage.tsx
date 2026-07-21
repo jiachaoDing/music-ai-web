@@ -57,18 +57,34 @@ export function FeedPage({
     <section className="page-stack feed-page">
       <section className="create-hero">
         <div className="create-hero__copy">
-          <span>Echo AI Music Community</span>
+          <span className="feed-hero-kicker--desktop">Echo AI Music Community</span>
+          <div className="feed-hero-kicker--mobile" aria-hidden="true" />
           <h1 className="feed-hero-title feed-hero-title--desktop">把灵感变成 AI 音乐作品</h1>
-          <h1 className="feed-hero-title feed-hero-title--mobile">把灵感写成歌</h1>
-          <p className="feed-hero-copy feed-hero-copy--desktop">输入一句灵感，生成旋律、歌词和封面；也可以先逛逛社区里的新作品。</p>
-          <p className="feed-hero-copy feed-hero-copy--mobile">写下一刻心情，让它成为你的旋律。</p>
+          <div className="feed-hero-artwork--mobile feed-hero-slice" aria-label="把灵感变成 AI 音乐作品">
+            <div className="feed-hero-slice__index" aria-hidden="true">
+              <span>01 — THOUGHT</span>
+              <span>02 — SOUND</span>
+            </div>
+            <div className="feed-hero-slice__object" aria-hidden="true">
+              <i /><i /><i /><i /><i /><i /><i />
+            </div>
+            <div className="feed-hero-slice__copy">
+              <small>FROM PROMPT TO MUSIC</small>
+              <strong>把灵感变成<br />AI 音乐作品</strong>
+            </div>
+            <div className="feed-hero-slice__foot" aria-hidden="true">
+              <b>AI / 44.1</b><span />
+            </div>
+          </div>
+          <p className="feed-hero-copy feed-hero-copy--desktop">输入一句灵感，Echo AI 会生成完整旋律、歌词与专属封面，也可以继续探索社区创作者的 AI 音乐作品。</p>
+          <p className="feed-hero-copy feed-hero-copy--mobile"><b>AI /</b> 输入一句灵感，生成完整旋律、歌词与专属封面。</p>
         </div>
       </section>
 
       <section className="host-panel">
         <div className="host-panel__header">
           <div className="host-panel__copy">
-            <span>AI Curator</span>
+            <span>Echo AI Curator</span>
             <h3>{hostName}</h3>
             <p>{hostNote}</p>
           </div>
@@ -144,9 +160,6 @@ export function FeedPage({
       </div>
 
       <section className="feed-controls">
-        <button className="filter-button" type="button">
-          精选
-        </button>
         <div className="segment-tabs">
           {feedTabs.map((tab) => (
             <button
@@ -159,9 +172,6 @@ export function FeedPage({
             </button>
           ))}
         </div>
-        <button className="filter-button" type="button">
-          筛选
-        </button>
       </section>
 
       {activeTab === 'resonance' && (resonanceNote || resonanceTags.length) ? (

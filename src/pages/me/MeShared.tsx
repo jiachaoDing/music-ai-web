@@ -3,6 +3,8 @@ import type { PointsLedgerItem } from '../../api/me'
 
 type MeHeroProps = {
   user: User
+  inviteCode?: string
+  loading?: boolean
   summary: {
     songCount: number
     likeCount: number
@@ -24,6 +26,7 @@ type MeAccountProps = {
   inviteCode?: string
   ledger?: PointsLedgerItem[]
   loading?: boolean
+  onOpenLedger?: () => void
 }
 
 function formatDate(value?: string) {
@@ -46,8 +49,8 @@ function formatLedgerTime(value: string) {
   }).format(new Date(value))
 }
 
-export function MeHero({ user, summary, stats }: MeHeroProps) {
-  const topStylesText = summary.topStyles.length ? summary.topStyles.join('、') : '等待新的创作风格出现'
+export function MeHero({ user, inviteCode, loading = false, summary, stats }: MeHeroProps) {
+  const creatorStyles = summary.topStyles.length ? summary.topStyles : ['探索中', 'AI Music']
 
   return (
     <div className="me-hero">
@@ -57,16 +60,16 @@ export function MeHero({ user, summary, stats }: MeHeroProps) {
           <span>Profile</span>
           <div className="me-hero__headline">
             <div className="avatar me-hero__avatar">{user.nickname.slice(0, 1)}</div>
-            <h1>{user.nickname}</h1>
+            <div className="me-hero__name">
+              <div>
+                <h1>{user.nickname}</h1>
+                <small>✦ Creator</small>
+              </div>
+              <p>用 AI 捕捉每一个值得留下的声音。</p>
+            </div>
           </div>
-          <p>
-            目前共整理了 {summary.songCount} 首作品，累计获得 {summary.likeCount} 次喜欢和{' '}
-            {summary.playCount} 次播放。最近常用风格是 {topStylesText}。
-          </p>
           <div className="me-hero__tags">
-            <i>创作中</i>
-            <i>个人中心</i>
-            <i>AI Music</i>
+            {creatorStyles.map((style) => <i key={style}>#{style}</i>)}
           </div>
           <div className="me-hero__stats" aria-label="个人概览">
             {stats.map((item) => (
@@ -76,16 +79,12 @@ export function MeHero({ user, summary, stats }: MeHeroProps) {
               </article>
             ))}
           </div>
-        </div>
-      </div>
-      <div className="me-hero__spotlight">
-        <div className="me-hero__badge">Echo Creator</div>
-        <div className="me-hero__disc" aria-hidden="true">
-          <b />
-        </div>
-        <div className="me-hero__score">
-          <strong>{user.echoPoints}</strong>
-          <span>Echo Points</span>
+          <div className="me-hero__facts" aria-label="账号资料">
+            <span><small>身份</small><strong>{user.role === 'admin' ? '管理员' : '社区创作者'}</strong></span>
+            <span><small>注册</small><strong>{formatDate(user.createdAt)}</strong></span>
+            <span><small>打卡</small><strong>{formatDate(user.lastCheckin)}</strong></span>
+            <span><small>邀请码</small><strong>{loading ? '同步中' : inviteCode ?? '暂无'}</strong></span>
+          </div>
         </div>
       </div>
     </div>
@@ -113,7 +112,7 @@ export function MeStatsPanel({ stats }: MeStatsProps) {
   )
 }
 
-export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false }: MeAccountProps) {
+export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false, onOpenLedger }: MeAccountProps) {
   return (
     <section className="me-panel me-panel--account">
       <div className="me-panel__heading">
@@ -132,7 +131,9 @@ export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false 
       <div className="me-ledger-card">
         <div className="me-ledger-head">
           <span>最近流水</span>
-          <small>{loading ? '正在同步...' : ledger.length ? `${ledger.length} 条记录` : '暂无记录'}</small>
+          <button type="button" className="me-ledger-more" onClick={onOpenLedger}>
+            {loading ? '正在同步...' : ledger.length ? `查看全部 ${ledger.length} 条 ›` : '暂无记录'}
+          </button>
         </div>
         {ledger.length ? (
           <div className="me-ledger-list">
@@ -170,6 +171,24 @@ export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false 
           <strong>{loading ? '正在同步...' : inviteCode ?? '暂无可用邀请码'}</strong>
         </div>
       </div>
+    </section>
+  )
+}
+
+export function MeLedgerPanel({ ledger = [], loading = false }: Pick<MeAccountProps, 'ledger' | 'loading'>) {
+  return (
+    <section className="me-panel me-ledger-page">
+      <div className="me-panel__heading"><div><span>Wallet History</span><h2>回声流水</h2></div></div>
+      {ledger.length ? (
+        <div className="me-ledger-list">
+          {ledger.map((item) => (
+            <div className="me-ledger-row" key={item.id}>
+              <div><strong>{item.reason}</strong><span>{formatLedgerTime(item.createdAt)}{typeof item.balance === 'number' ? ` · 余额 ${item.balance}` : ''}</span></div>
+              <b className={item.delta >= 0 ? 'is-positive' : 'is-negative'}>{item.delta >= 0 ? '+' : ''}{item.delta}</b>
+            </div>
+          ))}
+        </div>
+      ) : <p className="me-ledger-empty">{loading ? '正在同步流水…' : '暂时没有回声流水。'}</p>}
     </section>
   )
 }

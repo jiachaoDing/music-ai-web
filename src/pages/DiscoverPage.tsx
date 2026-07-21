@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { generateLyrics } from '../api/ai'
-import { BackButton } from '../components/BackButton'
 import {
   createBattle as createBattleRequest,
   deleteBattle as deleteBattleRequest,
@@ -18,7 +17,6 @@ import { BattleNewPage } from './discover/BattleNewPage'
 import { BattlesPage } from './discover/BattlesPage'
 import { ChallengeDetailPage } from './discover/ChallengeDetailPage'
 import { initialBattles, initialChallenges, initialFortunes } from './discover/data'
-import { DiscoverHomePage } from './discover/DiscoverHomePage'
 import { discoverStyles } from './discover/discoverStyles'
 import { FortunePage } from './discover/FortunePage'
 import type { BattleRecord, BattleVoteRecord, ChallengeParticipant, ChallengeSongRef, DiscoverView, FortuneRecord, FortuneSongDraft, VoteSide } from './discover/types'
@@ -28,10 +26,9 @@ import type { User } from '../types/user'
 function getInitialView(): DiscoverView {
   const path = window.location.pathname
   if (path.startsWith('/challenges/')) return 'challenge'
-  if (path === '/battles/new') return 'battleNew'
-  if (path === '/battles') return 'battles'
+  if (path === '/battles/new' || path === '/battles') return 'battles'
   if (path === '/fortune') return 'fortune'
-  return 'home'
+  return 'challenge'
 }
 
 type DiscoverPageProps = {
@@ -41,6 +38,7 @@ type DiscoverPageProps = {
   onPlaySong: (songId: string) => void
   onSongGenerated: (song: Song) => void
   onJoinChallenge: (challenge: { id: string; title: string; prompt?: string }) => void
+  onOpenHost: () => void
 }
 
 const today = new Date().toLocaleDateString('en-CA')
@@ -104,8 +102,11 @@ function loadSavedBattleVotes(userId: string): BattleVoteRecord[] {
   }
 }
 
-export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenerated, onJoinChallenge }: DiscoverPageProps) {
+export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenerated, onJoinChallenge, onOpenHost }: DiscoverPageProps) {
   const [view, setView] = useState<DiscoverView>(getInitialView)
+  const [isMobileViewport, setIsMobileViewport] = useState(() => window.matchMedia('(max-width: 640px)').matches)
+  const [mobileLauncherOpen, setMobileLauncherOpen] = useState(() => window.matchMedia('(max-width: 640px)').matches && window.location.pathname === '/discover')
+  const [battleMode, setBattleMode] = useState<'list' | 'create'>(() => window.location.pathname === '/battles/new' ? 'create' : 'list')
   const [selectedChallengeId, setSelectedChallengeId] = useState(() => {
     const challengeId = window.location.pathname.split('/challenges/')[1]
     return challengeId || initialChallenges[0].id
@@ -128,6 +129,13 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   const [generatingFortune, setGeneratingFortune] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
   const [checkedInToday, setCheckedInToday] = useState(user.lastCheckin === today)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)')
+    const syncViewport = () => setIsMobileViewport(media.matches)
+    media.addEventListener('change', syncViewport)
+    return () => media.removeEventListener('change', syncViewport)
+  }, [])
 
   const publishedSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -253,6 +261,26 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   function navigate(nextView: DiscoverView, path: string) {
     window.history.pushState({}, '', path)
     setView(nextView)
+    if (nextView === 'battles') setBattleMode('list')
+    setMessage('')
+  }
+
+  function openBattleCreator() {
+    window.history.pushState({}, '', '/battles')
+    setView('battles')
+    setBattleMode('create')
+    setMessage('')
+  }
+
+  function openMobileSection(nextView: DiscoverView, path: string) {
+    setMobileLauncherOpen(false)
+    navigate(nextView, path)
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
+  }
+
+  function openMobileLauncher() {
+    window.history.pushState({}, '', '/discover')
+    setMobileLauncherOpen(true)
     setMessage('')
   }
 
@@ -323,7 +351,8 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
       const created = await createBattleRequest({ topic: battleTopic.trim(), aId, bId })
       const latestBattles = await getBattles()
       setBattles(latestBattles.length ? latestBattles : created ? [created] : [])
-      navigate('battles', '/battles')
+      setBattleMode('list')
+      window.history.replaceState({}, '', '/battles')
       setMessage('擂台创建成功，大家可以开始投票了。')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '擂台创建失败，请稍后重试。')
@@ -403,6 +432,10 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
       setMessage('时运尚未开启。')
       return
     }
+    if (selectedFortune.date < today) {
+      setMessage('历史时运仅供查看，不能再次生成歌曲。')
+      return
+    }
     setGeneratingFortune(true)
     try {
       const isInstrumental = mode === 'instrumental'
@@ -480,8 +513,45 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   }
 
   return (
-    <section className={`page-stack discover-suite discover-suite--${view}`}>
+    <section className={`page-stack discover-suite discover-suite--${view}${isMobileViewport && mobileLauncherOpen ? ' discover-suite--launcher' : ''}`}>
       <style>{discoverStyles}</style>
+
+      <section className="discover-mobile-launcher" aria-label="发现功能入口">
+        <div className="discover-mobile-launcher__heading">
+          <span>Discover</span>
+          <h1>今天想发现什么？</h1>
+          <p>从一个入口开始，遇见新的声音、对决和每日时运。</p>
+        </div>
+        <button className="discover-curator-entry" type="button" onClick={onOpenHost}>
+          <span>Echo AI Curator</span>
+          <strong>去主理人主页听今日策展</strong>
+          <b aria-hidden="true">→</b>
+        </button>
+        <div className="discover-mobile-launcher__grid">
+          <button type="button" onClick={() => openMobileSection('challenge', selectedChallenge ? `/challenges/${selectedChallenge.id}` : '/discover')}>
+            <i aria-hidden="true">✦</i>
+            <span>Creative Topics</span>
+            <strong>话题挑战</strong>
+            <small>跟随主题写下你的新作品</small>
+          </button>
+          <button type="button" onClick={() => openMobileSection('battles', '/battles')}>
+            <i aria-hidden="true">VS</i>
+            <span>Vote Arena</span>
+            <strong>PK 擂台</strong>
+            <small>听两首歌，为喜欢的一方投票</small>
+          </button>
+          <button type="button" onClick={() => openMobileSection('fortune', '/fortune')}>
+            <i aria-hidden="true">☼</i>
+            <span>Daily Fortune</span>
+            <strong>时运曲</strong>
+            <small>打开今日能量与专属旋律</small>
+          </button>
+        </div>
+      </section>
+
+      {isMobileViewport && !mobileLauncherOpen ? (
+        <button className="discover-mobile-home" type="button" onClick={openMobileLauncher}>← 发现菜单</button>
+      ) : null}
 
       <div className="discover-hero">
         <div>
@@ -491,16 +561,15 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
         </div>
         <div className="discover-hero__actions">
           <button type="button" onClick={() => navigate('fortune', '/fortune')}>今日打卡</button>
-          <button type="button" onClick={() => navigate('battleNew', '/battles/new')}>发起擂台</button>
+          <button type="button" onClick={openBattleCreator}>发起擂台</button>
+          <button type="button" onClick={onOpenHost}>AI 主理人</button>
         </div>
       </div>
 
       <nav className="discover-tabs" aria-label="发现页功能">
         {[
-          ['home', '/discover', '总览'],
           ['challenge', selectedChallenge ? `/challenges/${selectedChallenge.id}` : '/discover', '话题挑战'],
           ['battles', '/battles', 'PK 擂台'],
-          ['battleNew', '/battles/new', '创建擂台'],
           ['fortune', '/fortune', '时运日历'],
         ].map(([key, path, label]) => (
           <button
@@ -513,23 +582,6 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           </button>
         ))}
       </nav>
-
-      {view !== 'home' && view !== 'battleNew' ? (
-        <div className="discover-back-row">
-          <BackButton label="返回发现总览" onClick={() => navigate('home', '/discover')} />
-        </div>
-      ) : null}
-
-      {view === 'home' ? (
-        <DiscoverHomePage
-          battles={battles}
-          challenges={activeChallenges}
-          todayFortune={todayFortune}
-          onNavigateBattles={() => navigate('battles', '/battles')}
-          onNavigateFortune={() => navigate('fortune', '/fortune')}
-          onOpenChallenge={openChallenge}
-        />
-      ) : null}
 
       {view === 'challenge' ? (
         selectedChallenge ? <ChallengeDetailPage
@@ -547,34 +599,40 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
       ) : null}
 
       {view === 'battles' ? (
-        <BattlesPage
-          battleVotes={battleVotes}
-          battles={battles}
-          currentUserId={user.id}
-          currentUserRole={user.role}
-          songs={publishedSongs}
-          onCreate={() => navigate('battleNew', '/battles/new')}
-          onDelete={deleteBattle}
-          onOpenSong={onOpenSong}
-          onPlaySong={onPlaySong}
-          onVote={voteBattle}
-        />
-      ) : null}
-
-      {view === 'battleNew' ? (
-        <BattleNewPage
-          aId={aId}
-          bId={bId}
-          songs={publishedSongs}
-          topic={battleTopic}
-          onBack={() => navigate('battles', '/battles')}
-          onChangeAId={setAId}
-          onChangeBId={setBId}
-          onChangeTopic={setBattleTopic}
-          onCreate={createBattle}
-          onOpenSong={onOpenSong}
-          onPlaySong={onPlaySong}
-        />
+        <section className="battle-workspace">
+          <div className="battle-mode-switch" role="group" aria-label="PK 擂台功能">
+            <button className={battleMode === 'list' ? 'is-active' : ''} type="button" onClick={() => setBattleMode('list')}>擂台对决</button>
+            <button className={battleMode === 'create' ? 'is-active' : ''} type="button" onClick={openBattleCreator}>创建擂台</button>
+          </div>
+          {battleMode === 'list' ? (
+            <BattlesPage
+              battleVotes={battleVotes}
+              battles={battles}
+              currentUserId={user.id}
+              currentUserRole={user.role}
+              songs={publishedSongs}
+              onCreate={openBattleCreator}
+              onDelete={deleteBattle}
+              onOpenSong={onOpenSong}
+              onPlaySong={onPlaySong}
+              onVote={voteBattle}
+            />
+          ) : (
+            <BattleNewPage
+              aId={aId}
+              bId={bId}
+              songs={publishedSongs}
+              topic={battleTopic}
+              onBack={() => setBattleMode('list')}
+              onChangeAId={setAId}
+              onChangeBId={setBId}
+              onChangeTopic={setBattleTopic}
+              onCreate={createBattle}
+              onOpenSong={onOpenSong}
+              onPlaySong={onPlaySong}
+            />
+          )}
+        </section>
       ) : null}
 
       {view === 'fortune' ? (

@@ -112,6 +112,7 @@ export function FortunePage({
         ? '今日尚未打卡'
         : ''
   const canUseFortune = !isPlaceholder && !isFuture
+  const canGenerateFortune = canUseFortune && selectedFortune.date === today
 
   useEffect(() => {
     setShowShareCard(false)
@@ -141,7 +142,7 @@ export function FortunePage({
       try {
         const width = canvas.width
         const height = canvas.height
-        const pad = 48
+        const pad = 42
         const accent = selectedFortune.luckyColor.hex || '#ea4c89'
 
         context.clearRect(0, 0, width, height)
@@ -158,11 +159,11 @@ export function FortunePage({
         context.fillRect(0, 0, width, height)
 
         context.fillStyle = 'rgba(255,255,255,0.88)'
-        context.font = '600 24px Microsoft YaHei, sans-serif'
-        context.fillText(`Echo Fortune · ${selectedFortune.date}`, pad, 78)
+        context.font = '600 21px Microsoft YaHei, sans-serif'
+        context.fillText(`Echo Fortune · ${selectedFortune.date}`, pad, 60)
 
-        const artY = 110
-        const artHeight = 360
+        const artY = 88
+        const artHeight = 280
         context.save()
         roundRect(context, pad, artY, width - pad * 2, artHeight, 28)
         context.clip()
@@ -188,13 +189,13 @@ export function FortunePage({
         context.restore()
 
         context.fillStyle = '#ffffff'
-        context.font = '900 46px Microsoft YaHei, sans-serif'
-        context.fillText(`${selectedFortune.keyword}日签`, pad, artY + artHeight + 70)
+        context.font = '900 42px Microsoft YaHei, sans-serif'
+        context.fillText(`${selectedFortune.keyword}日签`, pad, artY + artHeight + 58)
         context.fillStyle = accent
-        context.font = '600 26px Microsoft YaHei, sans-serif'
-        context.fillText(`今日基调 · ${selectedFortune.mood.name}`, pad, artY + artHeight + 110)
+        context.font = '600 24px Microsoft YaHei, sans-serif'
+        context.fillText(`今日基调 · ${selectedFortune.mood.name}`, pad, artY + artHeight + 94)
 
-        const batteryY = artY + artHeight + 150
+        const batteryY = artY + artHeight + 134
         context.fillStyle = 'rgba(255,255,255,0.86)'
         context.font = '600 24px Microsoft YaHei, sans-serif'
         context.fillText('今日社交电量', pad, batteryY)
@@ -209,17 +210,17 @@ export function FortunePage({
         context.fill()
 
         context.fillStyle = '#e8e4f5'
-        context.font = '600 28px Microsoft YaHei, sans-serif'
+        context.font = '600 25px Microsoft YaHei, sans-serif'
         wrapLines(context, `「${selectedFortune.encourage || '把今天慢慢过成自己的节奏。'}」`, width - pad * 2, 2)
-          .forEach((line, index) => context.fillText(line, pad, batteryY + 86 + index * 40))
+          .forEach((line, index) => context.fillText(line, pad, batteryY + 82 + index * 34))
 
         context.fillStyle = 'rgba(255,255,255,0.72)'
         context.font = '500 20px Microsoft YaHei, sans-serif'
         const actionText = selectedFortune.action || selectedFortune.recharge || selectedFortune.dos?.[0] || '留一点时间给自己'
-        wrapLines(context, `今日行动：${actionText}`, width - pad * 2 - 170, 2)
-          .forEach((line, index) => context.fillText(line, pad, batteryY + 178 + index * 30))
+        wrapLines(context, `今日行动：${actionText}`, width - pad * 2 - 140, 2)
+          .forEach((line, index) => context.fillText(line, pad, batteryY + 154 + index * 28))
 
-        const qrSize = 120
+        const qrSize = 100
         const qrX = width - pad - qrSize
         const qrY = height - pad - qrSize
         context.fillStyle = '#ffffff'
@@ -227,13 +228,12 @@ export function FortunePage({
         context.fill()
         if (qr) context.drawImage(qr, qrX, qrY, qrSize, qrSize)
 
-        const captionY = qrY + qrSize / 2
         context.fillStyle = '#efeaff'
-        context.font = '600 24px Microsoft YaHei, sans-serif'
-        context.fillText('扫码也来测测', pad, captionY - 6)
+        context.font = '600 21px Microsoft YaHei, sans-serif'
+        context.fillText('扫码也来测测', pad, height - 56)
         context.fillStyle = '#8a83a5'
-        context.font = '500 18px Microsoft YaHei, sans-serif'
-        context.fillText('给 i 人的能量日历', pad, captionY + 28)
+        context.font = '500 16px Microsoft YaHei, sans-serif'
+        context.fillText('给 i 人的能量日历', pad, height - 30)
       } catch (error) {
         console.error(error)
         setShareError('分享卡生成失败，请稍后重试')
@@ -393,7 +393,7 @@ export function FortunePage({
             <button type="button" disabled={selectedFortune.date !== today || checkingIn || checkedInToday} className={selectedFortune.date === today && checkedInToday ? 'is-checked' : ''} onClick={checkIn}>
               {selectedFortune.date < today ? '过往日期不可打卡' : selectedFortune.date > today ? '未来日期不可打卡' : checkingIn ? '正在打卡…' : checkedInToday ? '今日已打卡' : '今日打卡'}
             </button>
-            <button type="button" disabled={generating || !canUseFortune} onClick={() => onGenerateSong('vocal', selectedFortune)}>
+            <button type="button" disabled={generating || !canGenerateFortune} onClick={() => onGenerateSong('vocal', selectedFortune)}>
               {generating ? '正在生成…' : (
                 <>
                   生成演唱版
@@ -401,7 +401,7 @@ export function FortunePage({
                 </>
               )}
             </button>
-            <button type="button" disabled={generating || !canUseFortune} onClick={() => onGenerateSong('instrumental', selectedFortune)}>
+            <button type="button" disabled={generating || !canGenerateFortune} onClick={() => onGenerateSong('instrumental', selectedFortune)}>
               {generating ? '正在生成…' : (
                 <>
                   生成纯音乐版
@@ -467,7 +467,7 @@ export function FortunePage({
       {showShareCard ? (
         <section className="share-card-panel">
           <article className="share-card-preview" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
-            <canvas ref={shareCanvasRef} className="share-card-canvas" width={640} height={900} />
+            <canvas ref={shareCanvasRef} className="share-card-canvas" width={640} height={800} />
             <small>{sharing ? '正在生成分享卡...' : shareError || '长按图片保存 · 扫码也来测测'}</small>
           </article>
           <div className="share-card-actions">

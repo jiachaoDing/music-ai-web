@@ -146,8 +146,46 @@ export const discoverStyles = `
 
 .discover-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(6px, 1vw, 10px);
+}
+
+.discover-mobile-launcher,
+.discover-mobile-home {
+  display: none;
+}
+
+.battle-workspace {
+  display: grid;
+  gap: clamp(14px, 2vw, 20px);
+}
+
+.battle-mode-switch {
+  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(234, 76, 137, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 10px 30px rgba(52, 38, 78, 0.06);
+}
+
+.battle-mode-switch button {
+  min-height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--theme-muted);
+  background: transparent;
+  font-weight: 800;
+}
+
+.battle-mode-switch button.is-active,
+.battle-mode-switch button:hover {
+  color: var(--theme-dark);
+  background: #fff0f6;
 }
 
 .discover-tabs button {
@@ -519,7 +557,32 @@ export const discoverStyles = `
   max-width: min(178px, 100%);
   min-height: 0;
   aspect-ratio: 1;
-  border-radius: 28%;
+  border-radius: 22px;
+}
+
+.battle-cover .song-cover__image {
+  object-fit: cover;
+}
+
+.battle-song__title {
+  width: auto !important;
+  min-height: 0 !important;
+  border: 0;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  color: var(--text);
+  background: transparent !important;
+  font-size: clamp(17px, 1.8vw, 21px) !important;
+  font-weight: 900 !important;
+  line-height: 1.2;
+}
+
+.battle-song__title:hover,
+.battle-song__title:focus-visible {
+  color: var(--pink);
+  background: transparent !important;
+  box-shadow: none;
+  transform: none;
 }
 
 .battle-song button:not(.song-cover) {
@@ -640,6 +703,21 @@ export const discoverStyles = `
 .insight-card--create {
   border-color: rgba(56, 189, 248, 0.2);
   background: linear-gradient(135deg, rgba(240, 249, 255, 0.9), rgba(240, 253, 250, 0.8));
+}
+
+.insight-card:hover,
+.insight-card:focus-visible {
+  border-color: rgba(139, 92, 246, 0.24);
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(250, 247, 255, 0.96), rgba(239, 246, 255, 0.92));
+  box-shadow: 0 8px 24px rgba(52, 38, 78, 0.08);
+  transform: translateY(-1px);
+}
+
+.insight-card--create:hover,
+.insight-card--create:focus-visible {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.96), rgba(236, 253, 245, 0.94));
 }
 
 .challenge-lab {
@@ -1215,7 +1293,7 @@ export const discoverStyles = `
 
 .share-card-canvas {
   width: 100%;
-  aspect-ratio: 640 / 900;
+  aspect-ratio: 4 / 5;
   border-radius: 14px;
   background: #0a0813;
   box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
@@ -1348,6 +1426,175 @@ export const discoverStyles = `
 }
 
 @media (max-width: 640px) {
+  .discover-suite--launcher > :not(style):not(.discover-mobile-launcher) {
+    display: none !important;
+  }
+
+  .discover-suite:not(.discover-suite--launcher) .discover-hero,
+  .discover-suite:not(.discover-suite--launcher) .discover-tabs {
+    display: none;
+  }
+
+  .discover-suite--launcher .discover-mobile-launcher {
+    display: grid;
+    gap: 18px;
+    min-height: calc(100dvh - 190px);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 24px;
+    padding: 22px 16px;
+    background:
+      radial-gradient(circle at 88% 5%, rgba(84, 199, 236, 0.18), transparent 30%),
+      radial-gradient(circle at 8% 14%, rgba(234, 76, 137, 0.18), transparent 34%),
+      linear-gradient(155deg, rgba(255, 248, 252, 0.98), rgba(246, 248, 255, 0.96));
+    box-shadow: 0 20px 55px rgba(76, 53, 94, 0.1);
+  }
+
+  .discover-mobile-launcher__heading {
+    display: grid;
+    gap: 7px;
+  }
+
+  .discover-mobile-launcher__heading span {
+    color: var(--pink);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .discover-mobile-launcher__heading h1 {
+    margin: 0;
+    color: var(--theme-dark);
+    font-size: clamp(28px, 8vw, 36px);
+    line-height: 1.05;
+  }
+
+  .discover-mobile-launcher__heading p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .discover-mobile-launcher__grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .discover-mobile-launcher__grid button {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    gap: 3px 14px;
+    align-items: center;
+    min-height: 116px;
+    overflow: hidden;
+    border: 1px solid rgba(234, 76, 137, 0.14);
+    border-radius: 20px;
+    padding: 16px;
+    color: var(--text);
+    text-align: left;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 12px 30px rgba(57, 40, 75, 0.07);
+  }
+
+  .discover-mobile-launcher__grid button:nth-child(2) {
+    border-color: rgba(139, 92, 246, 0.18);
+  }
+
+  .discover-mobile-launcher__grid button:nth-child(3) {
+    border-color: rgba(56, 189, 248, 0.2);
+  }
+
+  .discover-mobile-launcher__grid i {
+    grid-row: 1 / -1;
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    color: #ffffff;
+    background: linear-gradient(145deg, #f78fb8, #7566d9);
+    font-size: 21px;
+    font-style: normal;
+    font-weight: 900;
+    box-shadow: 0 10px 24px rgba(133, 82, 151, 0.18);
+  }
+
+  .discover-mobile-launcher__grid button:nth-child(2) i {
+    background: linear-gradient(145deg, #8b5cf6, #4f7bd9);
+  }
+
+  .discover-mobile-launcher__grid button:nth-child(3) i {
+    background: linear-gradient(145deg, #54c7ec, #7066cf);
+  }
+
+  .discover-mobile-launcher__grid span {
+    align-self: end;
+    color: var(--pink);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .discover-mobile-launcher__grid strong {
+    font-size: 21px;
+    line-height: 1.12;
+  }
+
+  .discover-mobile-launcher__grid small {
+    align-self: start;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .discover-curator-entry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 12px;
+    align-items: center;
+    min-height: 72px;
+    border: 1px solid rgba(234, 76, 137, 0.15);
+    border-radius: 18px;
+    padding: 13px 16px;
+    color: var(--text);
+    text-align: left;
+    background: linear-gradient(135deg, rgba(255, 240, 246, 0.8), rgba(245, 243, 255, 0.82));
+  }
+
+  .discover-curator-entry span {
+    color: var(--pink);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .discover-curator-entry strong {
+    font-size: 14px;
+  }
+
+  .discover-curator-entry b {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    font-size: 24px;
+  }
+
+  .discover-mobile-home {
+    display: block;
+    width: fit-content;
+    min-height: 34px;
+    border: 1px solid rgba(234, 76, 137, 0.15);
+    border-radius: 999px;
+    padding: 0 14px;
+    color: var(--theme-dark);
+    background: rgba(255, 255, 255, 0.82);
+    font-size: 12px;
+    font-weight: 800;
+  }
   .discover-suite {
     margin: -6px -4px;
     padding: 10px;
@@ -1373,7 +1620,7 @@ export const discoverStyles = `
   }
 
   .discover-tabs {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -1965,44 +2212,44 @@ export const discoverStyles = `
     padding: 14px;
   }
 
-  .discover-suite--battleNew {
+  .discover-suite--battles {
     width: auto;
     max-width: calc(100% + 16px);
     overflow-x: clip;
   }
 
-  .discover-suite--battleNew .discover-hero__actions {
+  .discover-suite--battles .discover-hero__actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: visible;
   }
 
-  .discover-suite--battleNew .discover-hero__actions button {
+  .discover-suite--battles .discover-hero__actions button {
     min-width: 0;
   }
 
-  .discover-suite--battleNew .battle-new-stage,
-  .discover-suite--battleNew .battle-new-layout,
-  .discover-suite--battleNew .battle-new-form,
-  .discover-suite--battleNew .battle-preview-shell,
-  .discover-suite--battleNew .battle-preview,
-  .discover-suite--battleNew .preview-song {
+  .discover-suite--battles .battle-new-stage,
+  .discover-suite--battles .battle-new-layout,
+  .discover-suite--battles .battle-new-form,
+  .discover-suite--battles .battle-preview-shell,
+  .discover-suite--battles .battle-preview,
+  .discover-suite--battles .preview-song {
     width: 100%;
     min-width: 0;
     max-width: 100%;
   }
 
-  .discover-suite--battleNew .battle-new-stage {
+  .discover-suite--battles .battle-new-stage {
     overflow: hidden;
   }
 
-  .discover-suite--battleNew .stage-heading {
+  .discover-suite--battles .battle-new-stage .stage-heading {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
     gap: 8px;
   }
 
-  .discover-suite--battleNew .stage-heading button {
+  .discover-suite--battles .battle-new-stage .stage-heading button {
     width: auto;
     min-width: max-content;
     min-height: 36px;
@@ -2010,29 +2257,29 @@ export const discoverStyles = `
     font-size: 11px;
   }
 
-  .discover-suite--battleNew .topic-input-row,
-  .discover-suite--battleNew input,
-  .discover-suite--battleNew select {
+  .discover-suite--battles .topic-input-row,
+  .discover-suite--battles input,
+  .discover-suite--battles select {
     width: 100%;
     min-width: 0;
     max-width: 100%;
   }
 
-  .discover-suite--battleNew .battle-preview {
+  .discover-suite--battles .battle-preview {
     grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
     gap: 5px;
   }
 
-  .discover-suite--battleNew .battle-preview .versus {
+  .discover-suite--battles .battle-preview .versus {
     width: 30px;
     height: 30px;
   }
 
-  .discover-suite--battleNew .battle-preview .preview-song {
+  .discover-suite--battles .battle-preview .preview-song {
     padding: 6px;
   }
 
-  .discover-suite--battleNew .battle-preview .battle-cover {
+  .discover-suite--battles .battle-preview .battle-cover {
     width: min(94px, 100%);
     max-width: 94px;
   }

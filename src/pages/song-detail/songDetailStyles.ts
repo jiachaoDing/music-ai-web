@@ -1070,5 +1070,220 @@ export const songDetailStyles = `
     min-height: 150px;
     max-height: 240px;
   }
+
+  .song-detail-hero {
+    gap: 8px;
+  }
+
+  .song-detail-surface {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    padding: 4px 2px 12px;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .song-detail-surface::after {
+    display: none;
+  }
+
+  .song-detail-main {
+    grid-template-columns: 124px minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+  }
+
+  .song-detail-cover {
+    width: 124px;
+    border-radius: 12px;
+    box-shadow: 0 16px 34px rgba(30, 22, 40, .13);
+  }
+
+  .song-detail-copy {
+    gap: 7px;
+  }
+
+  .song-detail-copy h1 {
+    font-size: 23px;
+  }
+
+  .song-detail-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .song-detail-tags,
+  .song-detail-stats {
+    gap: 4px;
+  }
+
+  .song-detail-tags span,
+  .song-detail-stats span {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+
+  .song-detail-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .song-detail-meta-card {
+    min-height: 42px;
+    border: 0;
+    padding: 5px;
+    background: rgba(13, 12, 34, .035);
+  }
+
+  .song-detail-meta-card span {
+    font-size: 8px;
+  }
+
+  .song-detail-meta-card strong {
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .song-detail-side {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 0;
+    border: 0;
+    border-top: 1px solid rgba(13, 12, 34, .07);
+    border-bottom: 1px solid rgba(13, 12, 34, .07);
+    border-radius: 0;
+    padding: 10px 2px;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .song-detail-side__top {
+    gap: 3px;
+  }
+
+  .song-detail-side h2 {
+    font-size: 17px;
+  }
+
+  .song-detail-side p {
+    display: none;
+  }
+
+  .song-detail-side__score {
+    padding: 0;
+  }
+
+  .song-detail-side__score strong {
+    font-size: 20px;
+  }
+
+  .song-detail-side__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .song-detail-side__actions button {
+    min-height: 32px;
+    padding: 0 9px;
+    font-size: 10px;
+  }
+
+  .song-detail-toolbar {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .song-detail-action {
+    min-height: 38px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+
+  .song-detail-block,
+  .song-detail-panel {
+    position: relative;
+    border: 0;
+    border-top: 1px solid rgba(13, 12, 34, .13);
+    border-radius: 0;
+    padding: 14px 2px;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .song-detail-block h2,
+  .song-detail-panel h2 {
+    font-size: 18px;
+  }
+
+  .song-detail-block__header,
+  .song-detail-panel__header {
+    position: relative;
+    padding-left: 10px;
+  }
+
+  .song-detail-block__header::before,
+  .song-detail-panel__header::before {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    width: 2px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(234, 76, 137, .75), rgba(116, 151, 218, .58));
+    content: '';
+  }
+
+  .song-detail-overview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border-top: 1px solid rgba(13, 12, 34, .07);
+    border-bottom: 1px solid rgba(13, 12, 34, .07);
+  }
+
+  .song-detail-overview__row {
+    display: grid;
+    align-content: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 68px;
+    border: 0;
+    padding: 8px;
+  }
+
+  .song-detail-overview__row + .song-detail-overview__row {
+    border-left: 1px solid rgba(13, 12, 34, .08);
+  }
+
+  .song-detail-overview__row span {
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  .song-detail-overview__row strong {
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+  }
 }
 `

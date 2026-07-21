@@ -269,6 +269,7 @@ function UserApp() {
   }
 
   function navigate(key: NavKey) {
+    if (key === 'discover') window.history.pushState({}, '', '/discover')
     setActiveView(key)
   }
 
@@ -1129,6 +1130,7 @@ function UserApp() {
             onPlaySong={(songId) => void handlePlaySong(songId)}
             onSongGenerated={syncSong}
             onJoinChallenge={openChallengeCreate}
+            onOpenHost={() => setActiveView('host')}
           />
         ) : null}
         {activeView === 'create' ? <CreatePage onOpenForm={openCreateForm} /> : null}

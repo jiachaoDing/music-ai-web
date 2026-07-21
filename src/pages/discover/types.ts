@@ -1,6 +1,6 @@
 import type { Song } from '../../types/song'
 
-export type DiscoverView = 'home' | 'challenge' | 'battles' | 'battleNew' | 'fortune'
+export type DiscoverView = 'challenge' | 'battles' | 'fortune'
 export type VoteSide = 'A' | 'B'
 export type BattleStatus = 'active' | 'closed' | 'hidden'
 export type ChallengeStatus = 'active' | 'closed' | 'hidden'
