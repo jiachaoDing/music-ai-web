@@ -234,15 +234,32 @@ export const playerStyles = `
 }
 
 .immersive-player__control--small {
-  width: 32px;
-  height: 32px;
+   width: 40px;
+  height: 40px;
   border-radius: 999px;
   font-size: 16px;
 }
 
+.immersive-player__control--repeat {
+   width: 40px;
+   min-width: 40px;
+   height: 40px;
+   border-radius: 999px;
+   padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.immersive-player__control--repeat.is-active {
+  color: #ffffff;
+  background: rgba(234, 76, 137, 0.26);
+  border-color: rgba(234, 76, 137, 0.32);
+}
+
 .immersive-player__control--play {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 999px;
   color: #ffffff;

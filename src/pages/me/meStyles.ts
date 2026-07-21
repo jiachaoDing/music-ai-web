@@ -956,6 +956,25 @@ export const meStyles = `
   font-weight: 700;
 }
 
+.me-playlist-play-all {
+  min-height: 36px;
+  border: 1px solid rgba(234, 76, 137, 0.16);
+  border-radius: 999px;
+  padding: 0 16px;
+  color: #ffffff;
+  background: var(--theme);
+  box-shadow: 0 12px 24px var(--theme-shadow);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.me-playlist-play-all:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: rgba(13, 12, 34, 0.06);
+  box-shadow: none;
+}
+
 .me-playlist-detail-cover {
   position: relative;
   overflow: hidden;
