@@ -1,6 +1,6 @@
 import type { Song } from '../types/song'
 import type { BattleRecord, ChallengeParticipant, ChallengeRecord, ChallengeSongRef, FortuneRecord, VoteSide } from '../pages/discover/types'
-import { request } from './request'
+import { buildApiUrl, request } from './request'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -84,6 +84,7 @@ function songId(value: unknown): string {
 
 function mapBattle(value: unknown, index: number): BattleRecord {
   const item = asRecord(value)
+  const creator = asRecord(item.creator)
   const now = new Date().toISOString()
   const status = asString(item.status, 'active')
 
@@ -94,7 +95,16 @@ function mapBattle(value: unknown, index: number): BattleRecord {
     bId: songId(item.bId ?? item.songBId ?? item.songB),
     aVotes: asNumber(item.aVotes ?? item.votesA),
     bVotes: asNumber(item.bVotes ?? item.votesB),
-    createdBy: asString(item.createdBy),
+    createdBy: asString(item.createdBy ?? item.creatorId),
+    creatorId: asString(item.creatorId ?? item.createdBy),
+    creator: Object.keys(creator).length
+      ? {
+          id: asString(creator.id),
+          username: asString(creator.username),
+          nickname: asString(creator.nickname ?? creator.username),
+        }
+      : undefined,
+    isOwner: asBoolean(item.isOwner),
     status: status === 'closed' || status === 'hidden' ? status : 'active',
     createdAt: asString(item.createdAt, now),
     updatedAt: asString(item.updatedAt, now),
@@ -246,6 +256,13 @@ export async function voteBattle(battleId: string, side: VoteSide) {
   )
 }
 
+export async function deleteBattle(battleId: string) {
+  return request<{ success: boolean; message?: string; battleId?: string }>(
+    `/api/battles/${encodeURIComponent(battleId)}`,
+    { method: 'DELETE' },
+  )
+}
+
 export async function getDayFortune(date = new Date().toISOString().slice(0, 10)): Promise<FortuneRecord> {
   const result = await request<unknown>('/api/dayfortune')
   return mapFortune(result, date)
@@ -301,8 +318,6 @@ export async function getGenerateTask(taskId: string): Promise<GenerateTaskStatu
 }
 
 export async function getQrCode(text: string, url: string): Promise<string> {
-  const result = asRecord(
-    await request<unknown>(`/api/qr?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`),
-  )
-  return asString(result.qrUrl ?? result.url)
+  const target = url || text
+  return buildApiUrl(`/api/qr?text=${encodeURIComponent(target)}`)
 }

@@ -155,7 +155,7 @@ export function HostPage({ hostPage, curation, onBack, onCreate, onOpenSong }: H
           ) : (
             <div className="host-empty-inline">
               <strong>今日主打歌还在生成路上</strong>
-              <p>后端每日任务成功后，这里会出现主理人发布的官方歌曲。</p>
+              <p>今日主打歌正在准备中。</p>
             </div>
           )}
         </article>
@@ -219,7 +219,7 @@ export function HostPage({ hostPage, curation, onBack, onCreate, onOpenSong }: H
         ) : (
           <EmptyState
             title="还没有主理人作品"
-            description="每日任务生成成功后，这里会展示 Echo 主理人的官方歌曲。"
+            description="主理人还没有发布作品。"
             actionLabel="开始创作"
             onAction={onCreate}
           />

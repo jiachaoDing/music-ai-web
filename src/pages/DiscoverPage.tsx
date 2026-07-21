@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { generateLyrics, generateLyricsWithFallback } from '../api/ai'
+import { generateLyrics } from '../api/ai'
 import { BackButton } from '../components/BackButton'
 import {
   createBattle as createBattleRequest,
+  deleteBattle as deleteBattleRequest,
   getBattles,
   getChallengeDetail,
   getChallenges,
@@ -20,7 +21,7 @@ import { initialBattles, initialChallenges, initialFortunes } from './discover/d
 import { DiscoverHomePage } from './discover/DiscoverHomePage'
 import { discoverStyles } from './discover/discoverStyles'
 import { FortunePage } from './discover/FortunePage'
-import type { BattleRecord, BattleVoteRecord, ChallengeParticipant, ChallengeSongRef, DiscoverView, FortuneSongDraft, VoteSide } from './discover/types'
+import type { BattleRecord, BattleVoteRecord, ChallengeParticipant, ChallengeSongRef, DiscoverView, FortuneRecord, FortuneSongDraft, VoteSide } from './discover/types'
 import type { Song } from '../types/song'
 import type { User } from '../types/user'
 
@@ -57,7 +58,11 @@ function pendingFortuneTaskKey(userId: string) {
 
 function isPlaceholderTitle(title?: string) {
   const normalized = title?.trim().replace(/[《》「」“”]/g, '') ?? ''
-  return !normalized || ['未命名', '未命名歌曲', 'AI生成歌曲', 'AI 生成歌曲', '今日微光', '今日微光（纯音乐）'].includes(normalized)
+  return !normalized || ['未命名', '未命名歌曲', 'AI生成歌曲', 'AI 生成歌曲', '今日微光', '今日微光（纯音乐）', '歌名', '标题', '歌曲标题'].includes(normalized)
+}
+
+function isPlaceholderFortune(fortune: FortuneRecord) {
+  return fortune.id.startsWith('placeholder_') || fortune.keyword === '待打卡'
 }
 
 function extractAiTitle(rawText?: string) {
@@ -121,6 +126,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   const [message, setMessage] = useState('')
   const [loadingData, setLoadingData] = useState(true)
   const [generatingFortune, setGeneratingFortune] = useState(false)
+  const [checkingIn, setCheckingIn] = useState(false)
   const [checkedInToday, setCheckedInToday] = useState(user.lastCheckin === today)
 
   const publishedSongs = useMemo(() => {
@@ -176,14 +182,13 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
       const results = await Promise.allSettled([
         getChallenges(),
         getBattles(),
-        getDayFortune(today),
         getFortunes(currentMonth),
         getDayArt(),
       ])
 
       if (cancelled) return
 
-      const [challengeResult, battleResult, fortuneResult, calendarResult, artResult] = results
+      const [challengeResult, battleResult, calendarResult, artResult] = results
 
       if (challengeResult.status === 'fulfilled') {
         setChallenges(challengeResult.value)
@@ -194,23 +199,18 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
         )
       }
       if (battleResult.status === 'fulfilled') setBattles(battleResult.value)
-      if (fortuneResult.status === 'fulfilled') {
-        const fortune = {
-          ...fortuneResult.value,
-          img: artResult.status === 'fulfilled' && artResult.value ? artResult.value : fortuneResult.value.img,
-        }
-        setTodayFortune(fortune)
-        setCheckedInToday(true)
-        setSelectedDate(fortune.date)
-      }
       if (calendarResult.status === 'fulfilled' && calendarResult.value.length) {
         const calendar = calendarResult.value
-        const currentFortune = fortuneResult.status === 'fulfilled' ? fortuneResult.value : null
-        setFortunes(
-          currentFortune && !calendar.some((fortune) => fortune.date === currentFortune.date)
-            ? [currentFortune, ...calendar]
-            : calendar,
-        )
+        const currentFortune = calendar.find((fortune) => fortune.date === today)
+        const artUrl = artResult.status === 'fulfilled' ? artResult.value : ''
+        const nextCalendar = currentFortune && artUrl
+          ? calendar.map((fortune) => fortune.date === today ? { ...fortune, img: fortune.img || artUrl } : fortune)
+          : calendar
+        setFortunes(nextCalendar)
+        if (currentFortune) {
+          setTodayFortune({ ...currentFortune, img: currentFortune.img || artUrl })
+          setCheckedInToday(!isPlaceholderFortune(currentFortune))
+        }
       }
 
       const failedCount = results.filter((result) => result.status === 'rejected').length
@@ -330,6 +330,23 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
     }
   }
 
+  async function deleteBattle(battleId: string) {
+    try {
+      const result = await deleteBattleRequest(battleId)
+      setBattles((current) => current.filter((battle) => battle.id !== battleId))
+      setBattleVotes((current) => {
+        const next = current.filter((vote) => vote.battleId !== battleId)
+        localStorage.setItem(`echo_battle_votes_${user.id}`, JSON.stringify(next))
+        return next
+      })
+      setMessage(result.message || '擂台删除成功。')
+      return true
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '擂台删除失败，请稍后重试。')
+      return false
+    }
+  }
+
   function addFortuneSong(draft: FortuneSongDraft) {
     setFortuneSongs((current) => current.some((item) => item.song.id === draft.song.id) ? current : [draft, ...current])
     onSongGenerated(draft.song)
@@ -340,7 +357,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
     for (let attempt = 0; attempt < FORTUNE_TASK_POLL_LIMIT; attempt += 1) {
       const status = await getGenerateTask(taskId)
       if (status.status === 'done') {
-        if (!status.result?.song) throw new Error('生成完成，但后端没有返回歌曲数据。')
+        if (!status.result?.song) throw new Error('歌曲生成结果暂时不可用，请稍后重试。')
         localStorage.removeItem(pendingFortuneTaskKey(user.id))
         addFortuneSong({ song: status.result.song, fortuneDate })
         return
@@ -354,23 +371,56 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
     throw new Error('时运曲仍在后台生成。任务进度已经保存，重新进入时运页面后会继续查询。')
   }
 
-  async function generateFortuneSong(mode: 'vocal' | 'instrumental') {
+  async function checkInToday() {
+    if (checkingIn || checkedInToday) {
+      setMessage('今天已经打卡，无需重复操作。')
+      return
+    }
+    setCheckingIn(true)
+    try {
+      const fortune = await getDayFortune(today)
+      const checkedFortune = { ...fortune, img: fortune.img || todayFortune.img }
+      setTodayFortune(checkedFortune)
+      setFortunes((current) => current.some((item) => item.date === fortune.date)
+        ? current.map((item) => item.date === fortune.date ? checkedFortune : item)
+        : [checkedFortune, ...current])
+      setSelectedDate(today)
+      setCheckedInToday(true)
+      setMessage('今日已打卡，签到状态已经保存。')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '今日打卡失败，请稍后重试。')
+    } finally {
+      setCheckingIn(false)
+    }
+  }
+
+  async function generateFortuneSong(mode: 'vocal' | 'instrumental', selectedFortune: FortuneRecord) {
+    if (isPlaceholderFortune(selectedFortune)) {
+      setMessage(selectedFortune.date < today ? '当日未打卡，暂无时运记录。' : '时运尚未开启。')
+      return
+    }
+    if (selectedFortune.date > today) {
+      setMessage('时运尚未开启。')
+      return
+    }
     setGeneratingFortune(true)
     try {
       const isInstrumental = mode === 'instrumental'
       const fortunePrompt = [
-        `日期：${todayFortune.date}`,
-        `今日时运关键词：${todayFortune.keyword}`,
-        `今日心情：${todayFortune.mood.name}`,
-        `今日能量：${todayFortune.battery}`,
-        `充电建议：${todayFortune.recharge ?? todayFortune.encourage ?? '治愈与放松'}`,
+        `日期：${selectedFortune.date}`,
+        `当日时运关键词：${selectedFortune.keyword}`,
+        `当日心情：${selectedFortune.mood.name}`,
+        `当日能量：${selectedFortune.battery}`,
+        `宜：${selectedFortune.dos?.join('、') || '顺其自然'}`,
+        `忌：${selectedFortune.donts?.join('、') || '过度消耗'}`,
+        `充电建议：${selectedFortune.recharge ?? selectedFortune.encourage ?? '治愈与放松'}`,
         isInstrumental
           ? '请据此创作一首纯音乐的标题和风格。标题要简洁、有画面感、与今日时运相关，不要使用“今日微光”，不要出现“纯音乐”字样；歌词内容仅作为创作参考，最终音乐不得包含人声。'
           : '请据此创作一首今日时运歌曲。标题要简洁、有画面感、与今日状态相关，不要使用“今日微光”；歌词需要完整并包含 Verse、Chorus 等段落。',
       ].join('\n')
       const styles = isInstrumental ? ['治愈', 'Lo-fi', '氛围纯音乐'] : ['治愈流行', 'Lo-fi']
       const lyricInput = { mode: 'song', prompt: fortunePrompt, styles }
-      let lyric = await generateLyrics(lyricInput).catch(() => generateLyricsWithFallback(lyricInput))
+      let lyric = await generateLyrics(lyricInput)
       let vocalLyrics = isInstrumental ? '' : usableVocalLyrics(lyric.lyrics, lyric.rawText)
 
       if (!isInstrumental && !vocalLyrics) {
@@ -379,13 +429,13 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           prompt: `${fortunePrompt}\n上一次没有返回可识别的歌词。请严格按照“标题：”“风格：”“歌词：”输出，并提供完整的 [Verse] 和 [Chorus]。`,
           styles,
         }
-        const retry = await generateLyrics(retryInput).catch(() => generateLyricsWithFallback(retryInput))
+        const retry = await generateLyrics(retryInput)
         lyric = retry
         vocalLyrics = usableVocalLyrics(retry.lyrics, retry.rawText)
       }
 
       if (!isInstrumental && !vocalLyrics) {
-        const fallback = await generateLyricsWithFallback({
+        const fallback = await generateLyrics({
           mode: 'song',
           prompt: `${fortunePrompt}\n请生成完整且非空的 [Verse]、[Chorus] 演唱歌词。`,
           styles,
@@ -405,10 +455,10 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           prompt: `${fortunePrompt}\n上一次没有生成有效歌名。请重新构思一个独特的中文歌名，并严格以“标题：歌名”开头。`,
           styles,
         }
-        const titleResult = await generateLyrics(titleInput).catch(() => generateLyricsWithFallback(titleInput))
+        const titleResult = await generateLyrics(titleInput)
         generatedTitle = isPlaceholderTitle(titleResult.title) ? extractAiTitle(titleResult.rawText) : titleResult.title.trim()
       }
-      const fallbackTitle = `${todayFortune.keyword}·${todayFortune.mood.name}`
+      const fallbackTitle = `${selectedFortune.keyword}·${selectedFortune.mood.name}`
       const task = await submitFortuneSong({
         title: isPlaceholderTitle(generatedTitle) ? fallbackTitle : generatedTitle,
         style: lyric.style?.trim() || (isInstrumental ? 'Lo-fi / 氛围纯音乐' : '治愈流行 / Lo-fi'),
@@ -416,12 +466,12 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
         prompt: fortunePrompt,
         isInstrumental,
       })
-      if (!task.taskId) throw new Error('后端没有返回生成任务 ID。')
+      if (!task.taskId) throw new Error('生成任务提交失败，请稍后重试。')
       localStorage.setItem(pendingFortuneTaskKey(user.id), JSON.stringify({
         taskId: task.taskId,
-        fortuneDate: todayFortune.date,
+        fortuneDate: selectedFortune.date,
       } satisfies PendingFortuneTask))
-      await waitForFortuneTask(task.taskId, todayFortune.date)
+      await waitForFortuneTask(task.taskId, selectedFortune.date)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '时运曲生成失败，请稍后重试。')
     } finally {
@@ -493,7 +543,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           onOpenSong={onOpenSong}
           onPlaySong={onPlaySong}
           onJoin={() => onJoinChallenge({ id: selectedChallenge.id, title: selectedChallenge.title, prompt: selectedChallenge.prompt ?? selectedChallenge.desc })}
-        /> : <section className="content-panel empty-panel"><h2>暂无话题挑战</h2><p>后端当前还没有发布可参与的话题。</p></section>
+        /> : <section className="content-panel empty-panel"><h2>暂无话题挑战</h2><p>暂时没有可参与的话题。</p></section>
       ) : null}
 
       {view === 'battles' ? (
@@ -501,8 +551,10 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           battleVotes={battleVotes}
           battles={battles}
           currentUserId={user.id}
+          currentUserRole={user.role}
           songs={publishedSongs}
           onCreate={() => navigate('battleNew', '/battles/new')}
+          onDelete={deleteBattle}
           onOpenSong={onOpenSong}
           onPlaySong={onPlaySong}
           onVote={voteBattle}
@@ -530,15 +582,13 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           fortunes={fortunes}
           generatedSongs={fortuneSongs}
           generating={generatingFortune}
+          checkingIn={checkingIn}
           checkedInToday={checkedInToday}
           month={currentMonth}
           selectedDate={selectedDate}
           onCheckin={setMessage}
-          onCheckinToday={() => {
-            setCheckedInToday(true)
-            setMessage('今日已打卡，签到状态已经保存。')
-          }}
-          onGenerateSong={(mode) => void generateFortuneSong(mode)}
+          onCheckinToday={() => void checkInToday()}
+          onGenerateSong={(mode, fortune) => void generateFortuneSong(mode, fortune)}
           onSelectDate={setSelectedDate}
         />
       ) : null}

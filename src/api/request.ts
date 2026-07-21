@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
+
+export function buildApiUrl(path: string) {
+  return `${API_BASE_URL}${path}`
+}
 
 type ApiResult<T> = {
   code?: number
@@ -9,7 +13,7 @@ type ApiResult<T> = {
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('echo_token')
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     ...options,
     headers: {
       'Content-Type': 'application/json',

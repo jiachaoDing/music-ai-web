@@ -87,7 +87,7 @@ export function CreatePage({ onOpenForm }: CreatePageProps) {
         <div>
           <span className="create-producer-label">Producer Suite</span>
           <strong>AI 音乐制作人</strong>
-          <p>一句话主题，策划一张概念 EP。后续可扩展到独立的专辑制作流程。</p>
+          <p>用一句话生成一张属于你的概念 EP。</p>
         </div>
         <button type="button" onClick={() => onOpenForm('album')}>
           开始制作
@@ -101,7 +101,6 @@ export function CreatePage({ onOpenForm }: CreatePageProps) {
             <span>5 种创作模式</span>
             <h2>从最合适的输入方式开始</h2>
           </div>
-          <p>每张卡片只强调输入重点，减少装饰，让用户更快做选择。</p>
         </div>
 
         <div className="create-mode-stage">

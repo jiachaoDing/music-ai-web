@@ -86,7 +86,6 @@ export function MeHero({ user, summary, stats }: MeHeroProps) {
         <div className="me-hero__score">
           <strong>{user.echoPoints}</strong>
           <span>Echo Points</span>
-          <small>{summary.songCount ? '作品库正在持续扩充' : '完成第一首作品后这里会更新'}</small>
         </div>
       </div>
     </div>

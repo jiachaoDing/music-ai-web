@@ -353,11 +353,6 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
               <span>Drafts</span>
               <h2>草稿箱</h2>
             </div>
-            <p>
-              {draftSongs.length
-                ? `当前共有 ${draftSongs.length} 首草稿作品，优先补齐封面、文案和发布信息。`
-                : '当前草稿箱是空的，新的未发布作品会先进入这里。'}
-            </p>
           </div>
           {draftSongs.length ? (
             <div className="card-list">
@@ -388,11 +383,6 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
               <h2>我的作品</h2>
             </div>
             <div className="me-work-rules">
-              <strong>
-                {worksView === 'published'
-                  ? `当前已展示 ${publishedSongs.length} 个公开发布作品。`
-                  : `当前共有 ${privateSongs.length} 首私密作品。`}
-              </strong>
               <p>草稿、私密可删除；已发布需先转为私密。</p>
             </div>
           </div>
@@ -468,9 +458,6 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
               <h2>我的歌单</h2>
             </div>
             <div className="me-playlist-actions">
-              <p>
-                当前共整理了 {playlists.length} 个歌单，已经切换为真实数据展示，新建歌单也会直接写入后端。
-              </p>
               <button
                 type="button"
                 className="me-create-playlist"

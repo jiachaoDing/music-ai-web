@@ -29,6 +29,13 @@ export type BattleRecord = {
   aVotes: number
   bVotes: number
   createdBy: string
+  creatorId?: string
+  creator?: {
+    id: string
+    username?: string
+    nickname?: string
+  }
+  isOwner?: boolean
   status: BattleStatus
   createdAt: string
   updatedAt: string

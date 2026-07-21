@@ -35,7 +35,7 @@ export function DiscoverHomePage({
         <article className="overview-mini-card overview-mini-card--challenge" style={{ '--feature-color': featuredChallenge?.color ?? '#8b5cf6' } as CSSProperties}>
           <span>灵感入口</span>
           <strong>{featuredChallenge?.title ?? '暂无话题挑战'}</strong>
-          <p>{featuredChallenge?.desc ?? '后端当前还没有发布可参与的话题。'}</p>
+          <p>{featuredChallenge?.desc ?? '暂时没有可参与的话题。'}</p>
           <button type="button" disabled={!featuredChallenge} onClick={() => featuredChallenge && onOpenChallenge(featuredChallenge.id)}>
             {featuredChallenge ? '参与挑战' : '等待发布'}
           </button>

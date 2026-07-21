@@ -1559,6 +1559,17 @@ textarea:focus {
   background: transparent;
 }
 
+.mini-player__icon:hover,
+.mini-player__icon:focus-visible,
+.mini-player__repeat:hover,
+.mini-player__repeat:focus-visible {
+  transform: none;
+  border-color: transparent;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+}
+
 .mini-player__mode,
 .mini-player__queue-toggle {
   width: 46px;
@@ -1567,6 +1578,18 @@ textarea:focus {
 
 .mini-player__icon.is-active,
 .mini-player__repeat.is-active {
+  color: var(--theme);
+  background: rgba(234, 76, 137, 0.1);
+}
+
+.mini-player__mode:hover,
+.mini-player__mode:focus-visible,
+.mini-player__queue-toggle:hover,
+.mini-player__queue-toggle:focus-visible,
+.mini-player__icon.is-active:hover,
+.mini-player__icon.is-active:focus-visible,
+.mini-player__repeat.is-active:hover,
+.mini-player__repeat.is-active:focus-visible {
   color: var(--theme);
   background: rgba(234, 76, 137, 0.1);
 }
@@ -1659,6 +1682,15 @@ textarea:focus {
   padding: 4px 0;
   color: inherit;
   text-align: left;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mini-player__queue-play:hover,
+.mini-player__queue-play:focus-visible {
+  transform: none;
+  border-color: transparent;
+  color: inherit;
   background: transparent;
   box-shadow: none;
 }
@@ -1798,7 +1830,7 @@ textarea:focus {
 .poster-modal {
   display: grid;
   gap: 14px;
-  width: min(420px, 100%);
+  width: min(380px, calc(100vw - 36px));
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 16px;
@@ -1806,45 +1838,30 @@ textarea:focus {
   box-shadow: var(--shadow);
 }
 
-.poster-preview {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  align-content: end;
-  gap: 12px;
-  min-height: 520px;
-  border: 1px solid var(--line);
+.poster-canvas {
+  width: 100%;
+  aspect-ratio: 640 / 900;
+  border: 0;
   border-radius: 8px;
-  padding: 24px;
-  color: var(--text);
-  background:
-    linear-gradient(180deg, transparent 0%, rgba(16, 16, 16, 0.08) 100%),
-    var(--surface-soft);
+  background: #0a0813;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
 }
 
-.poster-preview > *:not(.poster-preview__image) {
-  position: relative;
-  z-index: 1;
-}
-
-.poster-preview span,
-.poster-preview small {
-  color: var(--muted);
-}
-
-.poster-preview strong {
-  font-size: 36px;
-  line-height: 1.08;
-}
-
-.poster-preview p {
+.poster-tip {
   margin: 0;
-  line-height: 1.7;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .poster-actions {
   display: flex;
   gap: 10px;
+}
+
+.poster-actions button {
+  flex: 1;
 }
 
 @media (max-width: 880px) {
