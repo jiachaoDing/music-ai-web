@@ -114,6 +114,7 @@ function UserApp() {
   const [repeatMode, setRepeatMode] = useState<RepeatMode>(getSavedRepeatMode)
   const [shuffleEnabled, setShuffleEnabled] = useState(getSavedShuffleEnabled)
   const [songReturnView, setSongReturnView] = useState<AppView>('feed')
+  const [playerReturnView, setPlayerReturnView] = useState<AppView>('feed')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playerVisualizerCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -269,6 +270,13 @@ function UserApp() {
 
   function navigate(key: NavKey) {
     setActiveView(key)
+  }
+
+  function openPlayerView() {
+    if (activeView !== 'player') {
+      setPlayerReturnView(activeView === 'auth' ? 'feed' : activeView)
+    }
+    setActiveView('player')
   }
 
   function syncPlayCount(songId: string, nextPlayCount: number) {
@@ -642,7 +650,7 @@ function UserApp() {
   ) {
     setCurrentSongId(songId)
     if (options.openPlayer ?? true) {
-      setActiveView('player')
+      openPlayerView()
     }
     void startPlayback(songId, queueSongs)
   }
@@ -1057,15 +1065,8 @@ function UserApp() {
           onPlayQueueSong={(songId) => playQueuedSong(songId, currentQueueSongs)}
           onRemoveQueueSong={removeQueuedSong}
           onSeek={seekPlayback}
-          onClose={() => {
-            if (currentSong) {
-              setDetailSongId(currentSong.id)
-              setActiveView('songDetail')
-            } else {
-              setActiveView('feed')
-            }
-          }}
-          onBackHome={() => setActiveView('feed')}
+          onClose={() => setActiveView(playerReturnView)}
+          onBackHome={() => setActiveView(playerReturnView)}
         />
         {posterOpen && currentSong ? (
           <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />
@@ -1088,7 +1089,7 @@ function UserApp() {
         progress={playbackProgress}
         user={user}
         onNavigate={navigate}
-        onOpenPlayer={() => setActiveView('player')}
+        onOpenPlayer={openPlayerView}
         onTogglePlay={togglePlayback}
         onPlayPrev={() => playAdjacentSong('prev')}
         onPlayNext={() => playAdjacentSong('next')}

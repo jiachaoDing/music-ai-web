@@ -1,4 +1,5 @@
 import type { User } from '../../types/user'
+import type { PointsLedgerItem } from '../../api/me'
 
 type MeHeroProps = {
   user: User
@@ -8,6 +9,7 @@ type MeHeroProps = {
     playCount: number
     topStyles: string[]
   }
+  stats: MeStatsProps['stats']
 }
 
 type MeStatsProps = {
@@ -20,6 +22,7 @@ type MeStatsProps = {
 type MeAccountProps = {
   user: User
   inviteCode?: string
+  ledger?: PointsLedgerItem[]
   loading?: boolean
 }
 
@@ -34,7 +37,16 @@ function formatDate(value?: string) {
   }).format(new Date(value))
 }
 
-export function MeHero({ user, summary }: MeHeroProps) {
+function formatLedgerTime(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+export function MeHero({ user, summary, stats }: MeHeroProps) {
   const topStylesText = summary.topStyles.length ? summary.topStyles.join('、') : '等待新的创作风格出现'
 
   return (
@@ -51,6 +63,19 @@ export function MeHero({ user, summary }: MeHeroProps) {
             目前共整理了 {summary.songCount} 首作品，累计获得 {summary.likeCount} 次喜欢和{' '}
             {summary.playCount} 次播放。最近常用风格是 {topStylesText}。
           </p>
+          <div className="me-hero__tags">
+            <i>创作中</i>
+            <i>个人中心</i>
+            <i>AI Music</i>
+          </div>
+          <div className="me-hero__stats" aria-label="个人概览">
+            {stats.map((item) => (
+              <article className="me-hero__stat" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
       <div className="me-hero__spotlight">
@@ -88,14 +113,44 @@ export function MeStatsPanel({ stats }: MeStatsProps) {
   )
 }
 
-export function MeAccountPanel({ user, inviteCode, loading = false }: MeAccountProps) {
+export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false }: MeAccountProps) {
   return (
     <section className="me-panel me-panel--account">
       <div className="me-panel__heading">
         <div>
-          <span>Account</span>
-          <h2>账户信息</h2>
+          <span>Wallet</span>
+          <h2>回声钱包</h2>
         </div>
+      </div>
+      <div className="me-wallet-card">
+        <div>
+          <span>当前回声</span>
+          <strong>{user.echoPoints}</strong>
+        </div>
+        <p>用回声生成歌曲；作品被喜欢、翻唱或收藏时，也会继续回赚回声。</p>
+      </div>
+      <div className="me-ledger-card">
+        <div className="me-ledger-head">
+          <span>最近流水</span>
+          <small>{loading ? '正在同步...' : ledger.length ? `${ledger.length} 条记录` : '暂无记录'}</small>
+        </div>
+        {ledger.length ? (
+          <div className="me-ledger-list">
+            {ledger.map((item) => (
+              <div className="me-ledger-row" key={item.id}>
+                <div>
+                  <strong>{item.reason}</strong>
+                  <span>{formatLedgerTime(item.createdAt)}{typeof item.balance === 'number' ? ` · 余额 ${item.balance}` : ''}</span>
+                </div>
+                <b className={item.delta >= 0 ? 'is-positive' : 'is-negative'}>
+                  {item.delta >= 0 ? '+' : ''}{item.delta}
+                </b>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="me-ledger-empty">还没有回声流水。完成创作、打卡或作品获得互动后，这里会留下记录。</p>
+        )}
       </div>
       <div className="me-detail-list">
         <div className="me-detail-row">

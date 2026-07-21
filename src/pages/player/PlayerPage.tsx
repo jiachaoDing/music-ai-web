@@ -168,7 +168,7 @@ export function PlayerPage({
 
       <header className="immersive-player__topbar">
         <button type="button" className="immersive-player__ghost" onClick={onClose}>
-          返回详情
+          返回上一页
         </button>
         <button type="button" className="immersive-player__brand" onClick={onBackHome}>
           Echo AI

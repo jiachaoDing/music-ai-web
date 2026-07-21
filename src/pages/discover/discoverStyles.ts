@@ -35,8 +35,7 @@ export const discoverStyles = `
 .dashed-box,
 .fortune-draft-card,
 .generated-song,
-.challenge-work-panel,
-.share-card-panel {
+.challenge-work-panel {
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-radius: 16px;
   background: var(--glass);
@@ -1182,11 +1181,26 @@ export const discoverStyles = `
 }
 
 .share-card-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
   display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(180px, 1fr);
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.share-card-sheet {
+  display: grid;
   gap: 14px;
-  align-items: center;
-  padding: clamp(14px, 2vw, 20px);
+  width: min(360px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
 }
 
 .share-card-preview {
@@ -1301,8 +1315,7 @@ export const discoverStyles = `
   .discover-overview,
   .fortune-top-grid,
   .fortune-draft-card,
-  .challenge-flow,
-  .share-card-panel {
+  .challenge-flow {
     grid-template-columns: 1fr;
   }
 
@@ -1939,17 +1952,12 @@ export const discoverStyles = `
   }
 
   .share-card-panel {
-    grid-template-columns: 1fr;
     padding: 12px;
   }
 
-  .share-card-preview {
-    min-height: 280px;
-    padding: 16px;
-  }
-
-  .share-card-preview h2 {
-    font-size: 28px;
+  .share-card-sheet {
+    width: min(330px, calc(100vw - 24px));
+    padding: 12px;
   }
 
   .generated-song {
@@ -2081,6 +2089,18 @@ export const discoverStyles = `
 
   .challenge-rail .rail-card small {
     display: none;
+  }
+}
+
+@media (max-height: 760px) {
+  .share-card-sheet {
+    width: min(320px, calc(100vw - 28px));
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .share-card-canvas {
+    max-height: calc(100vh - 176px);
   }
 }
 `
