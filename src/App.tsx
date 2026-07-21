@@ -93,6 +93,7 @@ function UserApp() {
   const [createChallenge, setCreateChallenge] = useState<CreateChallengeContext | null>(null)
   const [radioPreset, setRadioPreset] = useState<CreatePreset>(EMPTY_CREATE_PRESET)
   const [currentSongId, setCurrentSongId] = useState<string>()
+  const [detailSongId, setDetailSongId] = useState<string>()
   const [posterOpen, setPosterOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [authLoading, setAuthLoading] = useState(false)
@@ -127,6 +128,21 @@ function UserApp() {
   const currentSong = currentSongId
     ? allSongs.find((song) => song.id === currentSongId)
     : undefined
+  const detailSong = detailSongId
+    ? allSongs.find((song) => song.id === detailSongId)
+    : undefined
+  const currentQueueSongs = useMemo(() => {
+    const queueIds =
+      playbackQueue.length && currentSongId && playbackQueue.includes(currentSongId)
+        ? playbackQueue
+        : currentSongId
+          ? uniqSongIds(getSourceSongsForPlayback(currentSongId))
+          : []
+
+    return queueIds
+      .map((songId) => allSongs.find((song) => song.id === songId))
+      .filter((song): song is Song => Boolean(song))
+  }, [playbackQueue, currentSongId, allSongs, activeView, songReturnView, feedSongs, mySongs, hostPage, curation])
   const playbackProgress = playbackDuration > 0 ? (currentTime / playbackDuration) * 100 : 0
   const audioElement = <audio ref={audioRef} hidden preload="metadata" crossOrigin="anonymous" />
 
@@ -184,7 +200,7 @@ function UserApp() {
     if (activeView !== 'songDetail' && activeView !== 'player') {
       setSongReturnView(activeView)
     }
-    setCurrentSongId(songId)
+    setDetailSongId(songId)
     setActiveView('songDetail')
     void getSongDetail(songId)
       .then((nextSong) => {
@@ -197,7 +213,7 @@ function UserApp() {
             : [nextSong, ...currentSongs],
         )
         setMySongs(updateIfExists)
-        setCurrentSongId(nextSong.id)
+        setDetailSongId(nextSong.id)
       })
       .catch((error) => {
         console.error(error)
@@ -213,14 +229,17 @@ function UserApp() {
     return [mergedSong, ...filteredSongs]
   }
 
-  function syncSong(nextSong: Song) {
+  function syncSong(nextSong: Song, options?: { makeCurrent?: boolean }) {
     setMySongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
     setFeedSongs((currentSongs) => {
       const exists = currentSongs.some((song) => song.id === nextSong.id)
       if (!exists) return currentSongs
       return replaceSongInList(currentSongs, nextSong)
     })
-    setCurrentSongId(nextSong.id)
+    if (options?.makeCurrent) {
+      setCurrentSongId(nextSong.id)
+      setDetailSongId(nextSong.id)
+    }
   }
 
   function navigate(key: NavKey) {
@@ -392,11 +411,46 @@ function UserApp() {
 
     setPlaybackQueue(queue)
     setPlaybackQueueIndex(nextIndex)
-    setActiveView('player')
     const queueSongs = queue
       .map((queuedSongId) => allSongs.find((song) => song.id === queuedSongId))
       .filter((song): song is Song => Boolean(song))
     void startPlayback(nextSongId, queueSongs)
+  }
+
+  function playQueuedSong(songId: string, queueSongs: Song[]) {
+    const queue = uniqSongIds(queueSongs)
+    const nextIndex = Math.max(0, queue.indexOf(songId))
+    setPlaybackQueue(queue.length ? queue : [songId])
+    setPlaybackQueueIndex(nextIndex)
+    void startPlayback(songId, queueSongs)
+  }
+
+  function removeQueuedSong(songId: string) {
+    const queue = playbackQueue.length ? playbackQueue : uniqSongIds(currentQueueSongs)
+    const removedIndex = queue.indexOf(songId)
+    const nextQueue = queue.filter((queuedSongId) => queuedSongId !== songId)
+    const nextQueueSongs = nextQueue
+      .map((queuedSongId) => allSongs.find((song) => song.id === queuedSongId))
+      .filter((queuedSong): queuedSong is Song => Boolean(queuedSong))
+
+    setPlaybackQueue(nextQueue)
+
+    if (currentSongId === songId) {
+      const nextSongId = nextQueue[removedIndex] ?? nextQueue[removedIndex - 1] ?? nextQueue[0]
+      if (nextSongId) {
+        setPlaybackQueueIndex(Math.max(0, nextQueue.indexOf(nextSongId)))
+        void startPlayback(nextSongId, nextQueueSongs)
+      } else {
+        pausePlayback()
+        setCurrentSongId(undefined)
+        setPendingPlaySongId(null)
+        setPlaybackQueueIndex(0)
+      }
+      return
+    }
+
+    const activeIndex = currentSongId ? nextQueue.indexOf(currentSongId) : playbackQueueIndex
+    setPlaybackQueueIndex(Math.max(0, activeIndex >= 0 ? activeIndex : Math.min(playbackQueueIndex, nextQueue.length - 1)))
   }
 
   function cycleRepeatMode() {
@@ -515,7 +569,7 @@ function UserApp() {
         if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
         createdSong = await pollGenerateTask(task.taskId, '歌曲')
       }
-      syncSong(createdSong)
+      syncSong(createdSong, { makeCurrent: true })
       let completionDescription = '歌曲、封面和乐评都已经准备好了，现在可以查看详情或继续发布。'
 
       if (payload.challengeId) {
@@ -531,7 +585,7 @@ function UserApp() {
           copyrightConfirmed: true,
         })
         createdSong = { ...createdSong, ...publishedSong, challengeId: payload.challengeId }
-        syncSong(createdSong)
+        syncSong(createdSong, { makeCurrent: true })
         completionDescription = `歌曲已经发布，并成功加入话题「${createChallenge?.title ?? '话题挑战'}」。`
       }
 
@@ -556,9 +610,15 @@ function UserApp() {
     }
   }
 
-  async function handlePlaySong(songId: string, queueSongs?: Song[]) {
+  async function handlePlaySong(
+    songId: string,
+    queueSongs?: Song[],
+    options: { openPlayer?: boolean } = {},
+  ) {
     setCurrentSongId(songId)
-    setActiveView('player')
+    if (options.openPlayer ?? true) {
+      setActiveView('player')
+    }
     void startPlayback(songId, queueSongs)
   }
 
@@ -596,23 +656,24 @@ function UserApp() {
   }
 
   async function handlePublishSong(published: boolean) {
-    if (!currentSong) return
+    const targetSong = detailSong ?? currentSong
+    if (!targetSong) return
 
     setPublishSubmitting(true)
 
     try {
-      const nextSong = await publishSong(currentSong.id, {
+      const nextSong = await publishSong(targetSong.id, {
         published,
         copyrightConfirmed: published ? true : undefined,
       })
-      const preservedSong = { ...nextSong, challengeId: nextSong.challengeId ?? currentSong.challengeId }
+      const preservedSong = { ...nextSong, challengeId: nextSong.challengeId ?? targetSong.challengeId }
 
       setMySongs((currentSongs) => replaceSongInList(currentSongs, preservedSong))
       setFeedSongs((currentSongs) => {
         const nextSongs = currentSongs.filter((song) => song.id !== preservedSong.id)
         return preservedSong.published ? [preservedSong, ...nextSongs] : nextSongs
       })
-      setCurrentSongId(preservedSong.id)
+      setDetailSongId(preservedSong.id)
 
       window.alert(
         published ? '作品已发布，可以继续去首页或我的作品里查看。' : '作品已设为仅自己可见。'
@@ -633,11 +694,18 @@ function UserApp() {
     if (currentSongId === songId) {
       pausePlayback()
       setCurrentSongId(undefined)
+    }
+    if (detailSongId === songId) {
+      setDetailSongId(undefined)
       setActiveView('me')
     }
 
     setPlaybackSongs((currentSongs) => currentSongs.filter((song) => song.id !== songId))
-    setPlaybackQueue((currentQueue) => currentQueue.filter((queuedSongId) => queuedSongId !== songId))
+    setPlaybackQueue((currentQueue) => {
+      const nextQueue = currentQueue.filter((queuedSongId) => queuedSongId !== songId)
+      setPlaybackQueueIndex((currentIndex) => Math.min(currentIndex, Math.max(0, nextQueue.length - 1)))
+      return nextQueue
+    })
 
     window.alert('作品已删除。')
   }
@@ -685,7 +753,7 @@ function UserApp() {
     }
 
     void bootstrap()
-  }, [feedTab])
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -878,7 +946,8 @@ function UserApp() {
       ])
       setFeedSongs(nextFeedSongs)
       setMySongs(nextMySongs)
-      setCurrentSongId(nextFeedSongs[0]?.id)
+      setCurrentSongId(undefined)
+      setDetailSongId(undefined)
       void loadHostContent()
     } catch (error) {
       console.error(error)
@@ -947,13 +1016,24 @@ function UserApp() {
           shuffleEnabled={shuffleEnabled}
           currentTime={currentTime}
           duration={playbackDuration || currentSong?.duration || 0}
+          queueSongs={currentQueueSongs}
+          currentSongId={currentSongId}
           visualizerCanvasRef={playerVisualizerCanvasRef}
           onTogglePlay={togglePlayback}
           onPlayPrev={() => playAdjacentSong('prev')}
           onPlayNext={() => playAdjacentSong('next')}
           onCycleRepeat={cycleRepeatMode}
+          onPlayQueueSong={(songId) => playQueuedSong(songId, currentQueueSongs)}
+          onRemoveQueueSong={removeQueuedSong}
           onSeek={seekPlayback}
-          onClose={() => setActiveView(currentSong ? 'songDetail' : 'feed')}
+          onClose={() => {
+            if (currentSong) {
+              setDetailSongId(currentSong.id)
+              setActiveView('songDetail')
+            } else {
+              setActiveView('feed')
+            }
+          }}
           onBackHome={() => setActiveView('feed')}
         />
         {posterOpen && currentSong ? (
@@ -969,6 +1049,8 @@ function UserApp() {
       <AppLayout
         active={activeNavKey as Exclude<NavKey, 'auth'>}
         currentSong={currentSong}
+        queueSongs={currentQueueSongs}
+        currentSongId={currentSongId}
         isPlaying={isPlaying}
         repeatMode={repeatMode}
         shuffleEnabled={shuffleEnabled}
@@ -980,6 +1062,8 @@ function UserApp() {
         onPlayPrev={() => playAdjacentSong('prev')}
         onPlayNext={() => playAdjacentSong('next')}
         onCycleRepeat={cycleRepeatMode}
+        onPlayQueueSong={(songId) => playQueuedSong(songId, currentQueueSongs)}
+        onRemoveQueueSong={removeQueuedSong}
         onLogout={handleLogout}
       >
         {activeView === 'feed' ? (
@@ -993,6 +1077,7 @@ function UserApp() {
             onCreate={() => setActiveView('create')}
             onOpenHost={() => setActiveView('host')}
             onOpenSong={openSong}
+            onPlaySong={(songId) => void handlePlaySong(songId, feedSongs, { openPlayer: false })}
           />
         ) : null}
         {activeView === 'host' ? (
@@ -1056,7 +1141,7 @@ function UserApp() {
             user={user}
             songs={mySongs}
             onOpenSong={openSong}
-            onPlaySong={(songId, queueSongs) => void handlePlaySong(songId, queueSongs)}
+            onPlaySong={(songId, queueSongs) => void handlePlaySong(songId, queueSongs, { openPlayer: false })}
           />
         ) : null}
         {activeView === 'task' && createTask ? (
@@ -1066,7 +1151,7 @@ function UserApp() {
             </div>
             <TaskPage
               task={createTask}
-              onOpenSong={() => currentSong && openSong(currentSong.id)}
+              onOpenSong={() => detailSong ? openSong(detailSong.id) : currentSong && openSong(currentSong.id)}
               challengeTitle={createChallenge?.title}
               onReturnToChallenge={createChallenge ? () => {
                 window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
@@ -1075,22 +1160,22 @@ function UserApp() {
             />
           </>
         ) : null}
-        {activeView === 'songDetail' && currentSong ? (
+        {activeView === 'songDetail' && detailSong ? (
           <>
             <div className="page-back-row">
               <BackButton label="返回上一页" onClick={() => setActiveView(songReturnView)} />
             </div>
             <SongDetailPage
-              song={currentSong}
-              canManage={currentSong.author.id === user.id}
+              song={detailSong}
+              canManage={detailSong.author.id === user.id}
               publishing={publishSubmitting}
-              onPlay={() => void handlePlaySong(currentSong.id)}
-              onRemix={() => handleRemixSong(currentSong)}
-              onPlayDj={() => void handlePlayDjBroadcast(currentSong)}
+              onPlay={() => void handlePlaySong(detailSong.id)}
+              onRemix={() => handleRemixSong(detailSong)}
+              onPlayDj={() => void handlePlayDjBroadcast(detailSong)}
               onOpenPoster={() => setPosterOpen(true)}
               onPublish={() => void handlePublishSong(true)}
               onSetPrivate={() => void handlePublishSong(false)}
-              onDelete={() => handleDeleteSong(currentSong.id)}
+              onDelete={() => handleDeleteSong(detailSong.id)}
               onOpenSong={openSong}
               onSongUpdate={syncSong}
             />

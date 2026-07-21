@@ -14,6 +14,7 @@ import type { Comment } from '../../types/comment'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
+import { ECHO_COSTS, formatEchoCost } from '../../utils/echoCost'
 import { formatCount, formatDuration } from '../../utils/format'
 import { songDetailStyles } from './songDetailStyles'
 
@@ -536,7 +537,12 @@ export function SongDetailPage({
           disabled={remixSubmitting}
           onClick={() => void handleRemix()}
         >
-          {remixSubmitting ? '提交中...' : '翻唱二创'}
+          {remixSubmitting ? '提交中...' : (
+            <>
+              翻唱二创
+              <span className="cost-tag">· {formatEchoCost(ECHO_COSTS.remix)}</span>
+            </>
+          )}
         </button>
         <button
           type="button"
@@ -552,7 +558,7 @@ export function SongDetailPage({
           disabled={likeSubmitting || liked}
           onClick={() => void handleLikeSong()}
         >
-          {likeSubmitting ? '点赞中...' : liked ? '已点赞' : `点赞 ${formatCount(likeCount)}`}
+          {likeSubmitting ? '点赞中...' : liked ? '已点赞' : '点赞'}
         </button>
         <button
           type="button"

@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
 import { generateLyrics } from '../../api/ai'
 import type { SongMode } from '../../types/song'
+import { formatEchoCost, getCreateCost } from '../../utils/echoCost'
 import { createStyles } from './createStyles'
 
 const modeCopy: Record<SongMode, { title: string; description: string; placeholder: string }> = {
@@ -127,6 +128,7 @@ export function CreateFormPage({
   const [error, setError] = useState('')
   const style = selectedStyles.join(' / ')
   const visibleStyleTags = Array.from(new Set([...styleTags, ...selectedStyles]))
+  const submitCost = getCreateCost(mode)
 
   function pickStyle(tag: string) {
     setSelectedStyles((currentStyles) => {
@@ -376,7 +378,12 @@ export function CreateFormPage({
               {loadingLyrics ? '生成中...' : mode === 'radio' ? 'AI 生成标题' : 'AI 写词'}
             </button>
             <button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
-              {submitting ? '生成中...' : '提交生成'}
+              {submitting ? '生成中...' : (
+                <>
+                  提交生成
+                  <span className="cost-tag">· {formatEchoCost(submitCost)}</span>
+                </>
+              )}
             </button>
           </div>
         </section>

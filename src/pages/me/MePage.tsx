@@ -356,7 +356,13 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
           {draftSongs.length ? (
             <div className="card-list">
               {draftSongs.map((song) => (
-                <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  onOpen={onOpenSong}
+                  onPlay={(songId) => onPlaySong?.(songId, draftSongs)}
+                  coverAspect="portrait"
+                />
               ))}
             </div>
           ) : (
@@ -407,7 +413,13 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
           {worksView === 'published' && publishedSongs.length ? (
             <div className="card-list">
               {publishedSongs.map((song) => (
-                <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  onOpen={onOpenSong}
+                  onPlay={(songId) => onPlaySong?.(songId, publishedSongs)}
+                  coverAspect="portrait"
+                />
               ))}
             </div>
           ) : null}
@@ -415,7 +427,13 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
           {worksView === 'private' && privateSongs.length ? (
             <div className="card-list">
               {privateSongs.map((song) => (
-                <SongCard key={song.id} song={song} onOpen={onOpenSong} coverAspect="portrait" />
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  onOpen={onOpenSong}
+                  onPlay={(songId) => onPlaySong?.(songId, privateSongs)}
+                  coverAspect="portrait"
+                />
               ))}
             </div>
           ) : null}

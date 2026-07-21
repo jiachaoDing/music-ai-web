@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { generateDjBroadcast, getRadioData, type DjBroadcast, type RadioThemeDto } from '../../api/radio'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
+import { ECHO_COSTS, formatEchoCost } from '../../utils/echoCost'
 import { radioStyles } from './radioStyles'
 
 type RadioTheme = {
@@ -221,7 +222,10 @@ export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong }: RadioPa
         </div>
         <button className="radio-generate" type="button" onClick={() => onGenerate?.({ prompt: `${activeTheme.name}：${activeTheme.prompt}`, style: activeTheme.note.replace(' · ', ' / ') })}>
           <span className="radio-generate__wave" aria-hidden="true"><i /><i /><i /><i /></span>
-          <span><strong>RECORD · 生成音乐</strong><small>以“{activeTheme.name}”频道开始创作</small></span>
+          <span>
+            <strong>RECORD · 生成音乐 <span className="cost-tag">· {formatEchoCost(ECHO_COSTS.radio)}</span></strong>
+            <small>以“{activeTheme.name}”频道开始创作</small>
+          </span>
           <b aria-hidden="true">→</b>
         </button>
       </section>

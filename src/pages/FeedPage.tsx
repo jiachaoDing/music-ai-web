@@ -13,6 +13,7 @@ type FeedPageProps = {
   resonance?: ResonanceFeedResponse | null
   onChangeTab: (tab: FeedTab) => void
   onOpenSong: (songId: string) => void
+  onPlaySong?: (songId: string) => void
   onCreate: () => void
   onOpenHost?: () => void
 }
@@ -31,6 +32,7 @@ export function FeedPage({
   resonance,
   onChangeTab,
   onOpenSong,
+  onPlaySong,
   onCreate,
   onOpenHost,
 }: FeedPageProps) {
@@ -181,7 +183,7 @@ export function FeedPage({
       {songs.length ? (
         <div className="card-list">
           {songs.map((song) => (
-            <SongCard key={song.id} song={song} onOpen={onOpenSong} />
+            <SongCard key={song.id} song={song} onOpen={onOpenSong} onPlay={onPlaySong} />
           ))}
         </div>
       ) : (
