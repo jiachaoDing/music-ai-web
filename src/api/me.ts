@@ -46,6 +46,21 @@ type PlaylistDetailResponse = {
   songs: Playlist['songs']
 }
 
+export type PointsLedgerItem = {
+  id: string
+  delta: number
+  reason: string
+  balance: number | null
+  createdAt: string
+}
+
+type PointsLedgerResponse = {
+  list?: PointsLedgerItem[]
+  total?: number
+  page?: number
+  pageSize?: number
+}
+
 function mapUser(user: BackendUser): User {
   return {
     id: user.id,
@@ -88,6 +103,11 @@ export async function getMeProfile() {
     inviteCodes: (result.inviteCodes ?? []).map(mapInviteCode),
     playlists: result.playlists ?? [],
   }
+}
+
+export async function getPointsLedger(pageSize = 6) {
+  const result = await request<PointsLedgerResponse>(`/api/me/points-ledger?pageSize=${pageSize}`)
+  return result.list ?? []
 }
 
 export async function createPlaylist(name: string, color?: string) {

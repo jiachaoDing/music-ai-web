@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   createPlaylist,
   getMeProfile,
+  getPointsLedger,
   getPlaylistDetail,
   removeSongFromPlaylist,
+  type PointsLedgerItem,
 } from '../../api/me'
 import { EmptyState } from '../../components/EmptyState'
 import { SongCard } from '../../components/SongCard'
@@ -11,7 +13,7 @@ import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import type { InviteCode, User } from '../../types/user'
 import { resolveAssetUrl } from '../../utils/asset'
-import { MeAccountPanel, MeHero, MeStatsPanel } from './MeShared'
+import { MeAccountPanel, MeHero } from './MeShared'
 import { meStyles } from './meStyles'
 
 type MePageProps = {
@@ -60,6 +62,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [worksView, setWorksView] = useState<WorksViewKey>('published')
   const [profileUser, setProfileUser] = useState<User>(user)
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
+  const [pointsLedger, setPointsLedger] = useState<PointsLedgerItem[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
@@ -78,10 +81,14 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     async function hydrateMePage() {
       setProfileLoading(true)
       try {
-        const profile = await getMeProfile()
+        const [profile, ledger] = await Promise.all([
+          getMeProfile(),
+          getPointsLedger(6),
+        ])
         setProfileUser(profile.user)
         setInviteCodes(profile.inviteCodes)
         setPlaylists(profile.playlists)
+        setPointsLedger(ledger)
       } catch (error) {
         console.error(error)
       } finally {
@@ -216,7 +223,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     <section className="page-stack me-page">
       <style>{meStyles}</style>
 
-      <MeHero user={profileUser} summary={profileSummary} />
+      <MeHero user={profileUser} summary={profileSummary} stats={stats} />
 
       <div className="me-tabs" role="tablist" aria-label="个人页面内容切换">
         <button
@@ -252,8 +259,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
       {activeTab === 'profile' ? (
         <div className="me-overview-board">
           <div className="me-overview">
-            <MeStatsPanel stats={stats} />
-            <MeAccountPanel user={profileUser} inviteCode={inviteCode} loading={profileLoading} />
+            <MeAccountPanel user={profileUser} inviteCode={inviteCode} ledger={pointsLedger} loading={profileLoading} />
           </div>
 
           <section className="me-panel me-highlight">
