@@ -70,6 +70,10 @@ function getSavedShuffleEnabled() {
   return window.localStorage.getItem(SHUFFLE_STORAGE_KEY) === 'true'
 }
 
+function getSharedSongId() {
+  return new URLSearchParams(window.location.search).get('s')?.trim() || null
+}
+
 function uniqSongs(songs: Song[]) {
   const songMap = new Map<string, Song>()
   songs.forEach((song) => songMap.set(song.id, song))
@@ -118,6 +122,7 @@ function UserApp() {
   const analyserDataRef = useRef<Uint8Array | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const djFollowSongIdRef = useRef<string | null>(null)
+  const sharedSongIdRef = useRef<string | null>(getSharedSongId())
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
@@ -213,6 +218,26 @@ function UserApp() {
             : [nextSong, ...currentSongs],
         )
         setMySongs(updateIfExists)
+        setDetailSongId(nextSong.id)
+      })
+      .catch((error) => {
+        console.error(error)
+      })
+  }
+
+  function openSharedSong(songId: string) {
+    setSongReturnView('feed')
+    setDetailSongId(songId)
+    setActiveView('songDetail')
+    void getSongDetail(songId)
+      .then((nextSong) => {
+        setFeedSongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
+        setMySongs((currentSongs) =>
+          currentSongs.some((song) => song.id === nextSong.id)
+            ? replaceSongInList(currentSongs, nextSong)
+            : currentSongs,
+        )
+        setPlaybackSongs((currentSongs) => replaceSongInList(currentSongs, nextSong))
         setDetailSongId(nextSong.id)
       })
       .catch((error) => {
@@ -735,6 +760,9 @@ function UserApp() {
           setMySongs(nextMySongs)
           setCurrentSongId(undefined)
           void loadHostContent()
+          if (sharedSongIdRef.current) {
+            openSharedSong(sharedSongIdRef.current)
+          }
         } catch (error) {
           console.error(error)
           setFeedSongs([])
@@ -948,6 +976,9 @@ function UserApp() {
       setMySongs(nextMySongs)
       setCurrentSongId(undefined)
       setDetailSongId(undefined)
+      if (sharedSongIdRef.current) {
+        openSharedSong(sharedSongIdRef.current)
+      }
       void loadHostContent()
     } catch (error) {
       console.error(error)
@@ -1181,8 +1212,8 @@ function UserApp() {
             />
           </>
         ) : null}
-        {posterOpen && currentSong ? (
-          <PosterModal song={currentSong} onClose={() => setPosterOpen(false)} />
+        {posterOpen && (detailSong ?? currentSong) ? (
+          <PosterModal song={(detailSong ?? currentSong)!} onClose={() => setPosterOpen(false)} />
         ) : null}
       </AppLayout>
     </>
