@@ -41,9 +41,15 @@ type DiscoverPageProps = {
   onOpenHost: () => void
 }
 
-const today = new Date().toLocaleDateString('en-CA')
-const currentMonth = today.slice(0, 7)
 const FORTUNE_TASK_POLL_LIMIT = 180
+
+function getLocalDate() {
+  return new Date().toLocaleDateString('en-CA')
+}
+
+function fortuneCheckinKey(userId: string) {
+  return `echo_fortune_checkin_${userId}`
+}
 
 type PendingFortuneTask = {
   taskId: string
@@ -103,6 +109,8 @@ function loadSavedBattleVotes(userId: string): BattleVoteRecord[] {
 }
 
 export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenerated, onJoinChallenge, onOpenHost }: DiscoverPageProps) {
+  const [today, setToday] = useState(getLocalDate)
+  const currentMonth = today.slice(0, 7)
   const [view, setView] = useState<DiscoverView>(getInitialView)
   const [isMobileViewport, setIsMobileViewport] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   const [mobileLauncherOpen, setMobileLauncherOpen] = useState(() => window.matchMedia('(max-width: 640px)').matches && window.location.pathname === '/discover')
@@ -128,7 +136,30 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   const [loadingData, setLoadingData] = useState(true)
   const [generatingFortune, setGeneratingFortune] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
-  const [checkedInToday, setCheckedInToday] = useState(user.lastCheckin === today)
+  const [checkedInToday, setCheckedInToday] = useState(false)
+
+  useEffect(() => {
+    const syncDate = () => setToday((current) => {
+      const next = getLocalDate()
+      return current === next ? current : next
+    })
+    const handleVisibility = () => {
+      if (!document.hidden) syncDate()
+    }
+    const timer = window.setInterval(syncDate, 30_000)
+    window.addEventListener('focus', syncDate)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', syncDate)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
+    setSelectedDate(today)
+    setCheckedInToday(false)
+  }, [today, user.id, user.lastCheckin])
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 640px)')
@@ -209,15 +240,35 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
       if (battleResult.status === 'fulfilled') setBattles(battleResult.value)
       if (calendarResult.status === 'fulfilled' && calendarResult.value.length) {
         const calendar = calendarResult.value
-        const currentFortune = calendar.find((fortune) => fortune.date === today)
+        let currentFortune = calendar.find((fortune) => fortune.date === today)
         const artUrl = artResult.status === 'fulfilled' ? artResult.value : ''
-        const nextCalendar = currentFortune && artUrl
-          ? calendar.map((fortune) => fortune.date === today ? { ...fortune, img: fortune.img || artUrl } : fortune)
+        const hasSavedCheckin = user.lastCheckin === today
+          || localStorage.getItem(fortuneCheckinKey(user.id)) === today
+
+        if (hasSavedCheckin && (!currentFortune || isPlaceholderFortune(currentFortune))) {
+          try {
+            const restoredFortune = await getDayFortune(today)
+            currentFortune = { ...restoredFortune, date: today, img: restoredFortune.img || artUrl }
+          } catch {
+            currentFortune = undefined
+          }
+        }
+
+        if (cancelled) return
+
+        if (currentFortune) {
+          currentFortune = { ...currentFortune, img: currentFortune.img || artUrl }
+        }
+        const nextCalendar = currentFortune
+          ? [...calendar.filter((fortune) => fortune.date !== today), currentFortune]
+              .sort((left, right) => left.date.localeCompare(right.date))
           : calendar
         setFortunes(nextCalendar)
         if (currentFortune) {
           setTodayFortune({ ...currentFortune, img: currentFortune.img || artUrl })
           setCheckedInToday(!isPlaceholderFortune(currentFortune))
+        } else {
+          setCheckedInToday(false)
         }
       }
 
@@ -230,7 +281,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [currentMonth, today, user.id, user.lastCheckin])
 
   useEffect(() => {
     if (!selectedChallengeId) return
@@ -415,13 +466,14 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
     setCheckingIn(true)
     try {
       const fortune = await getDayFortune(today)
-      const checkedFortune = { ...fortune, img: fortune.img || todayFortune.img }
+      const checkedFortune = { ...fortune, date: today, img: fortune.img || todayFortune.img }
       setTodayFortune(checkedFortune)
-      setFortunes((current) => current.some((item) => item.date === fortune.date)
-        ? current.map((item) => item.date === fortune.date ? checkedFortune : item)
+      setFortunes((current) => current.some((item) => item.date === today)
+        ? current.map((item) => item.date === today ? checkedFortune : item)
         : [checkedFortune, ...current])
       setSelectedDate(today)
       setCheckedInToday(true)
+      localStorage.setItem(fortuneCheckinKey(user.id), today)
       setMessage('今日已打卡，签到状态已经保存。')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '今日打卡失败，请稍后重试。')
@@ -575,6 +627,18 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
           <button type="button" onClick={onOpenHost}>AI 主理人</button>
         </div>
       </div>
+
+      <button className="discover-curator-spotlight" type="button" onClick={onOpenHost}>
+        <span className="discover-curator-spotlight__avatar" aria-hidden="true">
+          <img src="/assets/echo-ai-curator.png" alt="" />
+        </span>
+        <span className="discover-curator-spotlight__copy">
+          <small>Echo AI Curator · Daily Selection</small>
+          <strong>今天，让 Echo 主理人替你挑一首歌</strong>
+          <em>每日主打、社区翻牌与灵感话题，都由这位 AI 音乐策展人持续更新。</em>
+        </span>
+        <b aria-hidden="true">进入今日策展 ↗</b>
+      </button>
 
       <nav className="discover-tabs" aria-label="发现页功能">
         {[

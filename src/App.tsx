@@ -1270,7 +1270,7 @@ function UserApp() {
     activeView === 'player' || activeView === 'songDetail'
       ? 'feed'
       : activeView === 'host'
-        ? 'feed'
+        ? 'discover'
       : activeView === 'task' || activeView === 'createForm'
         ? 'create'
         : activeView === 'auth'
@@ -1349,7 +1349,10 @@ function UserApp() {
           <HostProfilePage
             hostPage={hostPage}
             curation={curation}
-            onBack={() => setActiveView('feed')}
+            onBack={() => {
+              window.history.pushState({}, '', '/discover')
+              setActiveView('discover')
+            }}
             onCreate={() => setActiveView('create')}
             onOpenSong={openSong}
           />

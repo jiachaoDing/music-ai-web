@@ -1016,14 +1016,17 @@ export const songDetailStyles = `
   }
 
   .song-detail-modal-backdrop {
-    padding: 12px;
+    align-items: center;
+    padding: 12px 12px calc(142px + env(safe-area-inset-bottom));
   }
 
   .song-detail-modal {
-    width: 100%;
-    max-height: 82vh;
-    border-radius: 16px 16px 8px 8px;
-    padding: 18px;
+    width: min(100%, 390px);
+    max-height: calc(100dvh - 174px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+    padding: 14px;
   }
 
   .song-detail-playlist-item {

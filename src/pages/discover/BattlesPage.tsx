@@ -109,7 +109,6 @@ export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRo
                 删除擂台
               </button>
             ) : null}
-            <button type="button" onClick={onCreate}>创建擂台</button>
           </div>
         </div>
 

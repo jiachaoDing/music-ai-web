@@ -222,10 +222,17 @@ export const playerStyles = `
 .immersive-player__control {
   display: grid;
   place-items: center;
+  padding: 0;
+  line-height: 0;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: none;
+}
+
+.immersive-player__control svg {
+  display: block;
+  margin: auto;
 }
 
 .immersive-player__control:hover {
