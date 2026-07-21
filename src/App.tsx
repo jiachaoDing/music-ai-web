@@ -544,7 +544,7 @@ function UserApp() {
       setCreateTask({
         status: status.status === 'error' || status.status === 'failed' ? 'error' : 'running',
         stage: status.stage || `正在生成${taskLabel}`,
-        description: status.status === 'queued' ? '任务正在排队，请稍等。' : `后端正在生成${taskLabel}、音频、封面和乐评。`,
+        description: status.status === 'queued' ? '任务正在排队，请稍等。' : `正在生成${taskLabel}、音频、封面和乐评。`,
         progress: status.progress ?? Math.min(90, 12 + attempt * 2),
         canOpenSong: false,
       })
@@ -567,7 +567,7 @@ function UserApp() {
     setCreateTask({
       status: 'running',
       stage: '正在生成中',
-      description: '正在提交生成任务，后端会继续生成音频、封面和乐评。',
+      description: '正在生成歌曲、封面和相关内容，请稍候。',
       progress: 24,
       canOpenSong: false,
     })
@@ -582,16 +582,16 @@ function UserApp() {
           lyrics: payload.lyrics,
           prompt: payload.prompt || `翻唱二创《${payload.title}》`,
         })
-        if (!task.taskId) throw new Error('后端没有返回二创生成任务 ID。')
+        if (!task.taskId) throw new Error('二创任务提交失败，请稍后重试。')
         createdSong = await pollGenerateTask(task.taskId, '翻唱二创')
       } else if (payload.mode === 'radio' || payload.challengeId) {
         const task = await submitGenerateTask(payload)
-        if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
+        if (!task.taskId) throw new Error('歌曲生成任务提交失败，请稍后重试。')
         createdSong = await pollGenerateTask(task.taskId, payload.challengeId ? '话题挑战歌曲' : '电台音乐')
         if (payload.challengeId) createdSong = { ...createdSong, challengeId: payload.challengeId }
       } else {
         const task = await submitGenerateTask(payload)
-        if (!task.taskId) throw new Error('后端没有返回歌曲生成任务 ID。')
+        if (!task.taskId) throw new Error('歌曲生成任务提交失败，请稍后重试。')
         createdSong = await pollGenerateTask(task.taskId, '歌曲')
       }
       syncSong(createdSong, { makeCurrent: true })
@@ -1008,7 +1008,7 @@ function UserApp() {
       <>
         {audioElement}
         <main className="standalone-shell">
-          <LoadingState title="正在进入 Echo" description="准备用户、作品和页面骨架" />
+          <LoadingState title="正在进入 Echo" description="正在加载你的音乐空间" />
         </main>
       </>
     )

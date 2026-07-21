@@ -187,7 +187,7 @@ export function CreateFormPage({
       }
       setLyrics(isRadioMode ? '' : result.lyrics)
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'AI 写词失败，请检查后端服务。')
+      setError(nextError instanceof Error ? nextError.message : 'AI 写词失败，请稍后重试。')
     } finally {
       setLoadingLyrics(false)
     }

@@ -382,7 +382,7 @@ export function SongDetailPage({
         formatAiReviewText(result.aiReview) ||
         formatAiReviewText(result.review) ||
         formatAiReviewText(result.song?.aiReview) ||
-        'AI 乐评已生成，但后端没有返回具体内容。'
+        'AI 乐评暂时不可用，请稍后重新生成。'
       setAiReview(nextReview)
       if (payloadReview) {
         setAiReview(payloadReview)
@@ -485,7 +485,7 @@ export function SongDetailPage({
           <div className="song-detail-side__score">
             <span>作品热度</span>
             <strong>{formatCount(song.playCount + likeCount + collectCount)}</strong>
-            <p>当前由播放、点赞和收藏累积形成，后续还可以继续接评论和分享表现。</p>
+            <p>根据播放、点赞和收藏综合计算。</p>
           </div>
 
           {canManage ? (
@@ -628,7 +628,7 @@ export function SongDetailPage({
               </div>
             ) : null}
             {!treeLoading && !songTree ? (
-              <p>暂时还没有读取到进化树，生成翻唱二创后会自动挂到这里。</p>
+              <p>还没有二创版本，完成翻唱后会显示在这里。</p>
             ) : null}
           </section>
         </div>
@@ -651,7 +651,7 @@ export function SongDetailPage({
             </div>
             <p>
               {aiReview ||
-                '当前还没有生成 AI 乐评，后续这里可以继续接入创作解析、DJ 播报和风格总结。'}
+                '还没有 AI 乐评，点击生成即可查看。'}
             </p>
           </section>
 

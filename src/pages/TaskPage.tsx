@@ -31,7 +31,6 @@ export function TaskPage({ task, onOpenSong, onReturnToChallenge, challengeTitle
           <span style={{ width: `${task.progress}%` }} />
         </div>
         <strong>{task.progress}%</strong>
-        <p>当前状态：{task.status === 'running' ? '生成中' : task.status === 'done' ? '已完成' : '失败'}</p>
         <button type="button" disabled={!task.canOpenSong} onClick={onOpenSong}>
           {buttonLabel}
         </button>

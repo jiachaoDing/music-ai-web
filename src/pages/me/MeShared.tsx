@@ -51,11 +51,6 @@ export function MeHero({ user, summary }: MeHeroProps) {
             目前共整理了 {summary.songCount} 首作品，累计获得 {summary.likeCount} 次喜欢和{' '}
             {summary.playCount} 次播放。最近常用风格是 {topStylesText}。
           </p>
-          <div className="me-hero__tags">
-            <i>创作中</i>
-            <i>个人中心</i>
-            <i>AI Music</i>
-          </div>
         </div>
       </div>
       <div className="me-hero__spotlight">
@@ -66,7 +61,6 @@ export function MeHero({ user, summary }: MeHeroProps) {
         <div className="me-hero__score">
           <strong>{user.echoPoints}</strong>
           <span>Echo Points</span>
-          <small>{summary.songCount ? '作品库正在持续扩充' : '完成第一首作品后这里会更新'}</small>
         </div>
       </div>
     </div>

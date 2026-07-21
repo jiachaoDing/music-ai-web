@@ -84,6 +84,7 @@ function songId(value: unknown): string {
 
 function mapBattle(value: unknown, index: number): BattleRecord {
   const item = asRecord(value)
+  const creator = asRecord(item.creator)
   const now = new Date().toISOString()
   const status = asString(item.status, 'active')
 
@@ -94,7 +95,16 @@ function mapBattle(value: unknown, index: number): BattleRecord {
     bId: songId(item.bId ?? item.songBId ?? item.songB),
     aVotes: asNumber(item.aVotes ?? item.votesA),
     bVotes: asNumber(item.bVotes ?? item.votesB),
-    createdBy: asString(item.createdBy),
+    createdBy: asString(item.createdBy ?? item.creatorId),
+    creatorId: asString(item.creatorId ?? item.createdBy),
+    creator: Object.keys(creator).length
+      ? {
+          id: asString(creator.id),
+          username: asString(creator.username),
+          nickname: asString(creator.nickname ?? creator.username),
+        }
+      : undefined,
+    isOwner: asBoolean(item.isOwner),
     status: status === 'closed' || status === 'hidden' ? status : 'active',
     createdAt: asString(item.createdAt, now),
     updatedAt: asString(item.updatedAt, now),
@@ -243,6 +253,13 @@ export async function voteBattle(battleId: string, side: VoteSide) {
   return request<{ voted?: boolean; votesA?: number; votesB?: number; aVotes?: number; bVotes?: number }>(
     `/api/battle/${encodeURIComponent(battleId)}/vote`,
     { method: 'POST', body: JSON.stringify({ side }) },
+  )
+}
+
+export async function deleteBattle(battleId: string) {
+  return request<{ success: boolean; message?: string; battleId?: string }>(
+    `/api/battles/${encodeURIComponent(battleId)}`,
+    { method: 'DELETE' },
   )
 }
 

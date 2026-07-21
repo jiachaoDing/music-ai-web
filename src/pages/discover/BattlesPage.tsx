@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Song } from '../../types/song'
+import type { UserRole } from '../../types/user'
 import { BattleSong } from './DiscoverShared'
 import type { BattleRecord, BattleVoteRecord, VoteSide } from './types'
 
@@ -7,16 +8,30 @@ type BattlesPageProps = {
   battles: BattleRecord[]
   battleVotes: BattleVoteRecord[]
   currentUserId: string
+  currentUserRole: UserRole
   songs: Song[]
   onVote: (battleId: string, side: VoteSide) => void
   onCreate: () => void
+  onDelete: (battleId: string) => Promise<boolean>
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
 }
 
-export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote, onCreate, onOpenSong, onPlaySong }: BattlesPageProps) {
+export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRole, songs, onVote, onCreate, onDelete, onOpenSong, onPlaySong }: BattlesPageProps) {
   const [selectedBattleId, setSelectedBattleId] = useState(battles[0]?.id ?? '')
+  const [pendingDelete, setPendingDelete] = useState<BattleRecord | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const selectedBattle = battles.find((battle) => battle.id === selectedBattleId) ?? battles[0]
+
+  useEffect(() => {
+    if (!battles.length) {
+      setSelectedBattleId('')
+      return
+    }
+    if (!battles.some((battle) => battle.id === selectedBattleId)) {
+      setSelectedBattleId(battles[0].id)
+    }
+  }, [battles, selectedBattleId])
 
   const insights = useMemo(() => {
     const sorted = [...battles].sort((a, b) => b.aVotes + b.bVotes - (a.aVotes + a.bVotes))
@@ -44,20 +59,21 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
 
   const songA = songById(selectedBattle.aId)
   const songB = songById(selectedBattle.bId)
-  if (!songA || !songB) {
-    return (
-      <section className="content-panel empty-panel">
-        <h2>这场擂台的歌曲暂时无法加载</h2>
-        <p>歌曲可能已被删除，请选择其他擂台或稍后刷新。</p>
-      </section>
-    )
-  }
+  const canDelete = currentUserRole === 'admin' || selectedBattle.isOwner === true || selectedBattle.creatorId === currentUserId || selectedBattle.createdBy === currentUserId
   const total = Math.max(1, selectedBattle.aVotes + selectedBattle.bVotes)
   const percentA = Math.round((selectedBattle.aVotes / total) * 100)
   const percentB = 100 - percentA
   const savedVote = battleVotes.find((vote) => vote.battleId === selectedBattle.id && vote.userId === currentUserId)
   const votedSide = selectedBattle.votedSide ?? savedVote?.side
   const hasVoted = Boolean(selectedBattle.votedSide || savedVote)
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleting) return
+    setDeleting(true)
+    const deleted = await onDelete(pendingDelete.id)
+    setDeleting(false)
+    if (deleted) setPendingDelete(null)
+  }
 
   return (
     <section className="playground-shell battle-playground">
@@ -87,21 +103,35 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
             <span>Vote Arena</span>
             <h2>{selectedBattle.topic}</h2>
           </div>
-          <button type="button" onClick={onCreate}>创建擂台</button>
+          <div className="stage-heading__actions">
+            {canDelete ? (
+              <button className="battle-delete-button" type="button" onClick={() => setPendingDelete(selectedBattle)}>
+                删除擂台
+              </button>
+            ) : null}
+            <button type="button" onClick={onCreate}>创建擂台</button>
+          </div>
         </div>
 
-        <div className="battle-duel-frame">
-          <BattleSong song={songA} votes={selectedBattle.aVotes} side="A" voted={votedSide === 'A'} hasVoted={hasVoted} onVote={() => onVote(selectedBattle.id, 'A')} onOpen={() => onOpenSong(songA.id)} onPlay={() => onPlaySong(songA.id)} />
-          <div className="battle-divider">
-            <strong>VS</strong>
+        {songA && songB ? (
+          <div className="battle-duel-frame">
+            <BattleSong song={songA} votes={selectedBattle.aVotes} side="A" voted={votedSide === 'A'} hasVoted={hasVoted} onVote={() => onVote(selectedBattle.id, 'A')} onOpen={() => onOpenSong(songA.id)} onPlay={() => onPlaySong(songA.id)} />
+            <div className="battle-divider">
+              <strong>VS</strong>
+            </div>
+            <BattleSong song={songB} votes={selectedBattle.bVotes} side="B" voted={votedSide === 'B'} hasVoted={hasVoted} onVote={() => onVote(selectedBattle.id, 'B')} onOpen={() => onOpenSong(songB.id)} onPlay={() => onPlaySong(songB.id)} />
+            <div className="battle-progress" aria-label={`A 方 ${percentA}%，B 方 ${percentB}%`}>
+              <span style={{ width: `${percentA}%` }} />
+              <strong>{percentA}%</strong>
+              <em>{percentB}%</em>
+            </div>
           </div>
-          <BattleSong song={songB} votes={selectedBattle.bVotes} side="B" voted={votedSide === 'B'} hasVoted={hasVoted} onVote={() => onVote(selectedBattle.id, 'B')} onOpen={() => onOpenSong(songB.id)} onPlay={() => onPlaySong(songB.id)} />
-          <div className="battle-progress" aria-label={`A 方 ${percentA}%，B 方 ${percentB}%`}>
-            <span style={{ width: `${percentA}%` }} />
-            <strong>{percentA}%</strong>
-            <em>{percentB}%</em>
-          </div>
-        </div>
+        ) : (
+          <section className="empty-panel battle-missing-state">
+            <h2>这场擂台的歌曲暂时无法加载</h2>
+            <p>歌曲可能已被删除。创建者或管理员仍然可以删除这场无效擂台。</p>
+          </section>
+        )}
 
       </main>
 
@@ -123,6 +153,22 @@ export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote
           <strong>选择两首歌发起对决</strong>
         </button>
       </aside>
+
+      {pendingDelete ? (
+        <div className="discover-modal-backdrop" role="presentation" onClick={() => !deleting && setPendingDelete(null)}>
+          <section className="discover-modal battle-delete-confirm" role="alertdialog" aria-modal="true" aria-labelledby="battle-delete-title" onClick={(event) => event.stopPropagation()}>
+            <span>Delete Battle</span>
+            <h2 id="battle-delete-title">确认删除这场擂台？</h2>
+            <p>“{pendingDelete.topic}”的擂台和投票记录将被永久删除，但两首歌曲会继续保留。</p>
+            <div className="battle-delete-confirm__actions">
+              <button type="button" disabled={deleting} onClick={() => setPendingDelete(null)}>取消</button>
+              <button className="battle-delete-button" type="button" disabled={deleting} onClick={() => void confirmDelete()}>
+                {deleting ? '正在删除…' : '确认删除'}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   )
 }
