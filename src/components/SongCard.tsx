@@ -51,7 +51,7 @@ export function SongCard({
           <h3>{song.title}</h3>
           <span>{formatDuration(song.duration)}</span>
         </div>
-        <p>{song.description ?? '暂无简介'}</p>
+        {song.description ? <p>{song.description}</p> : null}
         <div className="song-card__meta" style={coverStyle}>
           <span className="author-dot" />
           <strong>{song.author.nickname}</strong>

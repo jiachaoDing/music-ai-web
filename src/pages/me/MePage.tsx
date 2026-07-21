@@ -13,7 +13,7 @@ import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import type { InviteCode, User } from '../../types/user'
 import { resolveAssetUrl } from '../../utils/asset'
-import { MeAccountPanel, MeHero } from './MeShared'
+import { MeAccountPanel, MeHero, MeLedgerPanel } from './MeShared'
 import { meStyles } from './meStyles'
 
 type MePageProps = {
@@ -59,6 +59,7 @@ function getPlaylistCoverUrl(playlist: Playlist) {
 
 export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
+  const [accountView, setAccountView] = useState<'summary' | 'ledger'>('summary')
   const [worksView, setWorksView] = useState<WorksViewKey>('published')
   const [profileUser, setProfileUser] = useState<User>(user)
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
@@ -134,7 +135,6 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     (song) => song.published && song.status === 'published',
   )
   const latestSong = songs[0]
-  const latestSongCoverUrl = latestSong?.coverUrl ? resolveAssetUrl(latestSong.coverUrl) : undefined
 
   const profileSummary = useMemo(
     () => ({
@@ -223,7 +223,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     <section className="page-stack me-page">
       <style>{meStyles}</style>
 
-      <MeHero user={profileUser} summary={profileSummary} stats={stats} />
+      <MeHero user={profileUser} inviteCode={inviteCode} loading={profileLoading} summary={profileSummary} stats={stats} />
 
       <div className="me-tabs" role="tablist" aria-label="个人页面内容切换">
         <button
@@ -259,10 +259,17 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
       {activeTab === 'profile' ? (
         <div className="me-overview-board">
           <div className="me-overview">
-            <MeAccountPanel user={profileUser} inviteCode={inviteCode} ledger={pointsLedger} loading={profileLoading} />
+            {accountView === 'ledger' ? (
+              <>
+                <button type="button" className="me-account-back" onClick={() => setAccountView('summary')}>← 返回钱包</button>
+                <MeLedgerPanel ledger={pointsLedger} loading={profileLoading} />
+              </>
+            ) : (
+              <MeAccountPanel user={profileUser} inviteCode={inviteCode} ledger={pointsLedger} loading={profileLoading} onOpenLedger={() => setAccountView('ledger')} />
+            )}
           </div>
 
-          <section className="me-panel me-highlight">
+          {accountView === 'summary' ? <section className="me-panel me-highlight">
             <div className="me-panel__heading">
               <div>
                 <span>Now Playing</span>
@@ -270,79 +277,25 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
               </div>
             </div>
             {latestSong ? (
-              <button
-                type="button"
-                className="me-highlight__card"
-                onClick={() => onOpenSong(latestSong.id)}
-              >
-                <div className="me-highlight__hero">
-                  <div className="me-highlight__art">
-                    {latestSongCoverUrl ? (
-                      <img
-                        className="me-highlight__cover"
-                        src={latestSongCoverUrl}
-                        alt={`${latestSong.title} 封面`}
-                      />
-                    ) : (
-                      <div
-                        className="me-highlight__disc"
-                        style={{ '--cover-color': latestSong.author.color ?? '#ea4c89' } as CSSProperties}
-                      >
-                        <b />
-                      </div>
-                    )}
-                    <div className="me-highlight__title">
-                      <span>{latestSong.mode}</span>
-                      <strong>{latestSong.title}</strong>
-                    </div>
-                  </div>
-
-                  <div className="me-highlight__details">
-                    <p>
-                      {latestSong.description ??
-                        '这首作品已经进入你的个人作品库，可以继续查看详情、歌词和播放表现。'}
-                    </p>
-                    <div className="me-highlight__stats">
-                      <span>{latestSong.playCount} 播放</span>
-                      <span>{latestSong.likeCount} 喜欢</span>
-                      <span>{formatSongStatus(latestSong)}</span>
-                    </div>
-                    <div className="me-highlight__summary">
-                      <div>
-                        <span>作者</span>
-                        <strong>{latestSong.author.nickname}</strong>
-                      </div>
-                      <div>
-                        <span>时长</span>
-                        <strong>{formatDuration(latestSong.duration)}</strong>
-                      </div>
-                      <div>
-                        <span>风格</span>
-                        <strong>{latestSong.style}</strong>
-                      </div>
-                    </div>
-                  </div>
+              <div className="card-list me-latest-song">
+                <SongCard
+                  song={latestSong}
+                  onOpen={onOpenSong}
+                  onPlay={(songId) => onPlaySong?.(songId, songs)}
+                  coverAspect="portrait"
+                />
+                <div className="me-latest-song__extra">
+                  <span>{formatSongStatus(latestSong)}</span>
+                  <span>{latestSong.style}</span>
                 </div>
-
-                <div className="me-highlight__footer">
-                  <div className="me-highlight__wave" aria-hidden="true">
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                  <div className="me-highlight__cta">
-                    <span>查看作品详情</span>
-                  </div>
-                </div>
-              </button>
+              </div>
             ) : (
               <EmptyState
                 title="还没有最近作品"
                 description="目前作品库还是空的，完成一次创作后这里会优先展示最近生成的作品。"
               />
             )}
-          </section>
+          </section> : null}
         </div>
       ) : null}
 
