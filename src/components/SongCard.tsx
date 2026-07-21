@@ -36,6 +36,7 @@ export function SongCard({
         >
           {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
           <span className="song-cover__eyebrow">{song.mode}</span>
+          <span className="ai-generated-badge">AI生成</span>
           <button
             aria-label={`播放 ${song.title}`}
             className="song-cover__play"

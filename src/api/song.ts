@@ -21,6 +21,12 @@ export type GenerateSongInput = {
 
 export type GenerateTask = {
   taskId: string
+  status?: 'queued' | 'running'
+  queuePos?: number
+  queueAhead?: number
+  active?: number
+  concurrency?: number
+  maxConcurrency?: number
 }
 
 export type GenerateTaskStatus = {
@@ -29,6 +35,11 @@ export type GenerateTaskStatus = {
   status: 'queued' | 'running' | 'done' | 'error' | 'failed'
   stage?: string
   progress?: number
+  queuePos?: number
+  queueAhead?: number
+  active?: number
+  concurrency?: number
+  maxConcurrency?: number
   result?: {
     song?: Song
   }
@@ -179,8 +190,8 @@ export function submitGenerateTask(input: GenerateSongInput) {
   })
 }
 
-export function getGenerateTaskStatus(taskId: string) {
-  return request<GenerateTaskStatus>(`/api/task/${encodeURIComponent(taskId)}`)
+export function getGenerateTaskStatus(taskId: string, signal?: AbortSignal) {
+  return request<GenerateTaskStatus>(`/api/task/${encodeURIComponent(taskId)}`, { signal })
 }
 
 export function submitRemixTask(songId: string, input: RemixSongInput) {

@@ -1458,8 +1458,61 @@ textarea:focus {
   line-height: 1.78;
 }
 
-.task-panel strong {
+.task-progress-value {
   font-size: 36px;
+}
+
+.ai-generated-badge {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 4px;
+  padding: 4px 7px;
+  color: #ffffff;
+  background: rgba(13, 12, 34, 0.68);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+}
+
+.task-queue {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.task-queue div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+}
+
+.task-queue div + div {
+  border-left: 1px solid var(--line);
+}
+
+.task-queue span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.task-queue strong {
+  color: var(--text);
+  font-size: 20px;
+}
+
+@media (max-width: 520px) {
+  .task-queue div {
+    padding: 10px;
+  }
 }
 
 .progress-bar {

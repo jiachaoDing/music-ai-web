@@ -432,6 +432,7 @@ export function SongDetailPage({
               ) : (
                 <div className="song-detail-cover__fallback">{song.title.slice(0, 1)}</div>
               )}
+              <span className="song-detail-ai-badge">AI生成</span>
             </div>
 
             <div className="song-detail-copy">
@@ -448,6 +449,7 @@ export function SongDetailPage({
               <div className="song-detail-tags">
                 <span>{song.style}</span>
                 <span>{song.published ? '社区公开作品' : '个人空间作品'}</span>
+                <span>AI生成</span>
               </div>
 
               <div className="song-detail-stats">
@@ -578,7 +580,7 @@ export function SongDetailPage({
             <div className="song-detail-block__header">
               <div>
                 <span>Lyrics</span>
-                <h2>歌词内容</h2>
+                <h2>歌词内容 <small className="song-detail-inline-ai">AI生成</small></h2>
               </div>
             </div>
             <pre className="song-detail-lyrics">
