@@ -132,6 +132,21 @@ export async function getPlaylistDetail(id: string) {
   }
 }
 
+export async function renamePlaylist(playlistId: string, name: string) {
+  const result = await request<CreatePlaylistResponse>(`/api/playlists/${playlistId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+
+  return result.playlist
+}
+
+export async function deletePlaylist(playlistId: string) {
+  await request<{ deleted: boolean }>(`/api/playlists/${playlistId}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function addSongToPlaylist(playlistId: string, songId: string) {
   await request<{ added: boolean }>(`/api/playlists/${playlistId}/songs/${songId}`, {
     method: 'POST',

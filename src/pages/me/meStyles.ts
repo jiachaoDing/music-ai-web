@@ -1192,6 +1192,90 @@ export const meStyles = `
   box-shadow: none;
 }
 
+.me-playlist-detail-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.me-playlist-danger {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0 11px;
+  color: #a73939;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.me-playlist-danger:hover {
+  border-color: rgba(183, 49, 49, 0.16);
+  color: #942b2b;
+  background: #fff5f4;
+  box-shadow: none;
+}
+
+.me-playlist-danger:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: transparent;
+  opacity: 0.58;
+}
+
+.me-playlist-rename {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  max-width: 640px;
+  margin-top: 4px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.me-playlist-rename label {
+  display: grid;
+  gap: 8px;
+}
+
+.me-playlist-rename span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.me-playlist-rename input {
+  min-height: 40px;
+  border-color: rgba(13, 12, 34, 0.1);
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.me-playlist-rename button {
+  min-width: 88px;
+  min-height: 40px;
+  border-radius: 6px;
+  padding: 0 14px;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+.me-playlist-rename button:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: rgba(13, 12, 34, 0.06);
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 0.72;
+}
+
 .me-playlist-detail-cover {
   position: relative;
   overflow: hidden;
@@ -1330,9 +1414,21 @@ export const meStyles = `
     display: grid;
     justify-items: start;
   }
+
+  .me-playlist-detail-head {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
+  .me-playlist-rename {
+    grid-template-columns: 1fr;
+  }
+
+  .me-playlist-rename button {
+    width: 100%;
+  }
+
   .me-page {
     gap: 18px;
   }
