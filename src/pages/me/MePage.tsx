@@ -18,6 +18,7 @@ type MePageProps = {
   user: User
   songs: Song[]
   onOpenSong: (songId: string) => void
+  onPlaySong?: (songId: string, queueSongs?: Song[]) => void
 }
 
 type MeTabKey = 'profile' | 'drafts' | 'works' | 'playlists'
@@ -54,7 +55,7 @@ function getPlaylistCoverUrl(playlist: Playlist) {
   return playlist.coverUrl ? resolveAssetUrl(playlist.coverUrl) : undefined
 }
 
-export function MePage({ user, songs, onOpenSong }: MePageProps) {
+export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
   const [worksView, setWorksView] = useState<WorksViewKey>('published')
   const [profileUser, setProfileUser] = useState<User>(user)
@@ -203,6 +204,12 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
     } finally {
       setPlaylistActionLoading(false)
     }
+  }
+
+  function handlePlayPlaylist(songId?: string) {
+    const firstSongId = songId ?? selectedPlaylistSongs[0]?.id
+    if (!firstSongId) return
+    onPlaySong?.(firstSongId, selectedPlaylistSongs)
   }
 
   return (
@@ -523,6 +530,14 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
                 <p>
                   创建于 {new Date(selectedPlaylist.createdAt).toLocaleDateString('zh-CN')}
                 </p>
+                <button
+                  type="button"
+                  className="me-playlist-play-all"
+                  disabled={!selectedPlaylistSongs.length}
+                  onClick={() => handlePlayPlaylist()}
+                >
+                  播放全部
+                </button>
               </div>
             </div>
 
@@ -532,7 +547,7 @@ export function MePage({ user, songs, onOpenSong }: MePageProps) {
               <div className="me-playlist-song-list">
                 {selectedPlaylistSongs.map((song) => (
                   <div key={song.id} className="me-playlist-song-row">
-                    <button type="button" onClick={() => onOpenSong(song.id)}>
+                    <button type="button" onClick={() => handlePlayPlaylist(song.id)}>
                       <strong>{song.title}</strong>
                       <span>{song.style} · {formatDuration(song.duration)}</span>
                     </button>

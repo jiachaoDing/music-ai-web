@@ -1477,8 +1477,9 @@ textarea:focus {
   gap: 8px;
 }
 
-.mini-player__skip,
-.mini-player__play {
+.mini-player__icon,
+.mini-player__play,
+.mini-player__repeat {
   display: grid;
   place-items: center;
   border: 0;
@@ -1486,6 +1487,22 @@ textarea:focus {
   color: var(--text);
   line-height: 1;
   background: transparent;
+}
+
+.mini-player__icon,
+.mini-player__repeat {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+}
+
+.mini-player__icon.is-active,
+.mini-player__repeat.is-active {
+  color: var(--theme);
+  background: rgba(234, 76, 137, 0.1);
 }
 
 .mini-player__skip {
@@ -1497,8 +1514,8 @@ textarea:focus {
 }
 
 .mini-player__play {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
   color: #ffffff;
   background: var(--theme);

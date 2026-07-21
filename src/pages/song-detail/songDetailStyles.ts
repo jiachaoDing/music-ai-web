@@ -468,6 +468,111 @@ export const songDetailStyles = `
   font-weight: 700;
 }
 
+.song-remix-tree {
+  align-content: start;
+}
+
+.song-remix-tree__count {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.08);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.song-remix-tree__body {
+  overflow-x: auto;
+  padding: 2px 0 4px;
+}
+
+.song-remix-tree__node {
+  display: grid;
+  gap: 10px;
+}
+
+.song-remix-tree__children {
+  display: grid;
+  gap: 10px;
+  margin-left: 26px;
+  padding-left: 18px;
+  border-left: 1px solid rgba(234, 76, 137, 0.18);
+}
+
+.song-remix-tree__item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid rgba(13, 12, 34, 0.07);
+  border-radius: 8px;
+  padding: 8px 12px 8px 8px;
+  color: var(--ink);
+  background: #ffffff;
+  text-align: left;
+  box-shadow: none;
+}
+
+.song-remix-tree__item:hover,
+.song-remix-tree__item.is-current {
+  border-color: rgba(234, 76, 137, 0.2);
+  background: rgba(234, 76, 137, 0.05);
+  transform: none;
+}
+
+.song-remix-tree__cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border-radius: 8px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--theme), #7dd3fc);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.song-remix-tree__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.song-remix-tree__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.song-remix-tree__copy strong,
+.song-remix-tree__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-remix-tree__copy strong {
+  font-size: 15px;
+}
+
+.song-remix-tree__copy small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.song-remix-tree__item b {
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.1);
+  font-size: 12px;
+}
+
 .song-detail-hole__count {
   flex: 0 0 auto;
   border-radius: 999px;

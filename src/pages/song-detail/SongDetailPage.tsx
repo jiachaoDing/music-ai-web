@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { generateSongReview, type SongReviewResult } from '../../api/ai'
 import { addSongToPlaylist, createPlaylist, getPlaylists } from '../../api/me'
-import { addSongComment, collectSong, getSongComments, likeSong } from '../../api/song'
+import {
+  addSongComment,
+  collectSong,
+  getSongComments,
+  getSongTree,
+  likeSong,
+  type SongTreeNode,
+  type SongTreeResponse,
+} from '../../api/song'
 import type { Comment } from '../../types/comment'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
@@ -20,6 +28,7 @@ type SongDetailPageProps = {
   onPublish: () => void
   onSetPrivate: () => void
   onDelete?: () => void | Promise<void>
+  onOpenSong?: (songId: string) => void
   onSongUpdate?: (song: Song) => void
 }
 
@@ -83,6 +92,14 @@ function pickReviewText(result: SongReviewResult) {
   )
 }
 
+function countTreeNodes(nodes: SongTreeNode[]): number {
+  return nodes.reduce((sum, node) => sum + 1 + countTreeNodes(node.children), 0)
+}
+
+function getTreePreview(node: SongTreeNode) {
+  return resolveAssetUrl(node.coverUrl ?? undefined)
+}
+
 export function SongDetailPage({
   song,
   canManage,
@@ -94,6 +111,7 @@ export function SongDetailPage({
   onPublish,
   onSetPrivate,
   onDelete,
+  onOpenSong,
   onSongUpdate,
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
@@ -125,6 +143,8 @@ export function SongDetailPage({
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const [commentCount, setCommentCount] = useState(song.commentCount)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [songTree, setSongTree] = useState<SongTreeResponse | null>(null)
+  const [treeLoading, setTreeLoading] = useState(false)
   const displayDescription =
     song.description ??
     `${formatMode(song.mode)}已经完成，当前可以继续试听、查看歌词，并决定是否发布到社区。`
@@ -156,6 +176,24 @@ export function SongDetailPage({
     }
 
     void hydrateComments()
+  }, [song.id])
+
+  useEffect(() => {
+    async function hydrateTree() {
+      setTreeLoading(true)
+
+      try {
+        const nextTree = await getSongTree(song.id)
+        setSongTree(nextTree)
+      } catch (error) {
+        console.error(error)
+        setSongTree(null)
+      } finally {
+        setTreeLoading(false)
+      }
+    }
+
+    void hydrateTree()
   }, [song.id])
 
   useEffect(() => {
@@ -299,6 +337,35 @@ export function SongDetailPage({
     } finally {
       setDeleteSubmitting(false)
     }
+  }
+
+  function renderTreeNode(node: SongTreeNode) {
+    const isCurrent = node.id === songTree?.currentId
+    const previewUrl = getTreePreview(node)
+
+    return (
+      <div className="song-remix-tree__node" key={node.id}>
+        <button
+          type="button"
+          className={`song-remix-tree__item ${isCurrent ? 'is-current' : ''}`}
+          onClick={() => (isCurrent ? undefined : onOpenSong?.(node.id))}
+        >
+          <span className="song-remix-tree__cover">
+            {previewUrl ? <img src={previewUrl} alt={`${node.title} 封面`} /> : <i>{node.mode === 'remix' ? '翻' : '曲'}</i>}
+          </span>
+          <span className="song-remix-tree__copy">
+            <strong>{node.title}</strong>
+            <small>@{node.author?.nickname ?? '匿名创作者'} · {node.mode === 'remix' ? '翻唱版本' : '原始作品'}</small>
+          </span>
+          {isCurrent ? <b>当前</b> : null}
+        </button>
+        {node.children.length ? (
+          <div className="song-remix-tree__children">
+            {node.children.map((child) => renderTreeNode(child))}
+          </div>
+        ) : null}
+      </div>
+    )
   }
 
   async function handleGenerateReview() {
@@ -536,6 +603,27 @@ export function SongDetailPage({
                 <strong>{formatDate(song.publishedAt)}</strong>
               </div>
             </div>
+          </section>
+
+          <section className="song-detail-block song-remix-tree">
+            <div className="song-detail-block__header">
+              <div>
+                <span>Remix Tree</span>
+                <h2>翻唱进化树</h2>
+              </div>
+              {songTree ? (
+                <strong className="song-remix-tree__count">{countTreeNodes(songTree.remixes)} 个二创版本</strong>
+              ) : null}
+            </div>
+            {treeLoading ? <p>正在读取翻唱进化树...</p> : null}
+            {!treeLoading && songTree ? (
+              <div className="song-remix-tree__body">
+                {renderTreeNode({ ...songTree.root, children: songTree.remixes })}
+              </div>
+            ) : null}
+            {!treeLoading && !songTree ? (
+              <p>暂时还没有读取到进化树，生成翻唱二创后会自动挂到这里。</p>
+            ) : null}
           </section>
         </div>
 

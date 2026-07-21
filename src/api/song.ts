@@ -36,9 +36,30 @@ export type GenerateTaskStatus = {
 }
 
 export type RemixSongInput = {
+  title?: string
   style: string
   prompt: string
   lyrics?: string
+}
+
+export type SongTreeNode = {
+  id: string
+  title: string
+  coverUrl?: string | null
+  author: {
+    id: string
+    nickname: string
+    avatarUrl?: string | null
+  } | null
+  mode: string
+  createdAt: string
+  children: SongTreeNode[]
+}
+
+export type SongTreeResponse = {
+  root: SongTreeNode
+  remixes: SongTreeNode[]
+  currentId: string
 }
 
 export type PublishSongInput = {
@@ -167,6 +188,10 @@ export function submitRemixTask(songId: string, input: RemixSongInput) {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export function getSongTree(songId: string) {
+  return request<SongTreeResponse>(`/api/tree/${encodeURIComponent(songId)}`)
 }
 
 export async function getSongDetail(songId: string): Promise<Song> {

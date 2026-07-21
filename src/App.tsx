@@ -54,8 +54,31 @@ type CreatePreset = {
   originId?: string
 }
 
+type RepeatMode = 'off' | 'all' | 'one'
+
 const AUTH_STORAGE_KEY = 'echo-auth-user'
+const REPEAT_STORAGE_KEY = 'echo-repeat-mode'
+const SHUFFLE_STORAGE_KEY = 'echo-shuffle-enabled'
 const EMPTY_CREATE_PRESET: CreatePreset = { prompt: '', style: '' }
+
+function getSavedRepeatMode(): RepeatMode {
+  const savedMode = window.localStorage.getItem(REPEAT_STORAGE_KEY)
+  return savedMode === 'all' || savedMode === 'one' ? savedMode : 'off'
+}
+
+function getSavedShuffleEnabled() {
+  return window.localStorage.getItem(SHUFFLE_STORAGE_KEY) === 'true'
+}
+
+function uniqSongs(songs: Song[]) {
+  const songMap = new Map<string, Song>()
+  songs.forEach((song) => songMap.set(song.id, song))
+  return [...songMap.values()]
+}
+
+function uniqSongIds(songs: Song[]) {
+  return uniqSongs(songs).map((song) => song.id)
+}
 
 function UserApp() {
   const [activeView, setActiveView] = useState<AppView>('auth')
@@ -80,6 +103,11 @@ function UserApp() {
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackDuration, setPlaybackDuration] = useState(0)
   const [pendingPlaySongId, setPendingPlaySongId] = useState<string | null>(null)
+  const [playbackSongs, setPlaybackSongs] = useState<Song[]>([])
+  const [playbackQueue, setPlaybackQueue] = useState<string[]>([])
+  const [playbackQueueIndex, setPlaybackQueueIndex] = useState(0)
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(getSavedRepeatMode)
+  const [shuffleEnabled, setShuffleEnabled] = useState(getSavedShuffleEnabled)
   const [songReturnView, setSongReturnView] = useState<AppView>('feed')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playerVisualizerCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -92,14 +120,13 @@ function UserApp() {
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
-    ;[...feedSongs, ...mySongs].forEach((song) => songMap.set(song.id, song))
+    ;[...feedSongs, ...mySongs, ...playbackSongs].forEach((song) => songMap.set(song.id, song))
     return [...songMap.values()]
-  }, [feedSongs, mySongs])
+  }, [feedSongs, mySongs, playbackSongs])
 
   const currentSong = currentSongId
     ? allSongs.find((song) => song.id === currentSongId)
     : undefined
-  const currentSongIndex = currentSong ? allSongs.findIndex((song) => song.id === currentSong.id) : -1
   const playbackProgress = playbackDuration > 0 ? (currentTime / playbackDuration) * 100 : 0
   const audioElement = <audio ref={audioRef} hidden preload="metadata" crossOrigin="anonymous" />
 
@@ -231,9 +258,64 @@ function UserApp() {
     return result.list ?? []
   }
 
-  async function startPlayback(songId?: string) {
+  function rememberPlaybackSongs(songs: Song[]) {
+    if (!songs.length) return
+    setPlaybackSongs((current) => uniqSongs([...songs, ...current]))
+  }
+
+  function getSourceSongsForPlayback(songId: string) {
+    const sourceView = activeView === 'songDetail' || activeView === 'player' ? songReturnView : activeView
+
+    if (sourceView === 'feed') {
+      return feedSongs.some((song) => song.id === songId) ? feedSongs : allSongs
+    }
+
+    if (sourceView === 'me' || sourceView === 'discover' || sourceView === 'radio') {
+      return mySongs.some((song) => song.id === songId) ? mySongs : allSongs
+    }
+
+    if (sourceView === 'host') {
+      const hostSongs = uniqSongs([
+        ...(hostPage?.featuredSongs ?? []),
+        ...(hostPage?.todayPick ? [hostPage.todayPick] : []),
+        ...(curation?.featuredSong ? [curation.featuredSong] : []),
+        ...(curation?.recommendations ?? []),
+      ])
+      return hostSongs.some((song) => song.id === songId) ? hostSongs : allSongs
+    }
+
+    return allSongs
+  }
+
+  function preparePlaybackQueue(songId: string, queueSongs?: Song[]) {
+    const sourceSongs = queueSongs?.length ? queueSongs : getSourceSongsForPlayback(songId)
+    const sourceIds = uniqSongIds(sourceSongs)
+    const nextQueue = sourceIds.includes(songId) ? sourceIds : [songId]
+
+    rememberPlaybackSongs(sourceSongs)
+    setPlaybackQueue(nextQueue)
+    setPlaybackQueueIndex(Math.max(0, nextQueue.indexOf(songId)))
+  }
+
+  async function ensurePlayableSong(songId: string) {
+    if (allSongs.some((song) => song.id === songId)) return
+
+    try {
+      const nextSong = await getSongDetail(songId)
+      rememberPlaybackSongs([nextSong])
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  async function startPlayback(songId?: string, queueSongs?: Song[]) {
     const nextSongId = songId ?? currentSong?.id
     if (!nextSongId) return
+
+    if (songId) {
+      preparePlaybackQueue(songId, queueSongs)
+      await ensurePlayableSong(songId)
+    }
 
     if (songId && songId !== currentSongId) {
       setCurrentSongId(songId)
@@ -273,17 +355,67 @@ function UserApp() {
     void startPlayback()
   }
 
-  function playAdjacentSong(direction: 'prev' | 'next') {
-    if (!allSongs.length) return
+  function playAdjacentSong(direction: 'prev' | 'next', auto = false) {
+    const audio = audioRef.current
+    if (direction === 'prev' && audio && audio.currentTime > 3) {
+      audio.currentTime = 0
+      return
+    }
 
-    const baseIndex = currentSongIndex >= 0 ? currentSongIndex : 0
-    const step = direction === 'next' ? 1 : -1
-    const nextIndex = (baseIndex + step + allSongs.length) % allSongs.length
-    const nextSong = allSongs[nextIndex]
+    const queue =
+      playbackQueue.length && currentSongId && playbackQueue.includes(currentSongId)
+        ? playbackQueue
+        : currentSongId
+          ? uniqSongIds(getSourceSongsForPlayback(currentSongId))
+          : []
+    if (!queue.length) return
 
-    if (!nextSong) return
+    const baseIndex = currentSongId ? Math.max(0, queue.indexOf(currentSongId)) : playbackQueueIndex
+    let nextIndex = direction === 'next' ? baseIndex + 1 : baseIndex - 1
+
+    if (direction === 'next' && shuffleEnabled && queue.length > 1) {
+      const candidates = queue.map((_, index) => index).filter((index) => index !== baseIndex)
+      nextIndex = candidates[Math.floor(Math.random() * candidates.length)]
+    }
+
+    if (direction === 'next' && nextIndex >= queue.length) {
+      if (repeatMode === 'all' || !auto) nextIndex = 0
+      else return
+    }
+
+    if (direction === 'prev' && nextIndex < 0) {
+      nextIndex = queue.length - 1
+    }
+
+    const nextSongId = queue[nextIndex]
+    if (!nextSongId) return
+
+    setPlaybackQueue(queue)
+    setPlaybackQueueIndex(nextIndex)
     setActiveView('player')
-    void startPlayback(nextSong.id)
+    const queueSongs = queue
+      .map((queuedSongId) => allSongs.find((song) => song.id === queuedSongId))
+      .filter((song): song is Song => Boolean(song))
+    void startPlayback(nextSongId, queueSongs)
+  }
+
+  function cycleRepeatMode() {
+    let nextRepeatMode: RepeatMode = 'all'
+    let nextShuffleEnabled = false
+
+    if (shuffleEnabled) {
+      nextRepeatMode = 'one'
+    } else if (repeatMode === 'one') {
+      nextRepeatMode = 'all'
+    } else {
+      nextRepeatMode = 'off'
+      nextShuffleEnabled = true
+    }
+
+    setRepeatMode(nextRepeatMode)
+    setShuffleEnabled(nextShuffleEnabled)
+    window.localStorage.setItem(REPEAT_STORAGE_KEY, nextRepeatMode)
+    window.localStorage.setItem(SHUFFLE_STORAGE_KEY, String(nextShuffleEnabled))
   }
 
   function seekPlayback(progress: number) {
@@ -366,6 +498,7 @@ function UserApp() {
       let createdSong: Song
       if (payload.mode === 'remix' && payload.originId) {
         const task = await submitRemixTask(payload.originId, {
+          title: payload.title,
           style: payload.style,
           lyrics: payload.lyrics,
           prompt: payload.prompt || `翻唱二创《${payload.title}》`,
@@ -423,10 +556,10 @@ function UserApp() {
     }
   }
 
-  async function handlePlaySong(songId: string) {
+  async function handlePlaySong(songId: string, queueSongs?: Song[]) {
     setCurrentSongId(songId)
     setActiveView('player')
-    void startPlayback(songId)
+    void startPlayback(songId, queueSongs)
   }
 
   async function handlePlayDjBroadcast(song: Song) {
@@ -503,6 +636,9 @@ function UserApp() {
       setActiveView('me')
     }
 
+    setPlaybackSongs((currentSongs) => currentSongs.filter((song) => song.id !== songId))
+    setPlaybackQueue((currentQueue) => currentQueue.filter((queuedSongId) => queuedSongId !== songId))
+
     window.alert('作品已删除。')
   }
 
@@ -578,8 +714,15 @@ function UserApp() {
         void startPlayback(followSongId)
         return
       }
+      if (repeatMode === 'one') {
+        audio.currentTime = 0
+        void audio.play().catch((error) => {
+          console.error(error)
+        })
+        return
+      }
       setIsPlaying(false)
-      playAdjacentSong('next')
+      playAdjacentSong('next', true)
     }
 
     audio.addEventListener('play', handlePlay)
@@ -595,7 +738,7 @@ function UserApp() {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [currentSong?.duration])
+  }, [currentSong?.duration, repeatMode, playbackQueue, currentSongId, playbackQueueIndex, allSongs])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -800,12 +943,15 @@ function UserApp() {
         <PlayerPage
           song={currentSong}
           isPlaying={isPlaying}
+          repeatMode={repeatMode}
+          shuffleEnabled={shuffleEnabled}
           currentTime={currentTime}
           duration={playbackDuration || currentSong?.duration || 0}
           visualizerCanvasRef={playerVisualizerCanvasRef}
           onTogglePlay={togglePlayback}
           onPlayPrev={() => playAdjacentSong('prev')}
           onPlayNext={() => playAdjacentSong('next')}
+          onCycleRepeat={cycleRepeatMode}
           onSeek={seekPlayback}
           onClose={() => setActiveView(currentSong ? 'songDetail' : 'feed')}
           onBackHome={() => setActiveView('feed')}
@@ -824,6 +970,8 @@ function UserApp() {
         active={activeNavKey as Exclude<NavKey, 'auth'>}
         currentSong={currentSong}
         isPlaying={isPlaying}
+        repeatMode={repeatMode}
+        shuffleEnabled={shuffleEnabled}
         progress={playbackProgress}
         user={user}
         onNavigate={navigate}
@@ -831,6 +979,7 @@ function UserApp() {
         onTogglePlay={togglePlayback}
         onPlayPrev={() => playAdjacentSong('prev')}
         onPlayNext={() => playAdjacentSong('next')}
+        onCycleRepeat={cycleRepeatMode}
         onLogout={handleLogout}
       >
         {activeView === 'feed' ? (
@@ -902,7 +1051,14 @@ function UserApp() {
             }}
           />
         ) : null}
-        {activeView === 'me' ? <MePage user={user} songs={mySongs} onOpenSong={openSong} /> : null}
+        {activeView === 'me' ? (
+          <MePage
+            user={user}
+            songs={mySongs}
+            onOpenSong={openSong}
+            onPlaySong={(songId, queueSongs) => void handlePlaySong(songId, queueSongs)}
+          />
+        ) : null}
         {activeView === 'task' && createTask ? (
           <>
             <div className="page-back-row">
@@ -935,6 +1091,7 @@ function UserApp() {
               onPublish={() => void handlePublishSong(true)}
               onSetPrivate={() => void handlePublishSong(false)}
               onDelete={() => handleDeleteSong(currentSong.id)}
+              onOpenSong={openSong}
               onSongUpdate={syncSong}
             />
           </>
