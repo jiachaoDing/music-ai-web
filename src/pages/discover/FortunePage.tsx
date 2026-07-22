@@ -466,14 +466,16 @@ export function FortunePage({
 
       {showShareCard ? (
         <section className="share-card-panel">
-          <button className="share-card-close" type="button" aria-label="关闭分享海报" onClick={() => setShowShareCard(false)}>×</button>
-          <article className="share-card-preview" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
-            <canvas ref={shareCanvasRef} className="share-card-canvas" width={640} height={800} />
-            <small>{sharing ? '正在生成分享卡...' : shareError || '长按图片保存 · 扫码也来测测'}</small>
-          </article>
-          <div className="share-card-actions">
-            <button type="button" disabled={sharing} onClick={downloadShareCard}>下载 PNG</button>
-            <button type="button" onClick={() => setShowShareCard(false)}>收起分享卡</button>
+          <div className="share-card-sheet" role="dialog" aria-modal="true" aria-label="分享卡">
+            <button className="share-card-close" type="button" aria-label="关闭分享海报" onClick={() => setShowShareCard(false)}>×</button>
+            <article className="share-card-preview" style={{ '--feature-color': selectedFortune.luckyColor.hex } as CSSProperties}>
+              <canvas ref={shareCanvasRef} className="share-card-canvas" width={640} height={800} />
+              <small>{sharing ? '正在生成分享卡...' : shareError || '长按图片保存 · 扫码也来测测'}</small>
+            </article>
+            <div className="share-card-actions">
+              <button type="button" disabled={sharing} onClick={downloadShareCard}>下载 PNG</button>
+              <button type="button" onClick={() => setShowShareCard(false)}>收起分享卡</button>
+            </div>
           </div>
         </section>
       ) : null}
