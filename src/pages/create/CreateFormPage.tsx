@@ -85,6 +85,7 @@ export type CreateSubmission = {
   forWho?: string
   originId?: string
   challengeId?: string
+  albumTrackCount?: number
 }
 
 export type CreateChallengeContext = {
@@ -125,6 +126,7 @@ export function CreateFormPage({
   const [photoImage, setPhotoImage] = useState('')
   const [photoImageName, setPhotoImageName] = useState('')
   const [loadingLyrics, setLoadingLyrics] = useState(false)
+  const [albumTrackCount, setAlbumTrackCount] = useState(4)
   const [error, setError] = useState('')
   const style = selectedStyles.join(' / ')
   const visibleStyleTags = Array.from(new Set([...styleTags, ...selectedStyles]))
@@ -200,6 +202,24 @@ export function CreateFormPage({
     const nextLyrics = mode === 'radio' ? '[Instrumental]' : lyrics.trim()
     const nextPrompt = prompt.trim()
     const nextForWho = forWho.trim()
+
+    if (mode === 'album') {
+      if (nextPrompt.length < 2) {
+        setError('请先输入至少 2 个字的专辑主题。')
+        return
+      }
+      setError('')
+      await onSubmit({
+        title: `${nextPrompt} EP`,
+        style: '概念专辑',
+        lyrics: '',
+        mode,
+        prompt: nextPrompt,
+        isInstrumental: false,
+        albumTrackCount,
+      })
+      return
+    }
 
     if (isPhotoMode && !photoImage) {
       setError('请先上传一张图片。')
@@ -296,7 +316,7 @@ export function CreateFormPage({
             />
           </label>
 
-          <div className="create-field create-style-picker">
+          {mode !== 'album' ? <div className="create-field create-style-picker">
             <div className="create-field-head">
               <span>风格 / 情绪</span>
               <em>{style || '可选'}</em>
@@ -315,7 +335,7 @@ export function CreateFormPage({
                 </button>
               ))}
             </div>
-          </div>
+          </div> : null}
 
           {mode === 'foryou' ? (
             <label className="create-field">
@@ -346,6 +366,50 @@ export function CreateFormPage({
         </section>
 
         <section className="create-form-panel create-result-panel">
+          {mode === 'album' ? (
+            <>
+              <div className="create-panel-heading">
+                <span>专辑规划 · AI生成</span>
+                <h2>选择 EP 曲目数量</h2>
+              </div>
+
+              <div className="create-field create-album-count">
+                <span>曲目数量</span>
+                <div className="create-album-count__options" role="group" aria-label="选择专辑曲目数量">
+                  {[2, 3, 4, 5, 6].map((count) => (
+                    <button
+                      type="button"
+                      key={count}
+                      className={albumTrackCount === count ? 'is-active' : ''}
+                      aria-pressed={albumTrackCount === count}
+                      onClick={() => setAlbumTrackCount(count)}
+                    >
+                      {count} 首
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="create-album-preview">
+                <strong>{prompt.trim() ? `${prompt.trim()} EP` : '等待输入专辑主题'}</strong>
+                <p>AI 将围绕主题依次创作 {albumTrackCount} 首歌曲的歌词和音乐。</p>
+              </div>
+
+              {error ? <p className="create-form-error">{error}</p> : null}
+
+              <div className="create-form-actions">
+                <button type="button" disabled={submitting} onClick={() => void handleSubmit()}>
+                  {submitting ? '制作中...' : (
+                    <>
+                      开始制作 EP
+                      <span className="cost-tag">· {formatEchoCost(submitCost)}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
           <div className="create-panel-heading">
             <span>{mode === 'radio' ? '标题生成 · AI生成' : '歌词编辑 · AI生成'}</span>
             <h2>{mode === 'radio' ? '让 AI 为这段纯音乐命名' : '生成后可以继续修改'}</h2>
@@ -386,6 +450,8 @@ export function CreateFormPage({
               )}
             </button>
           </div>
+            </>
+          )}
 
           <aside className="create-copyright-notice" aria-label="AI 生成内容与版权说明">
             <strong>AI 生成内容与版权说明</strong>

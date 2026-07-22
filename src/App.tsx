@@ -3,8 +3,8 @@ import './App.css'
 import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
-import type { FeedTab, ResonanceFeedResponse } from './api/song'
-import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitGenerateTask, submitRemixTask } from './api/song'
+import type { AlbumSummary, FeedTab, ResonanceFeedResponse } from './api/song'
+import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitAlbumTask, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { BackButton } from './components/BackButton'
 import { LoadingState } from './components/LoadingState'
@@ -47,6 +47,10 @@ type CreateTaskState = {
   queueAhead?: number
   active?: number
   maxConcurrency?: number
+  albumResult?: {
+    album: AlbumSummary
+    tracks: Song[]
+  }
 }
 
 type PendingCreateTask = {
@@ -56,6 +60,7 @@ type PendingCreateTask = {
   createdAt: string
   challengeId?: string
   challengeTitle?: string
+  taskType?: 'song' | 'album'
 }
 
 type CreatePreset = {
@@ -111,6 +116,9 @@ function formatGenerateStage(stage: string | undefined, taskLabel: string) {
   if (stage === 'album running') return '正在策划专辑'
   if (stage === 'done') return '生成完成'
   if (stage === 'failed') return '生成失败'
+
+  const waitingTrackStage = stage.match(/^waiting for track (\d+)\/(\d+) AI$/)
+  if (waitingTrackStage) return `等待制作第 ${waitingTrackStage[1]}/${waitingTrackStage[2]} 首`
 
   const albumStage = stage.match(/^creating track (\d+)\/(\d+)(?:: (.+))?$/)
   if (albumStage) {
@@ -636,6 +644,7 @@ function UserApp() {
     taskId: string,
     taskLabel: string,
     challenge?: { id: string; title?: string },
+    taskType: 'song' | 'album' = 'song',
   ) {
     if (!user) return
     window.localStorage.setItem(PENDING_CREATE_TASK_KEY, JSON.stringify({
@@ -645,6 +654,7 @@ function UserApp() {
       createdAt: new Date().toISOString(),
       challengeId: challenge?.id,
       challengeTitle: challenge?.title,
+      taskType,
     } satisfies PendingCreateTask))
   }
 
@@ -721,6 +731,72 @@ function UserApp() {
     }
   }
 
+  async function pollAlbumTask(taskId: string) {
+    taskPollingControllerRef.current?.abort()
+    const controller = new AbortController()
+    taskPollingControllerRef.current = controller
+    pollingTaskIdRef.current = taskId
+    let transientFailures = 0
+
+    try {
+      while (!controller.signal.aborted) {
+        let status
+        try {
+          status = await getGenerateTaskStatus(taskId, controller.signal)
+          transientFailures = 0
+        } catch (error) {
+          if (isAbortError(error)) throw error
+          if (isTerminalTaskLookupError(error)) throw error
+          transientFailures += 1
+          const retryDelay = [3000, 5000, 10000, 15000][Math.min(transientFailures - 1, 3)]
+          await waitForNextPoll(retryDelay, controller.signal)
+          continue
+        }
+
+        const taskError = typeof status.error === 'string' ? status.error : status.error?.message
+        const queueAhead = status.queueAhead ?? status.queuePos ?? 0
+        const maxConcurrency = status.maxConcurrency ?? status.concurrency
+        const isQueued = status.status === 'queued'
+        const displayStage = isQueued ? '等待生成' : formatGenerateStage(status.stage, '概念 EP')
+        const album = status.result?.album ?? status.album ?? undefined
+        const tracks = status.result?.tracks ?? status.result?.songs ?? []
+        setCreateTask({
+          status: status.status === 'error' || status.status === 'failed' ? 'error' : isQueued ? 'queued' : 'running',
+          stage: displayStage,
+          description: isQueued
+            ? queueAhead > 0
+              ? `当前生成资源繁忙，前面还有 ${queueAhead} 个 AI 请求。`
+              : '队列即将轮到你，正在分配专辑制作资源。'
+            : describeRunningStage(displayStage, '概念 EP'),
+          progress: isQueued ? Math.min(status.progress ?? 10, 20) : status.progress ?? 40,
+          canOpenSong: false,
+          queueAhead,
+          active: status.active,
+          maxConcurrency,
+          albumResult: album ? { album, tracks } : undefined,
+        })
+
+        if (status.status === 'done') {
+          if (!album) throw new Error('专辑已经完成，但暂时无法读取专辑信息。')
+          clearPendingTask(taskId)
+          return { album, tracks }
+        }
+        if (status.status === 'error' || status.status === 'failed') {
+          clearPendingTask(taskId)
+          throw new Error(taskError || '概念 EP 制作失败。')
+        }
+
+        const pollDelay = document.hidden ? 15000 : activeViewRef.current === 'task' ? 2500 : 8000
+        await waitForNextPoll(pollDelay, controller.signal)
+      }
+
+      throw new DOMException('Polling aborted', 'AbortError')
+    } finally {
+      if (pollingTaskIdRef.current === taskId) pollingTaskIdRef.current = null
+      if (taskPollingControllerRef.current === controller) taskPollingControllerRef.current = null
+    }
+  }
+
   async function handleCreateSubmit(payload: CreateSubmission) {
     setCreateSubmitting(true)
     setCreateTask({
@@ -733,6 +809,28 @@ function UserApp() {
     setActiveView('task')
 
     try {
+      if (payload.mode === 'album') {
+        const task = await submitAlbumTask({
+          theme: payload.prompt,
+          trackCount: payload.albumTrackCount ?? 4,
+        })
+        if (!task.taskId) throw new Error('专辑任务提交失败，请稍后重试。')
+        rememberPendingTask(task.taskId, '概念 EP', undefined, 'album')
+        showSubmittedTask(task, '概念 EP')
+        const albumResult = await pollAlbumTask(task.taskId)
+        albumResult.tracks.forEach((track) => syncSong(track))
+        if (albumResult.tracks[0]) syncSong(albumResult.tracks[0], { makeCurrent: true })
+        setCreateTask({
+          status: 'done',
+          stage: '专辑制作完成',
+          description: `${albumResult.album.title} 已完成，共 ${albumResult.tracks.length} 首歌曲。`,
+          progress: 100,
+          canOpenSong: albumResult.tracks.length > 0,
+          albumResult,
+        })
+        return
+      }
+
       let createdSong: Song
       if (payload.mode === 'remix' && payload.originId) {
         const task = await submitRemixTask(payload.originId, {
@@ -933,6 +1031,34 @@ function UserApp() {
       canOpenSong: false,
     })
     setActiveView('task')
+
+    if (pending.taskType === 'album') {
+      void pollAlbumTask(pending.taskId)
+        .then((albumResult) => {
+          albumResult.tracks.forEach((track) => syncSong(track))
+          if (albumResult.tracks[0]) syncSong(albumResult.tracks[0], { makeCurrent: true })
+          setCreateTask({
+            status: 'done',
+            stage: '专辑制作完成',
+            description: `${albumResult.album.title} 已完成，共 ${albumResult.tracks.length} 首歌曲。`,
+            progress: 100,
+            canOpenSong: albumResult.tracks.length > 0,
+            albumResult,
+          })
+        })
+        .catch((error) => {
+          if (isAbortError(error)) return
+          setCreateTask({
+            status: 'error',
+            stage: '专辑制作失败',
+            description: error instanceof Error ? error.message : '恢复专辑任务失败，请稍后重试。',
+            progress: 100,
+            canOpenSong: false,
+          })
+        })
+        .finally(() => setCreateSubmitting(false))
+      return
+    }
 
     void pollGenerateTask(pending.taskId, pending.taskLabel || '歌曲')
       .then(async (createdSong) => {
@@ -1421,6 +1547,7 @@ function UserApp() {
             <TaskPage
               task={createTask}
               onOpenSong={() => detailSong ? openSong(detailSong.id) : currentSong && openSong(currentSong.id)}
+              onOpenAlbumSong={openSong}
               challengeTitle={createChallenge?.title}
               onReturnToChallenge={createChallenge ? () => {
                 window.history.pushState({}, '', `/challenges/${createChallenge.id}`)

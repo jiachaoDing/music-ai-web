@@ -732,6 +732,81 @@ export const meStyles = `
   gap: 10px;
 }
 
+.me-invites-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.me-invites-head,
+.me-invites-head > div,
+.me-invite-list {
+  display: grid;
+  gap: 6px;
+}
+
+.me-invites-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.me-invites-head span,
+.me-invites-head small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.me-invites-head strong {
+  font-size: 18px;
+}
+
+.me-invite-row {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border: 1px dashed rgba(234, 76, 137, 0.42);
+  border-radius: 8px;
+  background: rgba(234, 76, 137, 0.035);
+}
+
+.me-invite-row code {
+  overflow-wrap: anywhere;
+  color: var(--theme-dark);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.me-invite-row button {
+  min-width: 64px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #ea4c89;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.me-invite-row.is-used {
+  border-style: solid;
+  border-color: rgba(13, 12, 34, 0.08);
+  background: rgba(13, 12, 34, 0.025);
+  opacity: 0.62;
+}
+
+.me-invite-row > span,
+.me-invite-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .me-hero__facts {
   display: none;
 }

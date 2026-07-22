@@ -65,6 +65,8 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [worksView, setWorksView] = useState<WorksViewKey>('published')
   const [profileUser, setProfileUser] = useState<User>(user)
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
+  const [invitedCount, setInvitedCount] = useState(0)
+  const [copiedInviteCode, setCopiedInviteCode] = useState('')
   const [pointsLedger, setPointsLedger] = useState<PointsLedgerItem[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
@@ -91,6 +93,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
         ])
         setProfileUser(profile.user)
         setInviteCodes(profile.inviteCodes)
+        setInvitedCount(profile.invitedCount)
         setPlaylists(profile.playlists)
         setPointsLedger(ledger)
       } catch (error) {
@@ -122,6 +125,23 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     .map(([style]) => style)
 
   const inviteCode = inviteCodes.find((code) => code.status === 'unused')?.code
+
+  async function copyInviteCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch {
+      const input = document.createElement('textarea')
+      input.value = code
+      input.style.position = 'fixed'
+      input.style.opacity = '0'
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      input.remove()
+    }
+    setCopiedInviteCode(code)
+    window.setTimeout(() => setCopiedInviteCode(''), 1800)
+  }
 
   const stats = [
     { label: '累计作品', value: songs.length },
@@ -316,7 +336,16 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                 <MeLedgerPanel ledger={pointsLedger} loading={profileLoading} />
               </>
             ) : (
-              <MeAccountPanel user={profileUser} inviteCode={inviteCode} ledger={pointsLedger} loading={profileLoading} onOpenLedger={() => setAccountView('ledger')} />
+              <MeAccountPanel
+                user={profileUser}
+                inviteCodes={inviteCodes}
+                invitedCount={invitedCount}
+                copiedInviteCode={copiedInviteCode}
+                ledger={pointsLedger}
+                loading={profileLoading}
+                onOpenLedger={() => setAccountView('ledger')}
+                onCopyInvite={(code) => void copyInviteCode(code)}
+              />
             )}
           </div>
 

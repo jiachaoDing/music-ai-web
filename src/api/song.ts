@@ -29,6 +29,19 @@ export type GenerateTask = {
   maxConcurrency?: number
 }
 
+export type AlbumSummary = {
+  id: string
+  title: string
+  name?: string
+  description?: string
+  intro?: string
+  coverUrl?: string | null
+  author?: string
+  trackCount?: number
+  total?: number
+  createdAt?: string
+}
+
 export type GenerateTaskStatus = {
   taskId?: string
   id?: string
@@ -40,8 +53,12 @@ export type GenerateTaskStatus = {
   active?: number
   concurrency?: number
   maxConcurrency?: number
+  album?: AlbumSummary | null
   result?: {
     song?: Song
+    album?: AlbumSummary
+    tracks?: Song[]
+    songs?: Song[]
   }
   error?: string | { message?: string } | null
 }
@@ -185,6 +202,13 @@ export async function generateSong(input: GenerateSongInput): Promise<Song> {
 
 export function submitGenerateTask(input: GenerateSongInput) {
   return request<GenerateTask>('/api/generate', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function submitAlbumTask(input: { theme: string; trackCount: number }) {
+  return request<GenerateTask>('/api/album', {
     method: 'POST',
     body: JSON.stringify(input),
   })

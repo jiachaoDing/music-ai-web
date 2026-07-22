@@ -1,4 +1,4 @@
-import type { User } from '../../types/user'
+import type { InviteCode, User } from '../../types/user'
 import type { PointsLedgerItem } from '../../api/me'
 
 type MeHeroProps = {
@@ -23,10 +23,13 @@ type MeStatsProps = {
 
 type MeAccountProps = {
   user: User
-  inviteCode?: string
+  inviteCodes?: InviteCode[]
+  invitedCount?: number
+  copiedInviteCode?: string
   ledger?: PointsLedgerItem[]
   loading?: boolean
   onOpenLedger?: () => void
+  onCopyInvite?: (code: string) => void
 }
 
 function formatDate(value?: string) {
@@ -112,7 +115,16 @@ export function MeStatsPanel({ stats }: MeStatsProps) {
   )
 }
 
-export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false, onOpenLedger }: MeAccountProps) {
+export function MeAccountPanel({
+  user,
+  inviteCodes = [],
+  invitedCount = 0,
+  copiedInviteCode,
+  ledger = [],
+  loading = false,
+  onOpenLedger,
+  onCopyInvite,
+}: MeAccountProps) {
   return (
     <section className="me-panel me-panel--account">
       <div className="me-panel__heading">
@@ -153,6 +165,38 @@ export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false,
           <p className="me-ledger-empty">还没有回声流水。完成创作、打卡或作品获得互动后，这里会留下记录。</p>
         )}
       </div>
+      <div className="me-invites-card">
+        <div className="me-invites-head">
+          <div>
+            <span>我的邀请码</span>
+            <strong>已邀请 {invitedCount} 人</strong>
+          </div>
+          <small>邀请好友加入 Echo</small>
+        </div>
+        <div className="me-invite-list">
+          {loading ? (
+            <p className="me-invite-empty">正在同步邀请码...</p>
+          ) : inviteCodes.length ? (
+            inviteCodes.map((item) => {
+              const available = item.status === 'unused'
+              return (
+                <div className={`me-invite-row${available ? '' : ' is-used'}`} key={item.id}>
+                  <code>{item.code}</code>
+                  {available ? (
+                    <button type="button" onClick={() => onCopyInvite?.(item.code)}>
+                      {copiedInviteCode === item.code ? '已复制' : '复制'}
+                    </button>
+                  ) : (
+                    <span>已使用</span>
+                  )}
+                </div>
+              )
+            })
+          ) : (
+            <p className="me-invite-empty">暂无邀请码</p>
+          )}
+        </div>
+      </div>
       <div className="me-detail-list">
         <div className="me-detail-row">
           <span>用户身份</span>
@@ -165,10 +209,6 @@ export function MeAccountPanel({ user, inviteCode, ledger = [], loading = false,
         <div className="me-detail-row">
           <span>最近打卡</span>
           <strong>{formatDate(user.lastCheckin)}</strong>
-        </div>
-        <div className="me-detail-row">
-          <span>可用邀请码</span>
-          <strong>{loading ? '正在同步...' : inviteCode ?? '暂无可用邀请码'}</strong>
         </div>
       </div>
     </section>
