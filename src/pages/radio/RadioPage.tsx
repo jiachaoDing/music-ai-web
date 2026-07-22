@@ -146,7 +146,7 @@ export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong }: RadioPa
           <p className="radio-greeting">{greeting}</p>
           {loadError ? <small className="radio-load-error">暂时无法获取最新频道，已为你准备推荐频道。</small> : null}
           <h1>给当下，调个频道</h1>
-          <p className="radio-intro">从当下的心情出发，挑选一个场景。Echo 会为你编织一段不打扰思绪的纯音乐。</p>
+          <p className="radio-intro">这里的“电台”是一组纯音乐场景，不是直播频道。选择当下的心情或场景，Echo 会生成一首不含歌词和人声的音乐。</p>
           <div className="radio-now-meta">
             <span>此刻推荐</span>
             <strong>{activeTheme.name}</strong>

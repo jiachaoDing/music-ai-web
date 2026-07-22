@@ -32,12 +32,12 @@ const modeCopy: Record<SongMode, { title: string; description: string; placehold
   },
   radio: {
     title: '电台纯音乐',
-    description: '选择场景后生成适合此刻的纯音乐。',
+    description: '“电台”是纯音乐场景入口：选择学习、休息等场景，生成一首不含歌词和人声的音乐。',
     placeholder: '例如：深夜自习，安静但不困',
   },
   remix: {
     title: '翻唱 / 二创',
-    description: '基于已有作品生成新的版本。',
+    description: '基于已有作品修改风格或歌词，生成一个新的衍生版本，并加入翻唱进化树。',
     placeholder: '例如：把原曲改成 City Pop 风格',
   },
   fortune: {
@@ -47,8 +47,8 @@ const modeCopy: Record<SongMode, { title: string; description: string; placehold
   },
   album: {
     title: 'AI 音乐制作人',
-    description: '围绕一个主题生成概念 EP 草稿。',
-    placeholder: '例如：关于夏天、操场和告别的概念 EP',
+    description: '输入一个主题，一次生成 2～6 首相关歌曲，并整理为专辑（EP，即由多首歌曲组成的短专辑）。',
+    placeholder: '例如：围绕夏天、操场和告别生成一张短专辑',
   },
 }
 
@@ -64,6 +64,16 @@ function parseStyleTags(style: string) {
 function getInitialStyleSelection(style: string) {
   const tags = parseStyleTags(style)
   return tags
+}
+
+function resolveGeneratedTitle(title: string | undefined, rawText: string | undefined) {
+  const normalizedTitle = title?.trim() ?? ''
+  if (normalizedTitle && !['未命名', 'untitled'].includes(normalizedTitle.toLowerCase())) {
+    return normalizedTitle
+  }
+
+  const matchedTitle = rawText?.match(/(?:歌名|标题|title)\s*[：:]\s*[《“"']?([^\n》”"']+)/i)?.[1]?.trim()
+  return matchedTitle && !['未命名', 'untitled'].includes(matchedTitle.toLowerCase()) ? matchedTitle : ''
 }
 
 function readFileAsDataUrl(file: File) {
@@ -181,8 +191,9 @@ export function CreateFormPage({
         image: mode === 'photo' ? photoImage : undefined,
         styles: selectedStyles,
       })
-      if (result.title && result.title !== '未命名') {
-        setGeneratedTitle(result.title)
+      const nextTitle = resolveGeneratedTitle(result.title, result.rawText)
+      if (nextTitle) {
+        setGeneratedTitle(nextTitle)
       }
       if (result.style && !['pop, emotional', 'pop / emotional'].includes(result.style.trim().toLowerCase())) {
         setSelectedStyles(getInitialStyleSelection(result.style))
@@ -307,14 +318,32 @@ export function CreateFormPage({
             <h2>先写下创作素材</h2>
           </div>
 
-          <label className="create-field">
-            {mode === 'photo' ? '补充说明（可选）' : '灵感输入'}
-            <textarea
-              placeholder={current.placeholder}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-            />
-          </label>
+          {mode !== 'photo' ? (
+            <label className="create-field">
+              灵感输入
+              <textarea
+                placeholder={current.placeholder}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+              />
+            </label>
+          ) : null}
+
+          {mode === 'photo' ? (
+            <div className="create-field">
+              <span>上传一张图片</span>
+              <label className="create-upload-box">
+                <input type="file" accept="image/*" onChange={handlePhotoChange} />
+                <span>{photoImageName ? `已选择：${photoImageName}` : '上传图片后，AI 会先看图再为你写歌'}</span>
+              </label>
+
+              {photoImage ? (
+                <div className="create-photo-preview">
+                  <img src={photoImage} alt="上传预览" />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {mode !== 'album' ? <div className="create-field create-style-picker">
             <div className="create-field-head">
@@ -349,19 +378,14 @@ export function CreateFormPage({
           ) : null}
 
           {mode === 'photo' ? (
-            <div className="create-field">
-              <span>上传一张图片</span>
-              <label className="create-upload-box">
-                <input type="file" accept="image/*" onChange={handlePhotoChange} />
-                <span>{photoImageName ? `已选择：${photoImageName}` : '上传图片后，AI 会先看图再为你写歌'}</span>
-              </label>
-
-              {photoImage ? (
-                <div className="create-photo-preview">
-                  <img src={photoImage} alt="上传预览" />
-                </div>
-              ) : null}
-            </div>
+            <label className="create-field create-photo-note">
+              补充说明（可选）
+              <textarea
+                placeholder={current.placeholder}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+              />
+            </label>
           ) : null}
         </section>
 
@@ -370,7 +394,7 @@ export function CreateFormPage({
             <>
               <div className="create-panel-heading">
                 <span>专辑规划 · AI生成</span>
-                <h2>选择 EP 曲目数量</h2>
+                <h2>选择要生成几首歌曲</h2>
               </div>
 
               <div className="create-field create-album-count">
@@ -415,6 +439,15 @@ export function CreateFormPage({
             <h2>{mode === 'radio' ? '让 AI 为这段纯音乐命名' : '生成后可以继续修改'}</h2>
           </div>
 
+          <button
+            className="create-mobile-lyrics-action"
+            type="button"
+            disabled={loadingLyrics || submitting}
+            onClick={handleGenerateLyrics}
+          >
+            {loadingLyrics ? '生成中...' : mode === 'radio' ? 'AI 生成标题' : 'AI 写词'}
+          </button>
+
           <label className="create-field">
             歌名
             <input
@@ -438,7 +471,7 @@ export function CreateFormPage({
           {error ? <p className="create-form-error">{error}</p> : null}
 
           <div className="create-form-actions">
-            <button type="button" disabled={loadingLyrics || submitting} onClick={handleGenerateLyrics}>
+            <button className="create-lyrics-action" type="button" disabled={loadingLyrics || submitting} onClick={handleGenerateLyrics}>
               {loadingLyrics ? '生成中...' : mode === 'radio' ? 'AI 生成标题' : 'AI 写词'}
             </button>
             <button type="button" disabled={submitting} onClick={() => void handleSubmit()}>

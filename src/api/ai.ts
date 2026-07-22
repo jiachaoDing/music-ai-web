@@ -1,5 +1,4 @@
 import { request } from './request'
-import type { Song } from '../types/song'
 
 export type LyricsResult = {
   title: string
@@ -35,19 +34,6 @@ export type DjBroadcastResult = {
   }
 }
 
-export type SongReviewResult = {
-  text?: string
-  review?: string
-  aiReview?: string
-  song?: Song
-  data?: {
-    text?: string
-    review?: string
-    aiReview?: string
-    song?: Song
-  }
-}
-
 export function generateLyrics(input: string | LyricsRequestInput) {
   return request<LyricsResult>('/api/lyrics', {
     method: 'POST',
@@ -75,8 +61,3 @@ export function generateDjBroadcast(songId: string) {
   })
 }
 
-export function generateSongReview(songId: string) {
-  return request<SongReviewResult>(`/api/song/${encodeURIComponent(songId)}/review`, {
-    method: 'POST',
-  })
-}

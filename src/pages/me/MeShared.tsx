@@ -3,8 +3,6 @@ import type { PointsLedgerItem } from '../../api/me'
 
 type MeHeroProps = {
   user: User
-  inviteCode?: string
-  loading?: boolean
   summary: {
     songCount: number
     likeCount: number
@@ -27,6 +25,7 @@ type MeAccountProps = {
   invitedCount?: number
   copiedInviteCode?: string
   ledger?: PointsLedgerItem[]
+  ledgerTotal?: number
   loading?: boolean
   onOpenLedger?: () => void
   onCopyInvite?: (code: string) => void
@@ -52,7 +51,7 @@ function formatLedgerTime(value: string) {
   }).format(new Date(value))
 }
 
-export function MeHero({ user, inviteCode, loading = false, summary, stats }: MeHeroProps) {
+export function MeHero({ user, summary, stats }: MeHeroProps) {
   const creatorStyles = summary.topStyles.length ? summary.topStyles : ['探索中', 'AI Music']
 
   return (
@@ -86,7 +85,6 @@ export function MeHero({ user, inviteCode, loading = false, summary, stats }: Me
             <span><small>身份</small><strong>{user.role === 'admin' ? '管理员' : '社区创作者'}</strong></span>
             <span><small>注册</small><strong>{formatDate(user.createdAt)}</strong></span>
             <span><small>打卡</small><strong>{formatDate(user.lastCheckin)}</strong></span>
-            <span><small>邀请码</small><strong>{loading ? '同步中' : inviteCode ?? '暂无'}</strong></span>
           </div>
         </div>
       </div>
@@ -121,6 +119,7 @@ export function MeAccountPanel({
   invitedCount = 0,
   copiedInviteCode,
   ledger = [],
+  ledgerTotal = 0,
   loading = false,
   onOpenLedger,
   onCopyInvite,
@@ -144,7 +143,7 @@ export function MeAccountPanel({
         <div className="me-ledger-head">
           <span>最近流水</span>
           <button type="button" className="me-ledger-more" onClick={onOpenLedger}>
-            {loading ? '正在同步...' : ledger.length ? `查看全部 ${ledger.length} 条 ›` : '暂无记录'}
+            {loading ? '正在同步...' : ledgerTotal ? `查看全部 ${ledgerTotal} 条 ›` : '暂无记录'}
           </button>
         </div>
         {ledger.length ? (
@@ -195,20 +194,6 @@ export function MeAccountPanel({
           ) : (
             <p className="me-invite-empty">暂无邀请码</p>
           )}
-        </div>
-      </div>
-      <div className="me-detail-list">
-        <div className="me-detail-row">
-          <span>用户身份</span>
-          <strong>{user.role === 'admin' ? '管理员' : '社区创作者'}</strong>
-        </div>
-        <div className="me-detail-row">
-          <span>注册时间</span>
-          <strong>{formatDate(user.createdAt)}</strong>
-        </div>
-        <div className="me-detail-row">
-          <span>最近打卡</span>
-          <strong>{formatDate(user.lastCheckin)}</strong>
         </div>
       </div>
     </section>

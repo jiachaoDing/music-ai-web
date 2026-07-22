@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { generateSongReview, type SongReviewResult } from '../../api/ai'
 import { addSongToPlaylist, createPlaylist, getPlaylists } from '../../api/me'
 import {
   addSongComment,
-  collectSong,
   getSongComments,
   getSongTree,
   likeSong,
@@ -78,21 +76,6 @@ function formatAiReviewText(value?: string | null) {
   return value?.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
 }
 
-function getReviewPayload(result: SongReviewResult) {
-  return result.data ?? result
-}
-
-function pickReviewText(result: SongReviewResult) {
-  const payload = getReviewPayload(result)
-
-  return (
-    formatAiReviewText(payload.text) ||
-    formatAiReviewText(payload.aiReview) ||
-    formatAiReviewText(payload.review) ||
-    formatAiReviewText(payload.song?.aiReview)
-  )
-}
-
 function countTreeNodes(nodes: SongTreeNode[]): number {
   return nodes.reduce((sum, node) => sum + 1 + countTreeNodes(node.children), 0)
 }
@@ -120,6 +103,7 @@ export function SongDetailPage({
   const canDelete =
     canManage &&
     !song.published &&
+    song.remixCount === 0 &&
     ['draft', 'private', 'failed', 'generating', 'generated'].includes(song.status)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
@@ -134,7 +118,6 @@ export function SongDetailPage({
   const [collectCount, setCollectCount] = useState(song.collectCount)
   const [djLoading, setDjLoading] = useState(false)
   const [remixSubmitting, setRemixSubmitting] = useState(false)
-  const [reviewLoading, setReviewLoading] = useState(false)
   const [aiReview, setAiReview] = useState(formatAiReviewText(song.aiReview) ?? '')
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -202,8 +185,11 @@ export function SongDetailPage({
       setPlaylistLoading(true)
       try {
         const nextPlaylists = await getPlaylists()
-        setPlaylists(nextPlaylists)
-        setSelectedPlaylistId((current) => current || nextPlaylists[0]?.id || '')
+        const customPlaylists = nextPlaylists.filter(
+          (playlist) => playlist.type === 'custom' && !playlist.isSystem,
+        )
+        setPlaylists(customPlaylists)
+        setSelectedPlaylistId((current) => current || customPlaylists[0]?.id || '')
       } catch (error) {
         console.error(error)
       } finally {
@@ -223,16 +209,7 @@ export function SongDetailPage({
     setPlaylistSubmitting(true)
 
     try {
-      try {
-        const result = await collectSong(song.id, selectedPlaylistId)
-        setCollectCount(result.collectCount)
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('已经收藏')) {
-          await addSongToPlaylist(selectedPlaylistId, song.id)
-        } else {
-          throw error
-        }
-      }
+      await addSongToPlaylist(selectedPlaylistId, song.id)
 
       setPlaylists((current) =>
         current.map((playlist) =>
@@ -325,7 +302,7 @@ export function SongDetailPage({
   async function handleDeleteSong() {
     if (!onDelete) return
 
-    const confirmed = window.confirm(`确定删除《${song.title}》吗？删除后无法恢复。`)
+    const confirmed = window.confirm(`确定删除《${song.title}》吗？作品及其歌单关联将被移除，删除后无法恢复。`)
     if (!confirmed) return
 
     setDeleteSubmitting(true)
@@ -356,7 +333,10 @@ export function SongDetailPage({
           </span>
           <span className="song-remix-tree__copy">
             <strong>{node.title}</strong>
-            <small>@{node.author?.nickname ?? '匿名创作者'} · {node.mode === 'remix' ? '翻唱版本' : '原始作品'}</small>
+            <small>
+              @{node.author?.nickname ?? '匿名创作者'} · {node.mode === 'remix' ? '翻唱版本' : '原始作品'}
+              {' · '}{node.likeCount ?? 0} 喜欢 · {node.playCount ?? 0} 播放
+            </small>
           </span>
           {isCurrent ? <b>当前</b> : null}
         </button>
@@ -369,35 +349,6 @@ export function SongDetailPage({
     )
   }
 
-  async function handleGenerateReview() {
-    if (reviewLoading) return
-
-    setReviewLoading(true)
-    try {
-      const result = await generateSongReview(song.id)
-      const payload = getReviewPayload(result)
-      const payloadReview = pickReviewText(result)
-      const nextReview =
-        formatAiReviewText(result.text) ||
-        formatAiReviewText(result.aiReview) ||
-        formatAiReviewText(result.review) ||
-        formatAiReviewText(result.song?.aiReview) ||
-        'AI 乐评暂时不可用，请稍后重新生成。'
-      setAiReview(nextReview)
-      if (payloadReview) {
-        setAiReview(payloadReview)
-      }
-      if (payload.song) {
-        onSongUpdate?.({ ...payload.song, aiReview: payloadReview ?? nextReview })
-      }
-    } catch (error) {
-      console.error(error)
-      window.alert(error instanceof Error ? error.message : 'AI 乐评生成失败，请稍后重试')
-    } finally {
-      setReviewLoading(false)
-    }
-  }
-
   async function handleSubmitComment() {
     const text = commentText.trim()
     if (!text || commentSubmitting) return
@@ -405,12 +356,11 @@ export function SongDetailPage({
     setCommentSubmitting(true)
       try {
         const result = await addSongComment(song.id, { text, anon: commentAnon })
-        const nextCommentCount = commentCount + 1
         setComments((current) => [result.comment, ...current])
         setCommentText('')
         setCommentAnon(false)
-        setCommentCount(nextCommentCount)
-        onSongUpdate?.({ ...song, commentCount: nextCommentCount })
+        setCommentCount(result.commentCount)
+        onSongUpdate?.({ ...song, commentCount: result.commentCount })
     } catch (error) {
       console.error(error)
       window.alert(error instanceof Error ? error.message : '留言失败，请稍后再试')
@@ -522,7 +472,9 @@ export function SongDetailPage({
                 </button>
               ) : null}
               <p className="song-detail-delete-note">
-                删除规则：草稿和私密作品可以删除；已发布作品需要先设为仅自己可见。
+                {song.remixCount > 0
+                  ? `该作品已有 ${song.remixCount} 个直接二创版本，为保留翻唱进化树，源作品不能删除。`
+                  : '删除规则：草稿和私密作品可以删除；已发布作品需要先设为仅自己可见。'}
               </p>
             </div>
           ) : null}
@@ -640,20 +592,11 @@ export function SongDetailPage({
             <div className="song-detail-panel__header">
               <div>
                 <span>AI Review</span>
-                <button
-                  type="button"
-                  className="song-detail-panel__button"
-                  disabled={reviewLoading}
-                  onClick={() => void handleGenerateReview()}
-                >
-                  {reviewLoading ? '生成中...' : aiReview ? '重新生成' : '生成乐评'}
-                </button>
                 <h2>AI 乐评</h2>
               </div>
             </div>
             <p>
-              {aiReview ||
-                '还没有 AI 乐评，点击生成即可查看。'}
+              {aiReview || 'AI 乐评正在后台生成，请稍后刷新查看。'}
             </p>
           </section>
 

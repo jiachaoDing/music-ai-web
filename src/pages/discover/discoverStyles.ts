@@ -1453,11 +1453,12 @@ export const discoverStyles = `
 
   .discover-suite--launcher .discover-mobile-launcher {
     display: grid;
-    gap: 18px;
-    min-height: calc(100dvh - 190px);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    min-height: calc(100dvh - 270px);
     border: 1px solid rgba(255, 255, 255, 0.78);
     border-radius: 24px;
-    padding: 22px 16px;
+    padding: 18px 16px;
     background:
       radial-gradient(circle at 88% 5%, rgba(84, 199, 236, 0.18), transparent 30%),
       radial-gradient(circle at 8% 14%, rgba(234, 76, 137, 0.18), transparent 34%),
@@ -1467,7 +1468,7 @@ export const discoverStyles = `
 
   .discover-mobile-launcher__heading {
     display: grid;
-    gap: 7px;
+    gap: 6px;
   }
 
   .discover-mobile-launcher__heading span {
@@ -1481,7 +1482,7 @@ export const discoverStyles = `
   .discover-mobile-launcher__heading h1 {
     margin: 0;
     color: var(--theme-dark);
-    font-size: clamp(28px, 8vw, 36px);
+    font-size: 32px;
     line-height: 1.05;
   }
 
@@ -1489,26 +1490,27 @@ export const discoverStyles = `
     margin: 0;
     color: var(--muted);
     font-size: 13px;
-    line-height: 1.55;
+    line-height: 1.45;
   }
 
   .discover-mobile-launcher__grid {
     display: grid;
-    gap: 12px;
+    grid-template-rows: repeat(3, minmax(96px, 1fr));
+    gap: 10px;
   }
 
   .discover-mobile-launcher__grid button {
     position: relative;
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr);
     grid-template-rows: auto auto auto;
-    gap: 3px 14px;
+    gap: 2px 13px;
     align-items: center;
-    min-height: 116px;
+    min-height: 96px;
     overflow: hidden;
     border: 1px solid rgba(234, 76, 137, 0.14);
-    border-radius: 20px;
-    padding: 16px;
+    border-radius: 18px;
+    padding: 13px 14px;
     color: var(--text);
     text-align: left;
     background: rgba(255, 255, 255, 0.8);
@@ -1527,12 +1529,12 @@ export const discoverStyles = `
     grid-row: 1 / -1;
     display: grid;
     place-items: center;
-    width: 64px;
-    height: 64px;
-    border-radius: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
     color: #ffffff;
     background: linear-gradient(145deg, #f78fb8, #7566d9);
-    font-size: 21px;
+    font-size: 19px;
     font-style: normal;
     font-weight: 900;
     box-shadow: 0 10px 24px rgba(133, 82, 151, 0.18);
@@ -1556,7 +1558,7 @@ export const discoverStyles = `
   }
 
   .discover-mobile-launcher__grid strong {
-    font-size: 21px;
+    font-size: 19px;
     line-height: 1.12;
   }
 
@@ -1564,7 +1566,7 @@ export const discoverStyles = `
     align-self: start;
     color: var(--muted);
     font-size: 11px;
-    line-height: 1.4;
+    line-height: 1.35;
   }
 
   .discover-curator-entry {
@@ -1572,10 +1574,10 @@ export const discoverStyles = `
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 3px 12px;
     align-items: center;
-    min-height: 72px;
+    min-height: 68px;
     border: 1px solid rgba(234, 76, 137, 0.15);
     border-radius: 18px;
-    padding: 13px 16px;
+    padding: 12px 16px;
     color: var(--text);
     text-align: left;
     background: linear-gradient(135deg, rgba(255, 240, 246, 0.8), rgba(245, 243, 255, 0.82));

@@ -107,6 +107,25 @@ function isTerminalTaskLookupError(error: unknown) {
   return message.includes('task not found') || message.includes('forbidden') || message.includes('unauthorized')
 }
 
+function getTaskErrorMessage(error: string | { message?: string } | null | undefined) {
+  if (!error) return ''
+  let message = typeof error === 'string' ? error : error.message ?? ''
+
+  if (message.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(message) as { message?: unknown }
+      if (typeof parsed.message === 'string') message = parsed.message
+    } catch {
+      // Keep a non-JSON provider message as-is.
+    }
+  }
+
+  if (/prisma|invalid `.*invocation|argument `.*is missing/i.test(message)) {
+    return '生成结果保存失败，请稍后重新尝试。'
+  }
+  return message
+}
+
 function formatGenerateStage(stage: string | undefined, taskLabel: string) {
   if (!stage) return `正在生成${taskLabel}`
   if (stage === 'generating music') return '正在生成音乐'
@@ -690,7 +709,7 @@ function UserApp() {
         await waitForNextPoll(retryDelay, controller.signal)
         continue
       }
-      const taskError = typeof status.error === 'string' ? status.error : status.error?.message
+      const taskError = getTaskErrorMessage(status.error)
       const queueAhead = status.queueAhead ?? status.queuePos ?? 0
       const maxConcurrency = status.maxConcurrency ?? status.concurrency
       const isQueued = status.status === 'queued'
@@ -753,7 +772,7 @@ function UserApp() {
           continue
         }
 
-        const taskError = typeof status.error === 'string' ? status.error : status.error?.message
+        const taskError = getTaskErrorMessage(status.error)
         const queueAhead = status.queueAhead ?? status.queuePos ?? 0
         const maxConcurrency = status.maxConcurrency ?? status.concurrency
         const isQueued = status.status === 'queued'
@@ -1498,10 +1517,14 @@ function UserApp() {
         {activeView === 'createForm' ? (
           <>
             <div className="page-back-row">
-              <BackButton label={createChallenge ? '返回话题' : createMode === 'radio' ? '返回电台' : '返回创作'} onClick={() => {
+              <BackButton label="返回上一页" onClick={() => {
                 if (createChallenge) {
                   window.history.pushState({}, '', `/challenges/${createChallenge.id}`)
                   setActiveView('discover')
+                  return
+                }
+                if (createMode === 'remix' && radioPreset.originId) {
+                  setActiveView('songDetail')
                   return
                 }
                 setActiveView(createMode === 'radio' ? 'radio' : 'create')
@@ -1542,7 +1565,7 @@ function UserApp() {
         {activeView === 'task' && createTask ? (
           <>
             <div className="page-back-row">
-              <BackButton label="返回创作" onClick={() => setActiveView('createForm')} />
+              <BackButton label="返回上一页" onClick={() => setActiveView('createForm')} />
             </div>
             <TaskPage
               task={createTask}
