@@ -4,7 +4,7 @@ import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
 import type { AlbumSummary, FeedTab, ResonanceFeedResponse } from './api/song'
-import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, submitAlbumTask, submitGenerateTask, submitRemixTask } from './api/song'
+import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, searchSongs, submitAlbumTask, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { BackButton } from './components/BackButton'
 import { LoadingState } from './components/LoadingState'
@@ -21,13 +21,14 @@ import { PlayerPage } from './pages/player/PlayerPage'
 import { RadioPage } from './pages/radio/RadioPage'
 import { SongDetailPage } from './pages/song-detail/SongDetailPage'
 import { TaskPage } from './pages/TaskPage'
+import { SearchPage } from './pages/SearchPage'
 import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
 import { resolveAssetUrl } from './utils/asset'
 import type { NavKey } from './utils/constants'
 import { AdminPage } from './pages/admin/AdminPage'
 
-type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player' | 'host'
+type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player' | 'host' | 'search'
 
 type AuthMode = 'login' | 'register'
 
@@ -187,6 +188,11 @@ function UserApp() {
   const [curation, setCuration] = useState<HostCuration | null>(null)
   const [resonance, setResonance] = useState<ResonanceFeedResponse | null>(null)
   const [feedTab, setFeedTab] = useState<FeedTab>('resonance')
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Song[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
   const [createMode, setCreateMode] = useState<SongMode>('song')
   const [createChallenge, setCreateChallenge] = useState<CreateChallengeContext | null>(null)
   const [radioPreset, setRadioPreset] = useState<CreatePreset>(EMPTY_CREATE_PRESET)
@@ -224,9 +230,9 @@ function UserApp() {
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
-    ;[...feedSongs, ...mySongs, ...playbackSongs].forEach((song) => songMap.set(song.id, song))
+    ;[...feedSongs, ...mySongs, ...searchResults, ...playbackSongs].forEach((song) => songMap.set(song.id, song))
     return [...songMap.values()]
-  }, [feedSongs, mySongs, playbackSongs])
+  }, [feedSongs, mySongs, searchResults, playbackSongs])
 
   const currentSong = currentSongId
     ? allSongs.find((song) => song.id === currentSongId)
@@ -368,6 +374,28 @@ function UserApp() {
   function navigate(key: NavKey) {
     if (key === 'discover') window.history.pushState({}, '', '/discover')
     setActiveView(key)
+  }
+
+  async function handleSearch() {
+    const keyword = searchInput.trim()
+    if (!keyword) return
+
+    setSearchQuery(keyword)
+    setSearchLoading(true)
+    setSearchError('')
+    setActiveView('search')
+    window.history.pushState({}, '', `/search?q=${encodeURIComponent(keyword)}`)
+
+    try {
+      const results = await searchSongs(keyword)
+      setSearchResults(results)
+      rememberPlaybackSongs(results)
+    } catch (error) {
+      setSearchResults([])
+      setSearchError(error instanceof Error ? error.message : '搜索失败，请稍后重试。')
+    } finally {
+      setSearchLoading(false)
+    }
   }
 
   function openPlayerView() {
@@ -1416,6 +1444,8 @@ function UserApp() {
       ? 'feed'
       : activeView === 'host'
         ? 'discover'
+      : activeView === 'search'
+        ? 'feed'
       : activeView === 'task' || activeView === 'createForm'
         ? 'create'
         : activeView === 'auth'
@@ -1466,6 +1496,8 @@ function UserApp() {
         shuffleEnabled={shuffleEnabled}
         progress={playbackProgress}
         user={user}
+        task={createTask}
+        onOpenTask={() => setActiveView('task')}
         onNavigate={navigate}
         onOpenPlayer={openPlayerView}
         onTogglePlay={togglePlayback}
@@ -1475,6 +1507,9 @@ function UserApp() {
         onPlayQueueSong={(songId) => playQueuedSong(songId, currentQueueSongs)}
         onRemoveQueueSong={removeQueuedSong}
         onLogout={handleLogout}
+        searchValue={searchInput}
+        onSearchValueChange={setSearchInput}
+        onSearch={() => void handleSearch()}
       >
         {activeView === 'feed' ? (
           <FeedPage
@@ -1502,10 +1537,21 @@ function UserApp() {
             onOpenSong={openSong}
           />
         ) : null}
+        {activeView === 'search' ? (
+          <SearchPage
+            query={searchQuery}
+            songs={searchResults}
+            loading={searchLoading}
+            error={searchError}
+            onOpenSong={openSong}
+            onPlaySong={(songId) => void handlePlaySong(songId, searchResults, { openPlayer: false })}
+          />
+        ) : null}
         {activeView === 'discover' ? (
           <DiscoverPage
             user={user}
             songs={mySongs}
+            battleSongs={feedSongs}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId)}
             onSongGenerated={syncSong}

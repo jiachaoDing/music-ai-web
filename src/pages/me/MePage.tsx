@@ -12,6 +12,7 @@ import {
 } from '../../api/me'
 import { EmptyState } from '../../components/EmptyState'
 import { SongCard } from '../../components/SongCard'
+import { getMyAlbums, type AlbumDetail } from '../../api/song'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import type { InviteCode, User } from '../../types/user'
@@ -27,9 +28,16 @@ type MePageProps = {
 }
 
 type MeTabKey = 'profile' | 'drafts' | 'works' | 'playlists'
-type WorksViewKey = 'published' | 'private'
+type WorksViewKey = 'published' | 'private' | 'albums'
 
 const PLAYLIST_COLORS = ['#9ed9cc', '#a8c7f0', '#f5cfae', '#c9b8f2', '#f4b7c6']
+const ME_TAB_KEYS: MeTabKey[] = ['profile', 'drafts', 'works', 'playlists']
+const WORKS_VIEW_KEYS: WorksViewKey[] = ['published', 'private', 'albums']
+
+function readSavedView<T extends string>(key: string, allowedValues: T[], fallback: T) {
+  const saved = window.sessionStorage.getItem(key) as T | null
+  return saved && allowedValues.includes(saved) ? saved : fallback
+}
 
 function formatDuration(duration?: number) {
   if (!duration) return '--:--'
@@ -38,14 +46,6 @@ function formatDuration(duration?: number) {
 
 function formatPlaylistType(playlist: Playlist) {
   return playlist.type === 'liked' ? '喜欢列表' : playlist.isSystem ? '系统歌单' : '自建歌单'
-}
-
-function formatSongStatus(song: Song) {
-  if (song.status === 'private') return '私密'
-  if (song.status === 'published' || song.published) return '已发布'
-  if (song.status === 'failed') return '生成失败'
-  if (song.status === 'generating') return '生成中'
-  return '草稿'
 }
 
 function getPlaylistCoverColor(playlist: Playlist) {
@@ -61,9 +61,15 @@ function getPlaylistCoverUrl(playlist: Playlist) {
 }
 
 export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
-  const [activeTab, setActiveTab] = useState<MeTabKey>('profile')
+  const tabStorageKey = `echo_me_tab_${user.id}`
+  const worksViewStorageKey = `echo_me_works_view_${user.id}`
+  const [activeTab, setActiveTab] = useState<MeTabKey>(() =>
+    readSavedView(tabStorageKey, ME_TAB_KEYS, 'profile'),
+  )
   const [accountView, setAccountView] = useState<'summary' | 'ledger'>('summary')
-  const [worksView, setWorksView] = useState<WorksViewKey>('published')
+  const [worksView, setWorksView] = useState<WorksViewKey>(() =>
+    readSavedView(worksViewStorageKey, WORKS_VIEW_KEYS, 'published'),
+  )
   const [profileUser, setProfileUser] = useState<User>(user)
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([])
   const [invitedCount, setInvitedCount] = useState(0)
@@ -82,10 +88,36 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [playlistDetailLoading, setPlaylistDetailLoading] = useState(false)
   const [playlistActionLoading, setPlaylistActionLoading] = useState(false)
   const [playlistRenameValue, setPlaylistRenameValue] = useState('')
+  const [albums, setAlbums] = useState<AlbumDetail[]>([])
+  const [albumsLoading, setAlbumsLoading] = useState(false)
 
   useEffect(() => {
     setProfileUser(user)
   }, [user])
+
+  useEffect(() => {
+    window.sessionStorage.setItem(tabStorageKey, activeTab)
+  }, [activeTab, tabStorageKey])
+
+  useEffect(() => {
+    window.sessionStorage.setItem(worksViewStorageKey, worksView)
+  }, [worksView, worksViewStorageKey])
+
+  useEffect(() => {
+    async function hydrateAlbums() {
+      setAlbumsLoading(true)
+      try {
+        setAlbums(await getMyAlbums())
+      } catch (error) {
+        console.error(error)
+        setAlbums([])
+      } finally {
+        setAlbumsLoading(false)
+      }
+    }
+
+    void hydrateAlbums()
+  }, [])
 
   useEffect(() => {
     async function hydrateMePage() {
@@ -169,15 +201,14 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     { label: '连续打卡', value: `${profileUser.streak} 天` },
   ]
 
-  const draftSongs = songs.filter(
+  const standaloneSongs = songs.filter((song) => !song.albumId)
+  const draftSongs = standaloneSongs.filter(
     (song) => song.status === 'draft' || song.status === 'failed' || song.status === 'generating',
   )
-  const privateSongs = songs.filter((song) => song.status === 'private')
-  const publishedSongs = songs.filter(
+  const privateSongs = standaloneSongs.filter((song) => song.status === 'private')
+  const publishedSongs = standaloneSongs.filter(
     (song) => song.published && song.status === 'published',
   )
-  const latestSong = songs[0]
-
   const profileSummary = useMemo(
     () => ({
       songCount: songs.length,
@@ -369,33 +400,6 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
             )}
           </div>
 
-          {accountView === 'summary' ? <section className="me-panel me-highlight">
-            <div className="me-panel__heading">
-              <div>
-                <span>Now Playing</span>
-                <h2>最近创作</h2>
-              </div>
-            </div>
-            {latestSong ? (
-              <div className="card-list me-latest-song">
-                <SongCard
-                  song={latestSong}
-                  onOpen={onOpenSong}
-                  onPlay={(songId) => onPlaySong?.(songId, songs)}
-                  coverAspect="portrait"
-                />
-                <div className="me-latest-song__extra">
-                  <span>{formatSongStatus(latestSong)}</span>
-                  <span>{latestSong.style}</span>
-                </div>
-              </div>
-            ) : (
-              <EmptyState
-                title="还没有最近作品"
-                description="目前作品库还是空的，完成一次创作后这里会优先展示最近生成的作品。"
-              />
-            )}
-          </section> : null}
         </div>
       ) : null}
 
@@ -457,6 +461,14 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
               私密
               <span>{privateSongs.length}</span>
             </button>
+            <button
+              type="button"
+              className={worksView === 'albums' ? 'is-active' : ''}
+              onClick={() => setWorksView('albums')}
+            >
+              我的专辑
+              <span>{albums.length}</span>
+            </button>
           </div>
 
           {worksView === 'published' && publishedSongs.length ? (
@@ -487,6 +499,40 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
             </div>
           ) : null}
 
+          {worksView === 'albums' && albums.length ? (
+            <div className="me-album-list">
+              {albums.map(({ album, tracks }) => {
+                const albumCoverUrl = album.coverUrl ? resolveAssetUrl(album.coverUrl) : undefined
+                return (
+                  <article className="me-album-card" key={album.id}>
+                    <button
+                      className="me-album-card__cover"
+                      type="button"
+                      disabled={!tracks.length}
+                      onClick={() => tracks[0] && onOpenSong(tracks[0].id)}
+                    >
+                      {albumCoverUrl ? <img src={albumCoverUrl} alt={`${album.title} 专辑封面`} /> : <span>EP</span>}
+                    </button>
+                    <div className="me-album-card__content">
+                      <span>概念专辑 · {tracks.length} 首</span>
+                      <h3>{album.title}</h3>
+                      <p>{album.description || '围绕同一主题生成的音乐合集。'}</p>
+                      <div className="me-album-card__tracks">
+                        {tracks.map((track, index) => (
+                          <button type="button" key={track.id} onClick={() => onOpenSong(track.id)}>
+                            <span>{String(index + 1).padStart(2, '0')}</span>
+                            <strong>{track.title}</strong>
+                            <em>{formatDuration(track.duration)}</em>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          ) : null}
+
           {worksView === 'published' && !publishedSongs.length ? (
             <EmptyState
               title="还没有作品"
@@ -498,6 +544,13 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
             <EmptyState
               title="还没有私密作品"
               description="你可以在歌曲详情页把已发布作品设为仅自己可见，之后会在这里管理。"
+            />
+          ) : null}
+
+          {worksView === 'albums' && !albums.length ? (
+            <EmptyState
+              title={albumsLoading ? '正在读取专辑' : '还没有专辑'}
+              description={albumsLoading ? '正在整理你的专辑和曲目。' : '使用 AI 音乐制作人后，生成的歌曲会作为一张完整专辑显示在这里。'}
             />
           ) : null}
         </section>

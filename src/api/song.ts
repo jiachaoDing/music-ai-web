@@ -42,6 +42,11 @@ export type AlbumSummary = {
   createdAt?: string
 }
 
+export type AlbumDetail = {
+  album: AlbumSummary
+  tracks: Song[]
+}
+
 export type GenerateTaskStatus = {
   taskId?: string
   id?: string
@@ -215,6 +220,42 @@ export function submitAlbumTask(input: { theme: string; trackCount: number }) {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export async function searchSongs(query: string): Promise<Song[]> {
+  const keyword = query.trim()
+  if (!keyword) return []
+
+  if (USE_MOCK) {
+    const normalized = keyword.toLowerCase()
+    return getMockFeed('recommend').filter((song) =>
+      [song.title, song.author.nickname, song.style]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalized),
+    )
+  }
+
+  const result = await request<SongListResponse | Song[]>(
+    `/api/feed?sort=new&page=1&pageSize=50&q=${encodeURIComponent(keyword)}`,
+  )
+  if (Array.isArray(result)) return result
+  return ensureSongArray(result.list ?? result.items)
+}
+
+export async function getPublicSongs(): Promise<Song[]> {
+  if (USE_MOCK) return getMockFeed('recommend')
+
+  const result = await request<SongListResponse | Song[]>(
+    '/api/feed?sort=new&page=1&pageSize=100',
+  )
+  if (Array.isArray(result)) return result
+  return ensureSongArray(result.list ?? result.items)
+}
+
+export async function getMyAlbums() {
+  const result = await request<{ list: AlbumDetail[] }>('/api/me/albums')
+  return result.list
 }
 
 export function getGenerateTaskStatus(taskId: string, signal?: AbortSignal) {

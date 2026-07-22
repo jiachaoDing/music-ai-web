@@ -116,6 +116,122 @@ export const meStyles = `
   line-height: 1.45;
 }
 
+.me-album-list {
+  display: grid;
+  gap: 18px;
+}
+
+.me-album-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 22px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 8px;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.me-album-card__cover {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 0;
+  color: #ffffff;
+  background: linear-gradient(145deg, #ea4c89, #6758c7 58%, #54c7ec);
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.me-album-card__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.me-album-card__content {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.me-album-card__content > span {
+  color: var(--theme-dark);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.me-album-card__content h3,
+.me-album-card__content p {
+  margin: 0;
+}
+
+.me-album-card__content h3 {
+  font-size: 24px;
+}
+
+.me-album-card__content p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.me-album-card__tracks {
+  display: grid;
+  margin-top: 6px;
+  border-top: 1px solid rgba(13, 12, 34, 0.07);
+}
+
+.me-album-card__tracks button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 0;
+  border-bottom: 1px solid rgba(13, 12, 34, 0.07);
+  border-radius: 0;
+  padding: 0 4px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  box-shadow: none;
+}
+
+.me-album-card__tracks button:hover {
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.05);
+  transform: none;
+}
+
+.me-album-card__tracks span,
+.me-album-card__tracks em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+@media (max-width: 640px) {
+  .me-album-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .me-album-card__content h3 {
+    font-size: 18px;
+  }
+
+  .me-album-card__content p {
+    display: none;
+  }
+
+  .me-album-card__tracks {
+    grid-column: 1 / -1;
+  }
+}
+
 .me-latest-song {
   grid-template-columns: minmax(0, 520px);
 }

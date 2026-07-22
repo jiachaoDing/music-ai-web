@@ -185,11 +185,13 @@ export function SongDetailPage({
       setPlaylistLoading(true)
       try {
         const nextPlaylists = await getPlaylists()
-        const customPlaylists = nextPlaylists.filter(
-          (playlist) => playlist.type === 'custom' && !playlist.isSystem,
+        const selectablePlaylists = nextPlaylists.filter(
+          (playlist) =>
+            (playlist.type === 'liked' && playlist.isSystem) ||
+            (playlist.type === 'custom' && !playlist.isSystem),
         )
-        setPlaylists(customPlaylists)
-        setSelectedPlaylistId((current) => current || customPlaylists[0]?.id || '')
+        setPlaylists(selectablePlaylists)
+        setSelectedPlaylistId((current) => current || selectablePlaylists[0]?.id || '')
       } catch (error) {
         console.error(error)
       } finally {
@@ -209,7 +211,22 @@ export function SongDetailPage({
     setPlaylistSubmitting(true)
 
     try {
-      await addSongToPlaylist(selectedPlaylistId, song.id)
+      const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId)
+      if (!selectedPlaylist) throw new Error('所选歌单不存在，请重新选择')
+
+      if (selectedPlaylist.type === 'liked' && selectedPlaylist.isSystem) {
+        if (liked) {
+          window.alert('这首作品已经在“我的喜欢”中')
+          setPlaylistModalOpen(false)
+          return
+        }
+        const result = await likeSong(song.id)
+        setLiked(result.liked)
+        setLikeCount(result.likeCount)
+        onSongUpdate?.({ ...song, liked: result.liked, likeCount: result.likeCount })
+      } else {
+        await addSongToPlaylist(selectedPlaylistId, song.id)
+      }
 
       setPlaylists((current) =>
         current.map((playlist) =>
@@ -218,7 +235,7 @@ export function SongDetailPage({
             : playlist,
         ),
       )
-      window.alert('已收藏到歌单')
+      window.alert(selectedPlaylist.type === 'liked' ? '已加入“我的喜欢”' : '已收藏到歌单')
       setPlaylistModalOpen(false)
     } catch (error) {
       console.error(error)
