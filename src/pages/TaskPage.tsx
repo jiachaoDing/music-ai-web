@@ -1,5 +1,6 @@
 import type { AlbumSummary } from '../api/song'
 import type { Song } from '../types/song'
+import { resolveAssetUrl } from '../utils/asset'
 import { formatDuration } from '../utils/format'
 
 type TaskPageProps = {
@@ -61,10 +62,17 @@ export function TaskPage({ task, onOpenSong, onOpenAlbumSong, onReturnToChalleng
         <strong className="task-progress-value">{task.progress}%</strong>
         {task.albumResult ? (
           <section className="task-album-result">
-            <div>
-              <span>概念 EP</span>
-              <h2>{task.albumResult.album.title}</h2>
-              <p>{task.albumResult.album.description || `${task.albumResult.tracks.length} 首曲目`}</p>
+            <div className="task-album-summary">
+              <div className="task-album-cover">
+                {task.albumResult.album.coverUrl ? (
+                  <img src={resolveAssetUrl(task.albumResult.album.coverUrl)} alt={`${task.albumResult.album.title} 专辑封面`} />
+                ) : <span>EP</span>}
+              </div>
+              <div>
+                <span>概念 EP</span>
+                <h2>{task.albumResult.album.title}</h2>
+                <p>{task.albumResult.album.description || `${task.albumResult.tracks.length} 首曲目`}</p>
+              </div>
             </div>
             {task.albumResult.tracks.length ? (
               <div className="task-album-tracks">
@@ -79,9 +87,11 @@ export function TaskPage({ task, onOpenSong, onOpenAlbumSong, onReturnToChalleng
             ) : <p>正在等待第一首歌曲完成...</p>}
           </section>
         ) : null}
-        <button type="button" disabled={!task.canOpenSong} onClick={onOpenSong}>
-          {buttonLabel}
-        </button>
+        {!task.albumResult ? (
+          <button type="button" disabled={!task.canOpenSong} onClick={onOpenSong}>
+            {buttonLabel}
+          </button>
+        ) : null}
         {task.status === 'done' && onReturnToChallenge ? (
           <button type="button" onClick={onReturnToChallenge}>返回话题「{challengeTitle}」</button>
         ) : null}

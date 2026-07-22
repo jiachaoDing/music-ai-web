@@ -57,8 +57,8 @@ export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRo
     )
   }
 
-  const songA = songById(selectedBattle.aId)
-  const songB = songById(selectedBattle.bId)
+  const songA = selectedBattle.songA ?? songById(selectedBattle.aId)
+  const songB = selectedBattle.songB ?? songById(selectedBattle.bId)
   const canDelete = currentUserRole === 'admin' || selectedBattle.isOwner === true || selectedBattle.creatorId === currentUserId || selectedBattle.createdBy === currentUserId
   const total = Math.max(1, selectedBattle.aVotes + selectedBattle.bVotes)
   const percentA = Math.round((selectedBattle.aVotes / total) * 100)

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { Song } from '../types/song'
 import type { User } from '../types/user'
@@ -26,6 +27,14 @@ type AppLayoutProps = {
   onPlayQueueSong?: (songId: string) => void
   onRemoveQueueSong?: (songId: string) => void
   onLogout: () => void
+  task?: {
+    status: 'queued' | 'running' | 'done' | 'error'
+    progress: number
+  } | null
+  onOpenTask?: () => void
+  searchValue: string
+  onSearchValueChange: (value: string) => void
+  onSearch: () => void
 }
 
 export function AppLayout({
@@ -48,11 +57,63 @@ export function AppLayout({
   onPlayQueueSong,
   onRemoveQueueSong,
   onLogout,
+  task,
+  onOpenTask,
+  searchValue,
+  onSearchValueChange,
+  onSearch,
 }: AppLayoutProps) {
+  const pageShellRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const scrollPageToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      pageShellRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }
+
+    const resetAfterNavigation = () => {
+      window.requestAnimationFrame(scrollPageToTop)
+    }
+    const originalPushState = window.history.pushState
+    const originalReplaceState = window.history.replaceState
+
+    window.history.pushState = function (...args) {
+      originalPushState.apply(this, args)
+      resetAfterNavigation()
+    }
+    window.history.replaceState = function (...args) {
+      originalReplaceState.apply(this, args)
+      resetAfterNavigation()
+    }
+    window.addEventListener('popstate', resetAfterNavigation)
+    scrollPageToTop()
+
+    return () => {
+      window.history.pushState = originalPushState
+      window.history.replaceState = originalReplaceState
+      window.removeEventListener('popstate', resetAfterNavigation)
+    }
+  }, [])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    pageShellRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [active])
+
   return (
     <div className="app-shell">
-      <Topbar active={active} user={user} onNavigate={onNavigate} onLogout={onLogout} />
-      <main className="page-shell">{children}</main>
+      <Topbar
+        active={active}
+        user={user}
+        task={task}
+        onNavigate={onNavigate}
+        onOpenTask={onOpenTask}
+        onLogout={onLogout}
+        searchValue={searchValue}
+        onSearchValueChange={onSearchValueChange}
+        onSearch={onSearch}
+      />
+      <main ref={pageShellRef} className="page-shell">{children}</main>
       <MiniPlayer
         song={currentSong}
         queueSongs={queueSongs}

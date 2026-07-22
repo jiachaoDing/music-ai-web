@@ -6,17 +6,39 @@ type TopbarProps = {
   user: User
   onNavigate: (key: NavKey) => void
   onLogout: () => void
+  task?: {
+    status: 'queued' | 'running' | 'done' | 'error'
+    progress: number
+  } | null
+  onOpenTask?: () => void
+  searchValue: string
+  onSearchValueChange: (value: string) => void
+  onSearch: () => void
 }
 
-export function Topbar({ active, user, onNavigate, onLogout }: TopbarProps) {
+export function Topbar({ active, user, onNavigate, onLogout, task, onOpenTask, searchValue, onSearchValueChange, onSearch }: TopbarProps) {
+  const taskLabel = task?.status === 'done'
+    ? '查看生成结果'
+    : task?.status === 'error'
+      ? '生成失败'
+      : task?.status === 'queued'
+        ? '等待生成'
+        : `生成中 ${task?.progress ?? 0}%`
+
   return (
     <header className="topbar">
       <div className="brand-lockup">
         <strong>Echo AI</strong>
       </div>
-      <label className="topbar-search">
-        <input aria-label="搜索" placeholder="搜索歌曲、作者、风格" />
-      </label>
+      <form className="topbar-search" role="search" onSubmit={(event) => { event.preventDefault(); onSearch() }}>
+        <input
+          aria-label="搜索"
+          placeholder="搜索歌曲、作者、风格"
+          value={searchValue}
+          onChange={(event) => onSearchValueChange(event.target.value)}
+        />
+        <button type="submit" aria-label="提交搜索" title="搜索">搜索</button>
+      </form>
       <nav className="topbar-nav" aria-label="主导航">
         {NAV_ITEMS.map((item) => (
           <button
@@ -29,6 +51,17 @@ export function Topbar({ active, user, onNavigate, onLogout }: TopbarProps) {
           </button>
         ))}
       </nav>
+      {task && onOpenTask ? (
+        <button
+          className={`topbar-task topbar-task--${task.status}`}
+          type="button"
+          onClick={onOpenTask}
+          aria-label={`${taskLabel}，返回生成任务页面`}
+        >
+          <span aria-hidden="true" />
+          <strong>{taskLabel}</strong>
+        </button>
+      ) : null}
       <div className="user-pill">
         <button type="button" className="user-pill__trigger" aria-haspopup="menu">
           <strong>{user.nickname}</strong>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { generateLyrics } from '../api/ai'
+import { getPublicSongs } from '../api/song'
 import {
   createBattle as createBattleRequest,
   deleteBattle as deleteBattleRequest,
@@ -34,6 +35,7 @@ function getInitialView(): DiscoverView {
 type DiscoverPageProps = {
   user: User
   songs: Song[]
+  battleSongs: Song[]
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
   onSongGenerated: (song: Song) => void
@@ -108,7 +110,7 @@ function loadSavedBattleVotes(userId: string): BattleVoteRecord[] {
   }
 }
 
-export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenerated, onJoinChallenge, onOpenHost }: DiscoverPageProps) {
+export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong, onSongGenerated, onJoinChallenge, onOpenHost }: DiscoverPageProps) {
   const [today, setToday] = useState(getLocalDate)
   const currentMonth = today.slice(0, 7)
   const [view, setView] = useState<DiscoverView>(getInitialView)
@@ -125,6 +127,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   const [challenges, setChallenges] = useState(initialChallenges)
   const [battles, setBattles] = useState<BattleRecord[]>(initialBattles)
   const [battleVotes, setBattleVotes] = useState<BattleVoteRecord[]>(() => loadSavedBattleVotes(user.id))
+  const [battleCandidates, setBattleCandidates] = useState<Song[]>(battleSongs)
   const [fortuneSongs, setFortuneSongs] = useState<FortuneSongDraft[]>([])
   const [fortunes, setFortunes] = useState(initialFortunes)
   const [todayFortune, setTodayFortune] = useState(() => initialFortunes.find((fortune) => fortune.date === today) ?? initialFortunes[0])
@@ -176,6 +179,28 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
       .forEach((song) => songMap.set(song.id, song))
     return [...songMap.values()]
   }, [battles, challengeSongs, fortuneSongs, songs])
+  const availableBattleSongs = useMemo(() => {
+    const songMap = new Map<string, Song>()
+    battleCandidates
+      .filter((song) => song.published && song.status === 'published')
+      .forEach((song) => songMap.set(song.id, song))
+    return [...songMap.values()]
+  }, [battleCandidates])
+
+  useEffect(() => {
+    let cancelled = false
+    getPublicSongs()
+      .then((publicSongs) => {
+        if (!cancelled) setBattleCandidates(publicSongs)
+      })
+      .catch((error) => {
+        console.error('Failed to load public battle songs.', error)
+        if (!cancelled) setBattleCandidates(battleSongs)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [battleSongs])
   const activeChallenges = challenges.filter((challenge) => challenge.active && challenge.status === 'active')
   const selectedChallenge = challenges.find((challenge) => challenge.id === selectedChallengeId) ?? activeChallenges[0]
   const selectedChallengeSongs = useMemo(() => {
@@ -189,12 +214,12 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
   const hasParticipated = selectedChallengeSongs.some((ref) => publishedSongs.find((song) => song.id === ref.songId)?.author.id === user.id)
 
   useEffect(() => {
-    if (!publishedSongs.length) return
-    if (!publishedSongs.some((song) => song.id === aId)) setAId(publishedSongs[0]?.id ?? '')
-    if (!publishedSongs.some((song) => song.id === bId) || aId === bId) {
-      setBId(publishedSongs.find((song) => song.id !== aId)?.id ?? '')
+    if (!availableBattleSongs.length) return
+    if (!availableBattleSongs.some((song) => song.id === aId)) setAId(availableBattleSongs[0]?.id ?? '')
+    if (!availableBattleSongs.some((song) => song.id === bId) || aId === bId) {
+      setBId(availableBattleSongs.find((song) => song.id !== aId)?.id ?? '')
     }
-  }, [aId, bId, publishedSongs])
+  }, [aId, availableBattleSongs, bId])
 
   useEffect(() => {
     const saved = localStorage.getItem(pendingFortuneTaskKey(user.id))
@@ -684,7 +709,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
               battles={battles}
               currentUserId={user.id}
               currentUserRole={user.role}
-              songs={publishedSongs}
+              songs={availableBattleSongs}
               onCreate={openBattleCreator}
               onDelete={deleteBattle}
               onOpenSong={onOpenSong}
@@ -695,7 +720,7 @@ export function DiscoverPage({ user, songs, onOpenSong, onPlaySong, onSongGenera
             <BattleNewPage
               aId={aId}
               bId={bId}
-              songs={publishedSongs}
+              songs={availableBattleSongs}
               topic={battleTopic}
               onBack={() => setBattleMode('list')}
               onChangeAId={setAId}
