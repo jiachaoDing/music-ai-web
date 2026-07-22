@@ -80,6 +80,9 @@ export type SongTreeNode = {
     avatarUrl?: string | null
   } | null
   mode: string
+  originId?: string | null
+  likeCount?: number
+  playCount?: number
   createdAt: string
   children: SongTreeNode[]
 }
@@ -283,7 +286,7 @@ export async function getSongComments(songId: string): Promise<Comment[]> {
 }
 
 export async function addSongComment(songId: string, input: { text: string; anon?: boolean }) {
-  return request<{ comment: Comment }>(`/api/comments/${songId}`, {
+  return request<{ comment: Comment; commentCount: number }>(`/api/comments/${songId}`, {
     method: 'POST',
     body: JSON.stringify(input),
   })

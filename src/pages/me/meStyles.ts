@@ -192,7 +192,18 @@ export const meStyles = `
 
 .me-hero__copy {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr);
   gap: 18px;
+}
+
+.me-hero__copy > span,
+.me-hero__headline,
+.me-hero__tags {
+  grid-column: 1;
+}
+
+.me-hero__stats {
+  grid-column: 1 / -1;
 }
 
 .me-hero__headline {
@@ -808,7 +819,38 @@ export const meStyles = `
 }
 
 .me-hero__facts {
-  display: none;
+  grid-column: 2;
+  grid-row: 1 / 4;
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-left: 30px;
+  border-left: 1px solid rgba(87, 70, 99, 0.12);
+}
+
+.me-hero__facts > span {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px 18px;
+}
+
+.me-hero__facts > span + span {
+  border-left: 1px solid rgba(87, 70, 99, 0.09);
+}
+
+.me-hero__facts small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.me-hero__facts strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .me-ledger-more,
@@ -820,6 +862,14 @@ export const meStyles = `
   background: transparent;
   box-shadow: none;
   font-size: 12px;
+}
+
+.me-ledger-more:hover,
+.me-ledger-more:focus-visible,
+.me-account-back:hover,
+.me-account-back:focus-visible {
+  color: #ffffff;
+  background: var(--theme-dark);
 }
 
 .me-detail-row {
@@ -1533,6 +1583,26 @@ export const meStyles = `
     min-height: auto;
   }
 
+  .me-hero__copy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .me-hero__copy > span,
+  .me-hero__headline,
+  .me-hero__tags,
+  .me-hero__stats,
+  .me-hero__facts {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .me-hero__facts {
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid rgba(87, 70, 99, 0.09);
+    border-left: 0;
+  }
+
   .me-studio-layout {
     grid-template-columns: 1fr;
   }
@@ -2048,7 +2118,7 @@ export const meStyles = `
   }
 
   .me-hero__stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
     margin-top: 0;
     border-top: 1px solid rgba(87, 70, 99, .09);

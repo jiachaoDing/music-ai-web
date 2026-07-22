@@ -1021,16 +1021,28 @@ export const songDetailStyles = `
   }
 
   .song-detail-modal {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    gap: 12px;
     width: min(100%, 390px);
     max-height: calc(100dvh - 174px);
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
     border-radius: 18px;
     padding: 14px;
   }
 
+  .song-detail-playlist-list {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .song-detail-playlist-item {
-    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    gap: 10px;
+    min-height: 68px;
+    padding: 9px 10px;
   }
 
   .song-detail-playlist-cover {
@@ -1038,14 +1050,24 @@ export const songDetailStyles = `
   }
 
   .song-detail-playlist-check {
-    grid-column: 2;
+    grid-column: auto;
     width: fit-content;
+    padding: 6px 8px;
+    white-space: nowrap;
   }
 
-  .song-detail-create-playlist,
   .song-detail-modal__actions {
-    grid-template-columns: 1fr;
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .song-detail-create-playlist {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .song-detail-create-playlist .song-detail-action {
+    width: auto;
+    white-space: nowrap;
   }
 
   .song-detail-block__header,

@@ -117,12 +117,38 @@ export async function getMeProfile() {
   }
 }
 
-export async function getPointsLedger(pageSize = 6) {
-  const result = await request<PointsLedgerResponse>(`/api/me/points-ledger?pageSize=${pageSize}`)
-  return (result.list ?? []).map((item) => ({
+function mapPointsLedger(items: PointsLedgerItem[]) {
+  return items.map((item) => ({
     ...item,
     reason: LEDGER_REASON_LABELS[item.reason] ?? item.reason,
   }))
+}
+
+export async function getPointsLedger(page = 1, pageSize = 3) {
+  const result = await request<PointsLedgerResponse>(
+    `/api/me/points-ledger?page=${page}&pageSize=${pageSize}`,
+  )
+  return {
+    list: mapPointsLedger(result.list ?? []),
+    total: result.total ?? 0,
+  }
+}
+
+export async function getAllPointsLedger() {
+  const pageSize = 100
+  let page = 1
+  let total = 0
+  const list: PointsLedgerItem[] = []
+
+  do {
+    const result = await getPointsLedger(page, pageSize)
+    list.push(...result.list)
+    total = result.total
+    page += 1
+    if (!result.list.length) break
+  } while (list.length < total)
+
+  return { list, total }
 }
 
 export async function createPlaylist(name: string, color?: string) {

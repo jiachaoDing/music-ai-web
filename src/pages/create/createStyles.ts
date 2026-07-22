@@ -30,7 +30,7 @@ export const createStyles = `
 }
 
 .create-page-hero span,
-.create-producer-card span,
+.create-producer-label,
 .create-section-heading span,
 .create-panel-heading span {
   color: var(--theme-dark);
@@ -138,6 +138,11 @@ export const createStyles = `
   min-height: 44px;
   border-radius: 999px;
   font-weight: 820;
+}
+
+.create-producer-card button .cost-tag {
+  color: #ffffff;
+  opacity: 1;
 }
 
 .create-mode-section {
@@ -455,6 +460,11 @@ export const createStyles = `
   line-height: 1.65;
 }
 
+.create-photo-note textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
 .create-tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -513,8 +523,8 @@ export const createStyles = `
 .create-photo-preview img {
   display: block;
   width: 100%;
-  max-height: 240px;
-  object-fit: cover;
+  height: 180px;
+  object-fit: contain;
 }
 
 .create-result-panel {
@@ -565,6 +575,10 @@ export const createStyles = `
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.create-mobile-lyrics-action {
+  display: none;
 }
 
 .create-form-actions button:last-child {
@@ -758,6 +772,15 @@ export const createStyles = `
   .create-form-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .create-mobile-lyrics-action {
+    display: block;
+    width: 100%;
+  }
+
+  .create-form-actions .create-lyrics-action {
+    display: none;
   }
 
   .page-shell:has(.create-suite) {

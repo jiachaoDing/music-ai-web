@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   createPlaylist,
   deletePlaylist,
+  getAllPointsLedger,
   getMeProfile,
   getPointsLedger,
   getPlaylistDetail,
@@ -68,6 +69,9 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
   const [invitedCount, setInvitedCount] = useState(0)
   const [copiedInviteCode, setCopiedInviteCode] = useState('')
   const [pointsLedger, setPointsLedger] = useState<PointsLedgerItem[]>([])
+  const [allPointsLedger, setAllPointsLedger] = useState<PointsLedgerItem[]>([])
+  const [pointsLedgerTotal, setPointsLedgerTotal] = useState(0)
+  const [ledgerLoading, setLedgerLoading] = useState(false)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false)
@@ -89,13 +93,14 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
       try {
         const [profile, ledger] = await Promise.all([
           getMeProfile(),
-          getPointsLedger(6),
+          getPointsLedger(1, 3),
         ])
         setProfileUser(profile.user)
         setInviteCodes(profile.inviteCodes)
         setInvitedCount(profile.invitedCount)
         setPlaylists(profile.playlists)
-        setPointsLedger(ledger)
+        setPointsLedger(ledger.list)
+        setPointsLedgerTotal(ledger.total)
       } catch (error) {
         console.error(error)
       } finally {
@@ -124,8 +129,6 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     .slice(0, 3)
     .map(([style]) => style)
 
-  const inviteCode = inviteCodes.find((code) => code.status === 'unused')?.code
-
   async function copyInviteCode(code: string) {
     try {
       await navigator.clipboard.writeText(code)
@@ -141,6 +144,22 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     }
     setCopiedInviteCode(code)
     window.setTimeout(() => setCopiedInviteCode(''), 1800)
+  }
+
+  async function openAllPointsLedger() {
+    setAccountView('ledger')
+    if (allPointsLedger.length === pointsLedgerTotal && pointsLedgerTotal > 0) return
+
+    setLedgerLoading(true)
+    try {
+      const result = await getAllPointsLedger()
+      setAllPointsLedger(result.list)
+      setPointsLedgerTotal(result.total)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLedgerLoading(false)
+    }
   }
 
   const stats = [
@@ -294,7 +313,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
     <section className="page-stack me-page">
       <style>{meStyles}</style>
 
-      <MeHero user={profileUser} inviteCode={inviteCode} loading={profileLoading} summary={profileSummary} stats={stats} />
+      <MeHero user={profileUser} summary={profileSummary} stats={stats} />
 
       <div className="me-tabs" role="tablist" aria-label="个人页面内容切换">
         <button
@@ -333,7 +352,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
             {accountView === 'ledger' ? (
               <>
                 <button type="button" className="me-account-back" onClick={() => setAccountView('summary')}>← 返回钱包</button>
-                <MeLedgerPanel ledger={pointsLedger} loading={profileLoading} />
+                <MeLedgerPanel ledger={allPointsLedger} loading={ledgerLoading} />
               </>
             ) : (
               <MeAccountPanel
@@ -342,8 +361,9 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                 invitedCount={invitedCount}
                 copiedInviteCode={copiedInviteCode}
                 ledger={pointsLedger}
+                ledgerTotal={pointsLedgerTotal}
                 loading={profileLoading}
-                onOpenLedger={() => setAccountView('ledger')}
+                onOpenLedger={() => void openAllPointsLedger()}
                 onCopyInvite={(code) => void copyInviteCode(code)}
               />
             )}
