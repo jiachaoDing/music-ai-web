@@ -573,6 +573,54 @@ export const createStyles = `
   background: #ffffff;
 }
 
+.create-album-count {
+  gap: 12px;
+}
+
+.create-album-count__options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.create-album-count__options button {
+  min-height: 42px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 6px;
+  color: var(--text);
+  background: #ffffff;
+  box-shadow: none;
+  font-weight: 760;
+}
+
+.create-album-count__options button.is-active {
+  border-color: rgba(234, 76, 137, 0.42);
+  color: var(--theme-dark);
+  background: var(--theme-soft);
+}
+
+.create-album-preview {
+  display: grid;
+  gap: 8px;
+  min-height: 180px;
+  align-content: center;
+  border: 1px dashed rgba(234, 76, 137, 0.3);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.create-album-preview strong {
+  font-size: 24px;
+}
+
+.create-album-preview p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .create-copyright-notice {
   display: grid;
   gap: 6px;
@@ -648,6 +696,10 @@ export const createStyles = `
 }
 
 @media (max-width: 640px) {
+  .create-album-count__options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .create-page-hero,
   .create-producer-card,
   .create-mode-section,

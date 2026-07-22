@@ -1511,6 +1511,63 @@ textarea:focus {
   font-size: 20px;
 }
 
+.task-album-result {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+
+.task-album-result h2,
+.task-album-result p {
+  margin: 0;
+}
+
+.task-album-result > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.task-album-result > div:first-child > span,
+.task-album-result p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.task-album-tracks {
+  display: grid;
+}
+
+.task-album-tracks button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0 4px;
+  color: var(--text);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.task-album-tracks button:hover {
+  color: var(--theme-dark);
+  background: var(--theme-soft);
+  box-shadow: none;
+}
+
+.task-album-tracks button span,
+.task-album-tracks button em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
 @media (max-width: 520px) {
   .task-queue div {
     padding: 10px;

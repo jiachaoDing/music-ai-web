@@ -29,6 +29,7 @@ type BackendInviteCode = {
 type MeProfileResponse = {
   user: BackendUser
   echoPoints?: number
+  invitedCount?: number
   inviteCodes?: BackendInviteCode[]
   playlists?: Playlist[]
 }
@@ -52,6 +53,16 @@ export type PointsLedgerItem = {
   reason: string
   balance: number | null
   createdAt: string
+}
+
+const LEDGER_REASON_LABELS: Record<string, string> = {
+  'generate song': '生成歌曲',
+  'generate song refund': '生成歌曲失败退款',
+  'generate album': '生成专辑',
+  'album generation refund': '生成专辑失败退款',
+  remix: '翻唱二创',
+  'remix refund': '翻唱二创失败退款',
+  'AI task refund': 'AI 任务失败退款',
 }
 
 type PointsLedgerResponse = {
@@ -100,6 +111,7 @@ export async function getMeProfile() {
       echoPoints: result.echoPoints ?? nextUser.echoPoints,
     },
     echoPoints: result.echoPoints,
+    invitedCount: result.invitedCount ?? 0,
     inviteCodes: (result.inviteCodes ?? []).map(mapInviteCode),
     playlists: result.playlists ?? [],
   }
@@ -107,7 +119,10 @@ export async function getMeProfile() {
 
 export async function getPointsLedger(pageSize = 6) {
   const result = await request<PointsLedgerResponse>(`/api/me/points-ledger?pageSize=${pageSize}`)
-  return result.list ?? []
+  return (result.list ?? []).map((item) => ({
+    ...item,
+    reason: LEDGER_REASON_LABELS[item.reason] ?? item.reason,
+  }))
 }
 
 export async function createPlaylist(name: string, color?: string) {
