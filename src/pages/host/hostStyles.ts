@@ -128,6 +128,12 @@ export const hostStyles = `
   letter-spacing: 0;
 }
 
+.host-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .host-identity h1 {
   margin: 10px 0 8px;
   font-size: clamp(38px, 5vw, 64px);
@@ -564,8 +570,205 @@ export const hostStyles = `
     width: 52px;
   }
 
+  .host-song__cover b {
+    inset: 50% auto auto 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    line-height: 1;
+  }
+
   .host-song__body strong {
     font-size: 16px;
+  }
+
+  .host-page {
+    gap: 16px;
+  }
+
+  .host-hero {
+    overflow: visible;
+    border: 0;
+    padding: 4px 2px 12px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .host-hero__top {
+    margin-bottom: 12px;
+  }
+
+  .host-hero__top span {
+    color: #b33e72;
+    background: rgba(234, 76, 137, .08);
+    box-shadow: none;
+  }
+
+  .host-hero__main {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  .host-avatar {
+    width: 78px;
+    border-radius: 26px 26px 8px 26px;
+    box-shadow: 0 16px 34px rgba(71, 44, 89, .17);
+  }
+
+  .host-identity > span {
+    padding: 4px 7px;
+    font-size: 9px;
+  }
+
+  .host-identity h1 {
+    margin: 6px 0 5px;
+  }
+
+  .host-identity p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .host-stats {
+    grid-column: 1 / -1;
+    display: flex;
+    margin-top: 10px;
+    border-top: 1px solid rgba(9, 9, 31, .08);
+    border-bottom: 1px solid rgba(9, 9, 31, .08);
+  }
+
+  .host-stats strong {
+    flex: 1 1 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 2px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .host-stats strong + strong {
+    border-left: 1px solid rgba(9, 9, 31, .08);
+  }
+
+  .host-daily-grid {
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .host-daily-card {
+    border: 0;
+    border-radius: 0;
+    padding: 15px 2px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .host-daily-card:first-child {
+    border-top: 2px solid rgba(234, 76, 137, .58);
+    background: linear-gradient(100deg, rgba(234,76,137,.055), transparent 68%);
+  }
+
+  .host-daily-card--pick {
+    border-top: 1px solid rgba(9, 9, 31, .09);
+    border-bottom: 1px solid rgba(9, 9, 31, .09);
+    border-left: 3px solid rgba(88, 198, 218, .54);
+    padding-left: 12px;
+  }
+
+  .host-daily-card--pick > p {
+    display: none;
+  }
+
+  .host-section {
+    margin-top: 10px;
+    border-top: 1px solid rgba(9, 9, 31, .1);
+    padding-top: 15px;
+  }
+
+  .host-section__title {
+    margin-bottom: 9px;
+  }
+
+  .host-topic-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .host-topic {
+    min-height: 94px;
+    border: 0;
+    border-left: 3px solid rgba(139, 101, 207, .62);
+    border-radius: 0 14px 14px 0;
+    padding: 12px;
+    background: linear-gradient(110deg, rgba(139,101,207,.075), rgba(88,198,218,.045));
+    box-shadow: none;
+  }
+
+  .host-topic:nth-child(even) {
+    border-right: 3px solid rgba(88, 198, 218, .58);
+    border-left: 0;
+    border-radius: 14px 0 0 14px;
+    text-align: right;
+    background: linear-gradient(250deg, rgba(88,198,218,.075), rgba(139,101,207,.04));
+  }
+
+  .host-song-list {
+    gap: 8px;
+  }
+
+  .host-song,
+  .host-song--compact {
+    border: 1px solid rgba(68, 54, 92, .1);
+    border-left: 3px solid rgba(234, 76, 137, .48);
+    border-radius: 13px;
+    padding: 9px;
+    background: rgba(255, 255, 255, .7);
+    box-shadow: none;
+  }
+
+  .host-song:nth-child(even) {
+    border-left-color: rgba(74, 183, 211, .52);
+  }
+
+  .host-section__title span,
+  .host-song__body > em {
+    font-size: 8px;
+    letter-spacing: .12em;
+  }
+
+  .host-section__title h2 {
+    font-size: 25px;
+    line-height: 1.12;
+  }
+
+  .host-daily-card > p,
+  .host-topic p,
+  .host-song__body small {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .host-topic strong {
+    font-size: 16px;
+  }
+
+  .host-song__body strong {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .host-song__tags i {
+    font-size: 9px;
   }
 }
 `

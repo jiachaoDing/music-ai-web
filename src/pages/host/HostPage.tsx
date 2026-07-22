@@ -104,14 +104,14 @@ export function HostPage({ hostPage, curation, onBack, onCreate, onOpenSong }: H
       <section className="host-hero">
         <div className="host-hero__top">
           <button type="button" onClick={onBack}>
-            返回首页
+            返回发现页
           </button>
           <span>Daily Host</span>
         </div>
 
         <div className="host-hero__main">
           <div className="host-avatar" aria-hidden="true">
-            <span>Echo</span>
+            <img src="/assets/echo-ai-curator.png" alt="" />
           </div>
 
           <div className="host-identity">

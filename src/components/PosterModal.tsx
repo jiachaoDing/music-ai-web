@@ -222,6 +222,7 @@ export function PosterModal({ song, onClose }: PosterModalProps) {
         aria-label={`${song.title} 分享海报`}
         onClick={(event) => event.stopPropagation()}
       >
+        <button type="button" className="poster-modal__close" aria-label="关闭海报" onClick={onClose}>×</button>
         <canvas ref={canvasRef} className="poster-canvas" width={640} height={900} />
         <p className="poster-tip">{drawing ? '正在生成海报...' : error || '长按图片保存 · 分享给朋友，扫码即可来听'}</p>
         <div className="poster-actions">

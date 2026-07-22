@@ -600,8 +600,14 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                 {selectedPlaylistSongs.map((song) => (
                   <div key={song.id} className="me-playlist-song-row">
                     <button type="button" onClick={() => handlePlayPlaylist(song.id)}>
-                      <strong>{song.title}</strong>
-                      <span>{song.style} · {formatDuration(song.duration)}</span>
+                      <span className="me-playlist-song-row__cover">
+                        {song.coverUrl ? <img src={resolveAssetUrl(song.coverUrl)} alt="" /> : <i>{song.title.slice(0, 1)}</i>}
+                        <b aria-hidden="true">▶</b>
+                      </span>
+                      <span className="me-playlist-song-row__copy">
+                        <strong>{song.title}</strong>
+                        <small>{song.author.nickname} · {song.style} · {formatDuration(song.duration)}</small>
+                      </span>
                     </button>
                     <button
                       type="button"
