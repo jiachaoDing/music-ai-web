@@ -605,13 +605,16 @@ export const hostStyles = `
   }
 
   .host-hero__main {
-    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: stretch;
     gap: 13px;
   }
 
   .host-avatar {
-    width: 78px;
-    border-radius: 26px 26px 8px 26px;
+    width: 92px;
+    min-height: 126px;
+    aspect-ratio: auto;
+    border-radius: 24px 24px 9px 24px;
     box-shadow: 0 16px 34px rgba(71, 44, 89, .17);
   }
 
@@ -657,28 +660,28 @@ export const hostStyles = `
   }
 
   .host-daily-grid {
-    gap: 10px;
+    gap: 8px;
     margin-top: 2px;
   }
 
   .host-daily-card {
-    border: 0;
-    border-radius: 0;
-    padding: 15px 2px;
-    background: transparent;
+    gap: 8px;
+    border: 1px solid rgba(68, 54, 92, .1);
+    border-left: 3px solid rgba(234, 76, 137, .52);
+    border-radius: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, .7);
     box-shadow: none;
   }
 
   .host-daily-card:first-child {
-    border-top: 2px solid rgba(234, 76, 137, .58);
-    background: linear-gradient(100deg, rgba(234,76,137,.055), transparent 68%);
+    border-top: 1px solid rgba(68, 54, 92, .1);
+    background: linear-gradient(105deg, rgba(234,76,137,.055), rgba(255,255,255,.78) 62%);
   }
 
   .host-daily-card--pick {
-    border-top: 1px solid rgba(9, 9, 31, .09);
-    border-bottom: 1px solid rgba(9, 9, 31, .09);
-    border-left: 3px solid rgba(88, 198, 218, .54);
-    padding-left: 12px;
+    border-left-color: rgba(88, 198, 218, .62);
+    background: linear-gradient(105deg, rgba(88,198,218,.055), rgba(255,255,255,.78) 62%);
   }
 
   .host-daily-card--pick > p {
@@ -692,7 +695,17 @@ export const hostStyles = `
   }
 
   .host-section__title {
-    margin-bottom: 9px;
+    margin-bottom: 2px;
+  }
+
+  .host-daily-card .host-section__title > div {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+  }
+
+  .host-daily-card > p {
+    margin: 0;
   }
 
   .host-topic-grid {
@@ -747,7 +760,8 @@ export const hostStyles = `
   }
 
   .host-section__title h2 {
-    font-size: 25px;
+    margin: 0;
+    font-size: 22px;
     line-height: 1.12;
   }
 

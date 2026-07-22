@@ -2234,7 +2234,7 @@ export const meStyles = `
   }
 
   .me-hero__stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
     margin-top: 0;
     border-top: 1px solid rgba(87, 70, 99, .09);
@@ -2257,7 +2257,17 @@ export const meStyles = `
   }
 
   .me-hero__stat strong {
-    font-size: 18px;
+    font-size: 16px;
+    white-space: nowrap;
+  }
+
+  .me-hero__facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 0;
+  }
+
+  .me-hero__facts > span {
+    text-align: center;
   }
 
   .me-tabs button {
@@ -2449,7 +2459,7 @@ export const meStyles = `
 
   .me-hero__facts {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
     border-bottom: 1px solid rgba(87, 70, 99, .09);
   }

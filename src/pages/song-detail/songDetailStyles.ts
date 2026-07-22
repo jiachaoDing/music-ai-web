@@ -1242,15 +1242,20 @@ export const songDetailStyles = `
 
   .song-detail-side__actions {
     grid-column: 1 / -1;
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 
   .song-detail-side__actions button {
+    width: 100%;
     min-height: 32px;
     padding: 0 9px;
     font-size: 10px;
+  }
+
+  .song-detail-delete-note {
+    grid-column: 1 / -1;
   }
 
   .song-detail-toolbar {
@@ -1281,6 +1286,24 @@ export const songDetailStyles = `
     background: transparent;
     box-shadow: none;
     backdrop-filter: none;
+  }
+
+  .song-detail-overview-block {
+    display: none;
+  }
+
+  .song-detail-panel.song-detail-review {
+    border: 1px solid rgba(128, 103, 174, .14);
+    border-left: 3px solid rgba(234, 76, 137, .5);
+    border-radius: 14px;
+    padding: 13px 12px;
+    background: linear-gradient(120deg, rgba(234,76,137,.05), rgba(116,151,218,.045));
+  }
+
+  .song-detail-review > p {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.65;
   }
 
   .song-detail-block h2,

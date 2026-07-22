@@ -1523,6 +1523,9 @@ function UserApp() {
             onOpenHost={() => setActiveView('host')}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId, feedSongs, { openPlayer: false })}
+            searchValue={searchInput}
+            onSearchValueChange={setSearchInput}
+            onSearch={() => void handleSearch()}
           />
         ) : null}
         {activeView === 'host' ? (

@@ -16,6 +16,9 @@ type FeedPageProps = {
   onPlaySong?: (songId: string) => void
   onCreate: () => void
   onOpenHost?: () => void
+  searchValue: string
+  onSearchValueChange: (value: string) => void
+  onSearch: () => void
 }
 
 const feedTabs: Array<{ key: FeedTab; label: string }> = [
@@ -35,6 +38,9 @@ export function FeedPage({
   onPlaySong,
   onCreate,
   onOpenHost,
+  searchValue,
+  onSearchValueChange,
+  onSearch,
 }: FeedPageProps) {
   const hostName = hostPage?.name ?? 'AI 主理人'
   const officialSong = hostPage?.featuredSongs?.[0] ?? curation?.featuredSong ?? null
@@ -158,6 +164,16 @@ export function FeedPage({
           <h2>社区作品</h2>
         </div>
       </div>
+
+      <form className="feed-mobile-search" role="search" onSubmit={(event) => { event.preventDefault(); onSearch() }}>
+        <input
+          aria-label="搜索社区作品"
+          placeholder="搜索歌曲、作者、风格"
+          value={searchValue}
+          onChange={(event) => onSearchValueChange(event.target.value)}
+        />
+        <button type="submit">搜索</button>
+      </form>
 
       <section className="feed-controls">
         <div className="segment-tabs">

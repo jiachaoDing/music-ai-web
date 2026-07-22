@@ -1277,7 +1277,7 @@ export const discoverStyles = `
 .share-card-panel {
   position: fixed;
   inset: 0;
-  z-index: 95;
+  z-index: 10001;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -1286,10 +1286,12 @@ export const discoverStyles = `
 }
 
 .share-card-sheet {
+  position: relative;
   display: grid;
   gap: 14px;
   width: min(360px, calc(100vw - 36px));
-  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
   border: 1px solid var(--line-soft);
   border-radius: 18px;
   padding: 16px;
@@ -1308,7 +1310,8 @@ export const discoverStyles = `
 }
 
 .share-card-canvas {
-  width: 100%;
+  width: min(100%, calc((100dvh - 230px) * 0.8));
+  justify-self: center;
   aspect-ratio: 4 / 5;
   border-radius: 14px;
   background: #0a0813;
@@ -2217,12 +2220,19 @@ export const discoverStyles = `
   }
 
   .share-card-panel {
-    padding: 12px;
+    position: fixed;
+    z-index: 10001;
+    padding: 12px 12px calc(148px + env(safe-area-inset-bottom));
   }
 
   .share-card-sheet {
     width: min(330px, calc(100vw - 24px));
+    max-height: calc(100dvh - 160px - env(safe-area-inset-bottom));
     padding: 12px;
+  }
+
+  .share-card-canvas {
+    width: min(100%, calc((100dvh - 300px) * 0.8));
   }
 
   .generated-song {
@@ -2360,6 +2370,7 @@ export const discoverStyles = `
 @media (max-height: 760px) {
   .share-card-sheet {
     width: min(320px, calc(100vw - 28px));
+    max-height: calc(100dvh - 160px - env(safe-area-inset-bottom));
     gap: 10px;
     padding: 12px;
   }
@@ -2559,7 +2570,6 @@ export const discoverStyles = `
     background: rgba(234, 76, 137, .07);
   }
 
-  .share-card-panel { position: relative; }
   .share-card-close {
     position: absolute;
     top: 8px;
