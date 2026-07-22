@@ -557,7 +557,7 @@ export function SongDetailPage({
             </pre>
           </section>
 
-          <section className="song-detail-block">
+          <section className="song-detail-block song-detail-overview-block">
             <div className="song-detail-block__header">
               <div>
                 <span>Overview</span>
@@ -605,7 +605,7 @@ export function SongDetailPage({
         </div>
 
         <div className="song-detail-stack">
-          <section className="song-detail-panel">
+          <section className="song-detail-panel song-detail-review">
             <div className="song-detail-panel__header">
               <div>
                 <span>AI Review</span>
