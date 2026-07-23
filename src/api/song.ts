@@ -327,7 +327,12 @@ export async function getSongComments(songId: string): Promise<Comment[]> {
 }
 
 export async function addSongComment(songId: string, input: { text: string; anon?: boolean }) {
-  return request<{ comment: Comment; commentCount: number }>(`/api/comments/${songId}`, {
+  return request<{
+    status: 'approved' | 'pending'
+    message: string
+    comment: Comment | null
+    commentCount: number
+  }>(`/api/comments/${songId}`, {
     method: 'POST',
     body: JSON.stringify(input),
   })

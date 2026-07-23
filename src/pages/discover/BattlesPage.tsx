@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Song } from '../../types/song'
-import type { UserRole } from '../../types/user'
 import { BattleSong } from './DiscoverShared'
 import type { BattleRecord, BattleVoteRecord, VoteSide } from './types'
 
@@ -8,19 +7,15 @@ type BattlesPageProps = {
   battles: BattleRecord[]
   battleVotes: BattleVoteRecord[]
   currentUserId: string
-  currentUserRole: UserRole
   songs: Song[]
   onVote: (battleId: string, side: VoteSide) => void
   onCreate: () => void
-  onDelete: (battleId: string) => Promise<boolean>
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
 }
 
-export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRole, songs, onVote, onCreate, onDelete, onOpenSong, onPlaySong }: BattlesPageProps) {
+export function BattlesPage({ battles, battleVotes, currentUserId, songs, onVote, onCreate, onOpenSong, onPlaySong }: BattlesPageProps) {
   const [selectedBattleId, setSelectedBattleId] = useState(battles[0]?.id ?? '')
-  const [pendingDelete, setPendingDelete] = useState<BattleRecord | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const selectedBattle = battles.find((battle) => battle.id === selectedBattleId) ?? battles[0]
 
   useEffect(() => {
@@ -59,21 +54,12 @@ export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRo
 
   const songA = selectedBattle.songA ?? songById(selectedBattle.aId)
   const songB = selectedBattle.songB ?? songById(selectedBattle.bId)
-  const canDelete = currentUserRole === 'admin' || selectedBattle.isOwner === true || selectedBattle.creatorId === currentUserId || selectedBattle.createdBy === currentUserId
   const total = Math.max(1, selectedBattle.aVotes + selectedBattle.bVotes)
   const percentA = Math.round((selectedBattle.aVotes / total) * 100)
   const percentB = 100 - percentA
   const savedVote = battleVotes.find((vote) => vote.battleId === selectedBattle.id && vote.userId === currentUserId)
   const votedSide = selectedBattle.votedSide ?? savedVote?.side
   const hasVoted = Boolean(selectedBattle.votedSide || savedVote)
-
-  async function confirmDelete() {
-    if (!pendingDelete || deleting) return
-    setDeleting(true)
-    const deleted = await onDelete(pendingDelete.id)
-    setDeleting(false)
-    if (deleted) setPendingDelete(null)
-  }
 
   return (
     <section className="playground-shell battle-playground">
@@ -102,13 +88,6 @@ export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRo
           <div>
             <span>Vote Arena</span>
             <h2>{selectedBattle.topic}</h2>
-          </div>
-          <div className="stage-heading__actions">
-            {canDelete ? (
-              <button className="battle-delete-button" type="button" onClick={() => setPendingDelete(selectedBattle)}>
-                删除擂台
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -153,21 +132,6 @@ export function BattlesPage({ battles, battleVotes, currentUserId, currentUserRo
         </button>
       </aside>
 
-      {pendingDelete ? (
-        <div className="discover-modal-backdrop" role="presentation" onClick={() => !deleting && setPendingDelete(null)}>
-          <section className="discover-modal battle-delete-confirm" role="alertdialog" aria-modal="true" aria-labelledby="battle-delete-title" onClick={(event) => event.stopPropagation()}>
-            <span>Delete Battle</span>
-            <h2 id="battle-delete-title">确认删除这场擂台？</h2>
-            <p>“{pendingDelete.topic}”的擂台和投票记录将被永久删除，但两首歌曲会继续保留。</p>
-            <div className="battle-delete-confirm__actions">
-              <button type="button" disabled={deleting} onClick={() => setPendingDelete(null)}>取消</button>
-              <button className="battle-delete-button" type="button" disabled={deleting} onClick={() => void confirmDelete()}>
-                {deleting ? '正在删除…' : '确认删除'}
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
     </section>
   )
 }

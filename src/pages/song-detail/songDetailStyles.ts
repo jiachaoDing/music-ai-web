@@ -389,6 +389,21 @@ export const songDetailStyles = `
   gap: 8px;
 }
 
+.song-detail-review__header {
+  align-items: center;
+}
+
+.song-detail-review__header h2 {
+  margin: 0 0 0 auto;
+  text-align: right;
+}
+
+.song-detail-review__header > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .song-detail-panel__button {
   position: absolute;
   top: 24px;
@@ -1104,6 +1119,12 @@ export const songDetailStyles = `
   .song-detail-overview__row {
     display: grid;
     justify-content: start;
+  }
+
+  .song-detail-panel__header.song-detail-review__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .song-detail-block.is-lyrics::before,

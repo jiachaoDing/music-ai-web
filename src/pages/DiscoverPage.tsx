@@ -3,7 +3,6 @@ import { generateLyrics } from '../api/ai'
 import { getPublicSongs } from '../api/song'
 import {
   createBattle as createBattleRequest,
-  deleteBattle as deleteBattleRequest,
   getBattles,
   getChallengeDetail,
   getChallenges,
@@ -137,6 +136,7 @@ export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong,
   const [selectedDate, setSelectedDate] = useState(today)
   const [message, setMessage] = useState('')
   const [loadingData, setLoadingData] = useState(true)
+  const [challengesLoaded, setChallengesLoaded] = useState(false)
   const [generatingFortune, setGeneratingFortune] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
   const [checkedInToday, setCheckedInToday] = useState(false)
@@ -256,6 +256,7 @@ export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong,
 
       if (challengeResult.status === 'fulfilled') {
         setChallenges(challengeResult.value)
+        setChallengesLoaded(true)
         setSelectedChallengeId((current) =>
           challengeResult.value.some((challenge) => challenge.id === current)
             ? current
@@ -309,7 +310,7 @@ export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong,
   }, [currentMonth, today, user.id, user.lastCheckin])
 
   useEffect(() => {
-    if (!selectedChallengeId) return
+    if (!challengesLoaded || !selectedChallengeId) return
     let cancelled = false
     setChallengeSongRefs([])
     setChallengeSongs([])
@@ -332,7 +333,7 @@ export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong,
         }
       })
     return () => { cancelled = true }
-  }, [selectedChallengeId])
+  }, [challengesLoaded, selectedChallengeId])
 
   function navigate(nextView: DiscoverView, path: string) {
     window.history.pushState({}, '', path)
@@ -432,23 +433,6 @@ export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong,
       setMessage('擂台创建成功，大家可以开始投票了。')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '擂台创建失败，请稍后重试。')
-    }
-  }
-
-  async function deleteBattle(battleId: string) {
-    try {
-      const result = await deleteBattleRequest(battleId)
-      setBattles((current) => current.filter((battle) => battle.id !== battleId))
-      setBattleVotes((current) => {
-        const next = current.filter((vote) => vote.battleId !== battleId)
-        localStorage.setItem(`echo_battle_votes_${user.id}`, JSON.stringify(next))
-        return next
-      })
-      setMessage(result.message || '擂台删除成功。')
-      return true
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '擂台删除失败，请稍后重试。')
-      return false
     }
   }
 
@@ -708,10 +692,8 @@ export function DiscoverPage({ user, songs, battleSongs, onOpenSong, onPlaySong,
               battleVotes={battleVotes}
               battles={battles}
               currentUserId={user.id}
-              currentUserRole={user.role}
               songs={availableBattleSongs}
               onCreate={openBattleCreator}
-              onDelete={deleteBattle}
               onOpenSong={onOpenSong}
               onPlaySong={onPlaySong}
               onVote={voteBattle}
