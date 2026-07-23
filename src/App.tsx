@@ -490,6 +490,8 @@ function UserApp() {
     const nextSongId = songId ?? currentSong?.id
     if (!nextSongId) return
 
+    if (songId) djFollowSongIdRef.current = null
+
     if (songId) {
       preparePlaybackQueue(songId, queueSongs)
       await ensurePlayableSong(songId)
@@ -979,18 +981,18 @@ function UserApp() {
       }
 
       setCurrentSongId(song.id)
-      djFollowSongIdRef.current = song.id
       audio.src = resolveAssetUrl(djUrl)
       audio.load()
       await audio.play()
+      djFollowSongIdRef.current = song.id
 
       const audioContext = getAudioContext()
       if (audioContext?.state === 'suspended') {
         await audioContext.resume()
       }
 
-      window.alert(djText)
     } catch (error) {
+      djFollowSongIdRef.current = null
       console.error(error)
       window.alert(error instanceof Error ? error.message : 'AI DJ 播报生成失败，请稍后重试')
     }

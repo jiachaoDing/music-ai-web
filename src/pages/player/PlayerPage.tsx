@@ -298,7 +298,7 @@ export function PlayerPage({
                 <div key={queuedSong.id} className={`immersive-player__queue-item${active ? ' is-current' : ''}`}>
                   <button type="button" className="immersive-player__queue-play" onClick={() => onPlayQueueSong?.(queuedSong.id)}>
                     <span className="immersive-player__queue-cover">
-                      {queuedCover ? <img src={queuedCover} alt="" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
+                      {queuedCover ? <img src={queuedCover} alt="" loading="lazy" decoding="async" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
                     </span>
                     <span className="immersive-player__queue-meta">
                       <b>{queuedSong.title}</b>

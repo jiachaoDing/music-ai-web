@@ -31,7 +31,7 @@ export function BattleSong({
   return (
     <div className={voted ? `battle-song battle-song--${side.toLowerCase()} is-voted` : `battle-song battle-song--${side.toLowerCase()}`}>
       <button className="song-cover battle-cover" style={songStyle(song)} type="button" aria-label={`试听 ${song.title}`} onClick={onPlay}>
-        {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
+        {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : null}
         <i aria-hidden="true" />
       </button>
       <div>
@@ -49,7 +49,7 @@ export function BattlePreviewSong({ song, label, onOpen, onPlay }: { song: Song;
   return (
     <article className={`preview-song preview-song--${label.toLowerCase()}`}>
       <button className="song-cover battle-cover" style={songStyle(song)} type="button" aria-label={`预览 ${song.title}`} onClick={onPlay}>
-        {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
+        {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : null}
         <i aria-hidden="true" />
       </button>
       <button className="battle-preview__title" type="button" onClick={onOpen}>{song.title}</button>

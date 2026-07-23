@@ -511,7 +511,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                       disabled={!tracks.length}
                       onClick={() => tracks[0] && onOpenSong(tracks[0].id)}
                     >
-                      {albumCoverUrl ? <img src={albumCoverUrl} alt={`${album.title} 专辑封面`} /> : <span>EP</span>}
+                      {albumCoverUrl ? <img src={albumCoverUrl} alt={`${album.title} 专辑封面`} loading="lazy" decoding="async" /> : <span>EP</span>}
                     </button>
                     <div className="me-album-card__content">
                       <span>概念专辑 · {tracks.length} 首</span>
@@ -593,7 +593,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                   style={{ '--playlist-color': getPlaylistCoverColor(playlist) } as CSSProperties}
                 >
                   {getPlaylistCoverUrl(playlist) ? (
-                    <img src={getPlaylistCoverUrl(playlist)} alt={`${playlist.name} 封面`} />
+                    <img src={getPlaylistCoverUrl(playlist)} alt={`${playlist.name} 封面`} loading="lazy" decoding="async" />
                   ) : null}
                   <span>{playlist.type === 'liked' ? 'liked' : 'playlist'}</span>
                 </div>
@@ -703,7 +703,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                   <div key={song.id} className="me-playlist-song-row">
                     <button type="button" onClick={() => handlePlayPlaylist(song.id)}>
                       <span className="me-playlist-song-row__cover">
-                        {song.coverUrl ? <img src={resolveAssetUrl(song.coverUrl)} alt="" /> : <i>{song.title.slice(0, 1)}</i>}
+                        {song.coverUrl ? <img src={resolveAssetUrl(song.coverUrl)} alt="" loading="lazy" decoding="async" /> : <i>{song.title.slice(0, 1)}</i>}
                         <b aria-hidden="true">▶</b>
                       </span>
                       <span className="me-playlist-song-row__copy">
