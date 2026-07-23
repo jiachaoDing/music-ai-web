@@ -1488,6 +1488,7 @@ function UserApp() {
       {audioElement}
       <AppLayout
         active={activeNavKey as Exclude<NavKey, 'auth'>}
+        viewKey={activeView}
         currentSong={currentSong}
         queueSongs={currentQueueSongs}
         currentSongId={currentSongId}

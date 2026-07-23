@@ -9,6 +9,7 @@ import { Topbar } from './Topbar'
 
 type AppLayoutProps = {
   active: NavKey
+  viewKey: string
   user: User
   currentSong?: Song
   queueSongs?: Song[]
@@ -39,6 +40,7 @@ type AppLayoutProps = {
 
 export function AppLayout({
   active,
+  viewKey,
   user,
   currentSong,
   queueSongs = [],
@@ -98,7 +100,7 @@ export function AppLayout({
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     pageShellRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [active])
+  }, [viewKey])
 
   return (
     <div className="app-shell">

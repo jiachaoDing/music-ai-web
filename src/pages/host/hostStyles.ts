@@ -150,6 +150,13 @@ export const hostStyles = `
   font-weight: 650;
 }
 
+.host-daily-card--pick > p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .host-identity p {
   max-width: 660px;
   font-size: 16px;
@@ -685,7 +692,10 @@ export const hostStyles = `
   }
 
   .host-daily-card--pick > p {
-    display: none;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .host-section {
