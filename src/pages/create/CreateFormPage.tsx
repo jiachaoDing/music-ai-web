@@ -46,7 +46,7 @@ const modeCopy: Record<SongMode, { title: string; description: string; placehold
     placeholder: '例如：今日关键词是回声，想要治愈感',
   },
   album: {
-    title: 'AI 音乐制作人',
+    title: 'AI 专辑制作人',
     description: '输入一个主题，一次生成 2～6 首相关歌曲，并整理为专辑（EP，即由多首歌曲组成的短专辑）。',
     placeholder: '例如：围绕夏天、操场和告别生成一张短专辑',
   },

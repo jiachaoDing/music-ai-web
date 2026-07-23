@@ -235,7 +235,7 @@ textarea:focus {
   outline: 0;
 }
 
-.topbar-search button {
+.topbar-search .search-submit {
   flex: 0 0 auto;
   border: 0;
   padding: 4px 0 4px 12px;
@@ -244,6 +244,22 @@ textarea:focus {
   font: inherit;
   font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
+}
+
+.topbar-search .search-clear {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  min-height: 24px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  color: #777381;
+  background: rgba(13, 12, 34, 0.07);
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -257,6 +273,29 @@ textarea:focus {
 
 .search-page__heading {
   padding: 38px 0 12px;
+}
+
+.search-page__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid rgba(13, 12, 34, 0.08);
+  border-radius: 999px;
+  padding: 0 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 24px rgba(32, 25, 45, 0.05);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.search-page__back span {
+  color: var(--theme);
+  font-size: 17px;
 }
 
 .search-page__heading span {
@@ -434,7 +473,7 @@ textarea:focus {
 @media (max-width: 640px) {
   .feed-mobile-search {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 6px;
     min-height: 42px;
@@ -461,7 +500,7 @@ textarea:focus {
     outline: 0;
   }
 
-  .feed-mobile-search button {
+  .feed-mobile-search .search-submit {
     min-height: 32px;
     border: 0;
     border-radius: 999px;
@@ -471,6 +510,20 @@ textarea:focus {
     box-shadow: none;
     font-size: 11px;
     font-weight: 800;
+  }
+
+  .feed-mobile-search .search-clear {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    min-height: 28px;
+    border: 0;
+    border-radius: 50%;
+    padding: 0;
+    color: #716b79;
+    background: rgba(13, 12, 34, .06);
+    font-size: 19px;
+    line-height: 1;
   }
 
   html,
@@ -2870,7 +2923,47 @@ textarea:focus {
     gap: 26px 14px;
   }
 
-  .feed-page .song-cover {
+  .search-page {
+    gap: 16px;
+  }
+
+  .search-page__back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    gap: 7px;
+    min-height: 38px;
+    border: 1px solid rgba(13, 12, 34, .08);
+    border-radius: 999px;
+    padding: 0 15px;
+    color: var(--text);
+    background: rgba(255, 255, 255, .82);
+    box-shadow: 0 8px 24px rgba(32, 25, 45, .05);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .search-page__back span {
+    color: var(--theme);
+    font-size: 17px;
+  }
+
+  .search-page__heading {
+    padding: 2px 0 8px;
+  }
+
+  .search-page__heading h1 {
+    font-size: 36px;
+  }
+
+  .search-page__results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px 14px;
+  }
+
+  .feed-page .song-cover,
+  .search-page__results .song-cover {
     min-height: 0;
     aspect-ratio: 1;
     padding: 12px;

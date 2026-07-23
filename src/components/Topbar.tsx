@@ -37,7 +37,18 @@ export function Topbar({ active, user, onNavigate, onLogout, task, onOpenTask, s
           value={searchValue}
           onChange={(event) => onSearchValueChange(event.target.value)}
         />
-        <button type="submit" aria-label="提交搜索" title="搜索">搜索</button>
+        {searchValue ? (
+          <button
+            className="search-clear"
+            type="button"
+            aria-label="清空搜索内容"
+            title="清空"
+            onClick={() => onSearchValueChange('')}
+          >
+            ×
+          </button>
+        ) : null}
+        <button className="search-submit" type="submit" aria-label="提交搜索" title="搜索">搜索</button>
       </form>
       <nav className="topbar-nav" aria-label="主导航">
         {NAV_ITEMS.map((item) => (
