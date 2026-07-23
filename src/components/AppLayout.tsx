@@ -14,6 +14,7 @@ type AppLayoutProps = {
   queueSongs?: Song[]
   currentSongId?: string
   isPlaying?: boolean
+  isBuffering?: boolean
   repeatMode?: 'off' | 'all' | 'one'
   shuffleEnabled?: boolean
   progress?: number
@@ -44,6 +45,7 @@ export function AppLayout({
   queueSongs = [],
   currentSongId,
   isPlaying = false,
+  isBuffering = false,
   repeatMode = 'off',
   shuffleEnabled = false,
   progress = 0,
@@ -119,6 +121,7 @@ export function AppLayout({
         queueSongs={queueSongs}
         currentSongId={currentSongId}
         isPlaying={isPlaying}
+        isBuffering={isBuffering}
         repeatMode={repeatMode}
         shuffleEnabled={shuffleEnabled}
         progress={progress}

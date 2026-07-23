@@ -2,6 +2,7 @@ import type { HostCuration, HostPage as HostPageData } from '../../api/host'
 import { EmptyState } from '../../components/EmptyState'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
+import { CoverImage } from '../../components/CoverImage'
 import { formatCount, formatDuration } from '../../utils/format'
 import { hostStyles } from './hostStyles'
 
@@ -46,7 +47,7 @@ function HostSongItem({
       onClick={() => onOpenSong(song.id)}
     >
       <span className="host-song__cover">
-        {coverUrl ? <img src={coverUrl} alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : <i aria-hidden="true">E</i>}
+        {coverUrl ? <CoverImage src={song.coverUrl} thumbnail alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : <i aria-hidden="true">E</i>}
         <b aria-hidden="true">▶</b>
       </span>
       <span className="host-song__body">

@@ -4,10 +4,12 @@ import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
 import { formatDuration } from '../../utils/format'
 import { playerStyles } from './playerStyles'
+import { CoverImage } from '../../components/CoverImage'
 
 type PlayerPageProps = {
   song?: Song
   isPlaying?: boolean
+  isBuffering?: boolean
   repeatMode?: 'off' | 'all' | 'one'
   shuffleEnabled?: boolean
   currentTime?: number
@@ -127,6 +129,7 @@ function parseLyrics(lyrics?: string): LyricLine[] {
 export function PlayerPage({
   song,
   isPlaying = false,
+  isBuffering = false,
   repeatMode = 'off',
   shuffleEnabled = false,
   currentTime = 0,
@@ -242,12 +245,12 @@ export function PlayerPage({
             </button>
             <button
               type="button"
-              className="immersive-player__control immersive-player__control--play"
+              className={`immersive-player__control immersive-player__control--play${isBuffering ? ' is-buffering' : ''}`}
               onClick={onTogglePlay}
               disabled={!song}
-              aria-label={isPlaying ? '暂停' : '播放'}
+              aria-label={isBuffering ? '正在缓冲' : isPlaying ? '暂停' : '播放'}
             >
-              <PlayerIcon name={isPlaying ? 'pause' : 'play'} size={24} />
+              {isBuffering ? <span className="player-buffer-spinner" aria-hidden="true" /> : <PlayerIcon name={isPlaying ? 'pause' : 'play'} size={24} />}
             </button>
             <button
               type="button"
@@ -298,7 +301,7 @@ export function PlayerPage({
                 <div key={queuedSong.id} className={`immersive-player__queue-item${active ? ' is-current' : ''}`}>
                   <button type="button" className="immersive-player__queue-play" onClick={() => onPlayQueueSong?.(queuedSong.id)}>
                     <span className="immersive-player__queue-cover">
-                      {queuedCover ? <img src={queuedCover} alt="" loading="lazy" decoding="async" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
+                      {queuedCover ? <CoverImage src={queuedSong.coverUrl} thumbnail alt="" loading="lazy" decoding="async" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
                     </span>
                     <span className="immersive-player__queue-meta">
                       <b>{queuedSong.title}</b>

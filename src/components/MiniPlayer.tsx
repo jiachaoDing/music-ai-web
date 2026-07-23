@@ -2,12 +2,14 @@ import { useState } from 'react'
 import type { Song } from '../types/song'
 import { resolveAssetUrl } from '../utils/asset'
 import { formatDuration } from '../utils/format'
+import { CoverImage } from './CoverImage'
 
 type RepeatMode = 'off' | 'all' | 'one'
 
 type MiniPlayerProps = {
   song?: Song
   isPlaying?: boolean
+  isBuffering?: boolean
   repeatMode?: RepeatMode
   shuffleEnabled?: boolean
   progress?: number
@@ -106,6 +108,7 @@ function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
 export function MiniPlayer({
   song,
   isPlaying = false,
+  isBuffering = false,
   repeatMode = 'off',
   shuffleEnabled = false,
   progress = 0,
@@ -131,7 +134,7 @@ export function MiniPlayer({
       <button className="mini-player__main" type="button" onClick={onOpenPlayer}>
         <span className="mini-player__art">
           {coverUrl ? (
-            <img className="mini-player__art-image" src={coverUrl} alt={`${song?.title ?? '当前作品'} 封面`} />
+            <CoverImage className="mini-player__art-image" src={song?.coverUrl} thumbnail alt={`${song?.title ?? '当前作品'} 封面`} />
           ) : null}
         </span>
         <div className="mini-player__info">
@@ -147,8 +150,8 @@ export function MiniPlayer({
         <button type="button" className="mini-player__icon" onClick={onPlayPrev} disabled={!song} aria-label="上一首">
           <Icon name="prev" size={21} />
         </button>
-        <button type="button" className="mini-player__play" onClick={onTogglePlay} disabled={!song} aria-label={isPlaying ? '暂停' : '播放'}>
-          <Icon name={isPlaying ? 'pause' : 'play'} size={22} />
+        <button type="button" className={`mini-player__play${isBuffering ? ' is-buffering' : ''}`} onClick={onTogglePlay} disabled={!song} aria-label={isBuffering ? '正在缓冲' : isPlaying ? '暂停' : '播放'}>
+          {isBuffering ? <span className="player-buffer-spinner" aria-hidden="true" /> : <Icon name={isPlaying ? 'pause' : 'play'} size={22} />}
         </button>
         <button type="button" className="mini-player__icon" onClick={onPlayNext} disabled={!song} aria-label="下一首">
           <Icon name="next" size={21} />
@@ -184,7 +187,7 @@ export function MiniPlayer({
                 >
                   <button type="button" className="mini-player__queue-play" onClick={() => onPlayQueueSong?.(queuedSong.id)}>
                     <span className="mini-player__queue-cover">
-                      {queuedCover ? <img src={queuedCover} alt="" loading="lazy" decoding="async" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
+                      {queuedCover ? <CoverImage src={queuedSong.coverUrl} thumbnail alt="" loading="lazy" decoding="async" /> : <i>{queuedSong.title.slice(0, 1)}</i>}
                     </span>
                     <span className="mini-player__queue-meta">
                       <b>{queuedSong.title}</b>
