@@ -377,11 +377,15 @@ export function SongDetailPage({
     setCommentSubmitting(true)
       try {
         const result = await addSongComment(song.id, { text, anon: commentAnon })
-        setComments((current) => sortComments([result.comment, ...current]))
         setCommentText('')
         setCommentAnon(false)
-        setCommentCount(result.commentCount)
-        onSongUpdate?.({ ...song, commentCount: result.commentCount })
+        if (result.status === 'approved' && result.comment) {
+          setComments((current) => sortComments([result.comment!, ...current]))
+          setCommentCount(result.commentCount)
+          onSongUpdate?.({ ...song, commentCount: result.commentCount })
+        } else {
+          window.alert(result.message || '评论已提交，正在等待管理员审核')
+        }
     } catch (error) {
       console.error(error)
       window.alert(error instanceof Error ? error.message : '留言失败，请稍后再试')
@@ -610,11 +614,9 @@ export function SongDetailPage({
 
         <div className="song-detail-stack">
           <section className="song-detail-panel song-detail-review">
-            <div className="song-detail-panel__header">
-              <div>
-                <span>AI Review</span>
-                <h2>AI 乐评</h2>
-              </div>
+            <div className="song-detail-panel__header song-detail-review__header">
+              <span>AI Review</span>
+              <h2>AI 乐评</h2>
             </div>
             <p>
               {aiReview || 'AI 乐评正在后台生成，请稍后刷新查看。'}

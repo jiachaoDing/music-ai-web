@@ -262,13 +262,6 @@ export async function voteBattle(battleId: string, side: VoteSide) {
   )
 }
 
-export async function deleteBattle(battleId: string) {
-  return request<{ success: boolean; message?: string; battleId?: string }>(
-    `/api/battles/${encodeURIComponent(battleId)}`,
-    { method: 'DELETE' },
-  )
-}
-
 export async function getDayFortune(date = new Date().toISOString().slice(0, 10)): Promise<FortuneRecord> {
   const result = await request<unknown>('/api/dayfortune')
   return mapFortune(result, date)
