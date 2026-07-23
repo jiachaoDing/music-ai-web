@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { Song } from '../types/song'
 import type { User } from '../types/user'
 import type { NavKey } from '../utils/constants'
 import { BottomNav } from './BottomNav'
 import { MiniPlayer } from './MiniPlayer'
+import { PageLoadingState } from './LoadingState'
 import { Topbar } from './Topbar'
 
 type AppLayoutProps = {
@@ -115,7 +116,9 @@ export function AppLayout({
         onSearchValueChange={onSearchValueChange}
         onSearch={onSearch}
       />
-      <main ref={pageShellRef} className="page-shell">{children}</main>
+      <main ref={pageShellRef} className="page-shell">
+        <Suspense fallback={<PageLoadingState />}>{children}</Suspense>
+      </main>
       <MiniPlayer
         song={currentSong}
         queueSongs={queueSongs}

@@ -9,10 +9,12 @@ import {
   type SongTreeResponse,
 } from '../../api/song'
 import type { Comment } from '../../types/comment'
+import { CommentCard } from '../../components/CommentCard'
 import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import { resolveAssetUrl } from '../../utils/asset'
 import { ECHO_COSTS, formatEchoCost } from '../../utils/echoCost'
+import { sortComments } from '../../utils/comment'
 import { formatCount, formatDuration } from '../../utils/format'
 import { songDetailStyles } from './songDetailStyles'
 
@@ -28,6 +30,7 @@ type SongDetailPageProps = {
   onSetPrivate: () => void
   onDelete?: () => void | Promise<void>
   onOpenSong?: (songId: string) => void
+  onOpenAllComments?: () => void
   onSongUpdate?: (song: Song) => void
 }
 
@@ -96,6 +99,7 @@ export function SongDetailPage({
   onSetPrivate,
   onDelete,
   onOpenSong,
+  onOpenAllComments,
   onSongUpdate,
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
@@ -149,7 +153,7 @@ export function SongDetailPage({
 
       try {
         const nextComments = await getSongComments(song.id)
-        setComments(nextComments)
+        setComments(sortComments(nextComments))
       } catch (error) {
         console.error(error)
         setComments([])
@@ -373,7 +377,7 @@ export function SongDetailPage({
     setCommentSubmitting(true)
       try {
         const result = await addSongComment(song.id, { text, anon: commentAnon })
-        setComments((current) => [result.comment, ...current])
+        setComments((current) => sortComments([result.comment, ...current]))
         setCommentText('')
         setCommentAnon(false)
         setCommentCount(result.commentCount)
@@ -664,38 +668,17 @@ export function SongDetailPage({
 
             {comments.length ? (
               <div className="song-detail-comments">
-                {comments.map((comment) => {
-                  const isHostComment =
-                    comment.userId === 'echo-host' || comment.text.startsWith('【主理人翻牌】')
-                  const text = comment.text.replace(/^【主理人翻牌】/, '')
-
-                  return (
-                    <article
-                      className={`song-detail-comment ${isHostComment ? 'is-host' : ''}`}
-                      key={comment.id}
-                    >
-                      <div className="song-detail-comment__avatar" aria-hidden="true">
-                        {isHostComment ? 'E' : (comment.userName || 'U').slice(0, 1)}
-                      </div>
-                      <div className="song-detail-comment__body">
-                        <div className="song-detail-comment__meta">
-                          <strong>
-                            {isHostComment
-                              ? 'Echo 主理人'
-                              : comment.anon
-                                ? '匿名听众'
-                                : comment.userName || '听众'}
-                          </strong>
-                          {isHostComment ? <span>主理人翻牌</span> : null}
-                          {!isHostComment && comment.anon ? <span>匿名</span> : null}
-                        </div>
-                        <p>{text}</p>
-                        <small>{formatDate(comment.createdAt)}</small>
-                      </div>
-                    </article>
-                  )
-                })}
+                {comments.map((comment) => <CommentCard key={comment.id} comment={comment} />)}
               </div>
+            ) : null}
+            {comments.length && onOpenAllComments ? (
+              <button
+                type="button"
+                className="song-detail-comments-more"
+                onClick={onOpenAllComments}
+              >
+                查看全部 {commentCount} 条评论
+              </button>
             ) : null}
           </section>
 

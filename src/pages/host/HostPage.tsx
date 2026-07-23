@@ -167,6 +167,7 @@ export function HostPage({ hostPage, curation, onBack, onCreate, onOpenSong }: H
               <span>Today Pick</span>
               <h2>今日翻牌</h2>
             </div>
+            <span className="host-ai-badge">AI生成</span>
           </div>
           {todayPick ? (
             <>
