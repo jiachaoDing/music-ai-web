@@ -21,12 +21,17 @@ export function LoginPage({ onSubmit, loading = false }: LoginPageProps) {
     <form className="auth-form" onSubmit={handleSubmit}>
       <input
         value={identifier}
+        required
+        autoComplete="username"
         onChange={(event) => setIdentifier(event.target.value)}
         placeholder="昵称"
       />
       <div className="password-row">
         <input
           value={password}
+          required
+          minLength={4}
+          autoComplete="current-password"
           onChange={(event) => setPassword(event.target.value)}
           placeholder="密码（至少 4 位）"
           type={showPassword ? 'text' : 'password'}

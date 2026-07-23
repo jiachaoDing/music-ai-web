@@ -389,6 +389,56 @@ export const songDetailStyles = `
   gap: 8px;
 }
 
+.song-detail-draft-notice {
+  grid-column: 2 / -1;
+  align-self: center;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.song-detail-draft-message {
+  margin: 0;
+  border: 1px solid var(--line);
+  padding: 16px;
+  color: var(--muted);
+  background: rgba(13, 12, 34, 0.025);
+  line-height: 1.6;
+}
+
+.song-detail-dj-preparing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(234, 76, 137, 0.2);
+  padding: 13px 16px;
+  color: var(--text);
+  background: rgba(234, 76, 137, 0.06);
+}
+
+.song-detail-dj-preparing i {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px solid rgba(234, 76, 137, 0.22);
+  border-top-color: var(--theme);
+  border-radius: 50%;
+  animation: song-detail-dj-spin 0.75s linear infinite;
+}
+
+.song-detail-dj-preparing span {
+  display: grid;
+  gap: 2px;
+}
+
+.song-detail-dj-preparing small {
+  color: var(--muted);
+}
+
+@keyframes song-detail-dj-spin {
+  to { transform: rotate(360deg); }
+}
+
 .song-detail-review__header {
   align-items: center;
 }

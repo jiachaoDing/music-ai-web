@@ -22,12 +22,16 @@ export function RegisterPage({ onSubmit, loading = false }: RegisterPageProps) {
     <form className="auth-form" onSubmit={handleSubmit}>
       <input
         value={nickname}
+        required
         onChange={(event) => setNickname(event.target.value)}
         placeholder="昵称"
       />
       <div className="password-row">
         <input
           value={password}
+          required
+          minLength={4}
+          autoComplete="new-password"
           onChange={(event) => setPassword(event.target.value)}
           placeholder="密码（至少 4 位）"
           type={showPassword ? 'text' : 'password'}
@@ -44,6 +48,7 @@ export function RegisterPage({ onSubmit, loading = false }: RegisterPageProps) {
       </div>
       <input
         value={inviteCode}
+        required
         onChange={(event) => setInviteCode(event.target.value)}
         placeholder="邀请码（注册必填）"
       />

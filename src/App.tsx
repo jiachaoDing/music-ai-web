@@ -235,7 +235,14 @@ function UserApp() {
 
   const allSongs = useMemo(() => {
     const songMap = new Map<string, Song>()
-    ;[...feedSongs, ...mySongs, ...searchResults, ...playbackSongs].forEach((song) => songMap.set(song.id, song))
+    ;[...feedSongs, ...mySongs, ...searchResults, ...playbackSongs].forEach((song) => {
+      const existing = songMap.get(song.id)
+      songMap.set(song.id, {
+        ...existing,
+        ...song,
+        liked: Boolean(existing?.liked || song.liked),
+      })
+    })
     return [...songMap.values()]
   }, [feedSongs, mySongs, searchResults, playbackSongs])
 
@@ -492,7 +499,11 @@ function UserApp() {
     }
   }
 
-  async function startPlayback(songId?: string, queueSongs?: Song[]) {
+  async function startPlayback(
+    songId?: string,
+    queueSongs?: Song[],
+    forceSongSource = false,
+  ) {
     const nextSongId = songId ?? currentSong?.id
     if (!nextSongId) return
 
@@ -503,7 +514,23 @@ function UserApp() {
       await ensurePlayableSong(songId)
     }
 
-    if (songId && songId !== currentSongId) {
+    if (
+      forceSongSource &&
+      songId &&
+      currentSong?.id === songId &&
+      currentSong.audioUrl
+    ) {
+      const audio = audioRef.current
+      if (audio) {
+        audio.src = resolveAssetUrl(currentSong.audioUrl)
+        audio.load()
+        await audio.play()
+        const audioContext = getAudioContext()
+        if (audioContext?.state === 'suspended') {
+          await audioContext.resume()
+        }
+      }
+    } else if (songId && songId !== currentSongId) {
       setCurrentSongId(songId)
       setPendingPlaySongId(songId)
     } else if (currentSong?.audioUrl) {
@@ -986,11 +1013,11 @@ function UserApp() {
         return
       }
 
+      djFollowSongIdRef.current = song.id
       setCurrentSongId(song.id)
       audio.src = resolveAssetUrl(djUrl)
       audio.load()
       await audio.play()
-      djFollowSongIdRef.current = song.id
 
       const audioContext = getAudioContext()
       if (audioContext?.state === 'suspended') {
@@ -1235,7 +1262,7 @@ function UserApp() {
       if (djFollowSongIdRef.current) {
         const followSongId = djFollowSongIdRef.current
         djFollowSongIdRef.current = null
-        void startPlayback(followSongId)
+        void startPlayback(followSongId, undefined, true)
         return
       }
       if (repeatMode === 'one') {
@@ -1279,6 +1306,7 @@ function UserApp() {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
+    if (djFollowSongIdRef.current === currentSong?.id) return
 
     if (!currentSong?.audioUrl) {
       audio.pause()
@@ -1633,6 +1661,10 @@ function UserApp() {
             songs={mySongs}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId)}
+            onPlayDj={(songId) => {
+              const song = mySongs.find((item) => item.id === songId)
+              if (song) void handlePlayDjBroadcast(song)
+            }}
             onGenerate={(preset) => {
               setRadioPreset(preset)
               openCreateForm('radio')
@@ -1675,7 +1707,7 @@ function UserApp() {
               publishing={publishSubmitting}
               onPlay={() => void handlePlaySong(detailSong.id)}
               onRemix={() => handleRemixSong(detailSong)}
-              onPlayDj={() => void handlePlayDjBroadcast(detailSong)}
+              onPlayDj={() => handlePlayDjBroadcast(detailSong)}
               onOpenPoster={() => setPosterOpen(true)}
               onPublish={() => void handlePublishSong(true)}
               onSetPrivate={() => void handlePublishSong(false)}
