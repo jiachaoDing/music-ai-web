@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { lazy, Suspense } from 'react'
 import { generateDjBroadcast } from './api/ai'
 import { clearToken, getCurrentUser, signIn, signUp, TOKEN_STORAGE_KEY } from './api/auth'
 import { getCuration, getHostPage, type HostCuration, type HostPage } from './api/host'
@@ -8,25 +9,26 @@ import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFee
 import { AppLayout } from './components/AppLayout'
 import { BackButton } from './components/BackButton'
 import { LoadingState } from './components/LoadingState'
-import { PosterModal } from './components/PosterModal'
-import { AuthPage } from './pages/auth/AuthPage'
 import type { CreateChallengeContext, CreateSubmission } from './pages/create/CreateFormPage'
-import { CreateFormPage } from './pages/create/CreateFormPage'
-import { CreatePage } from './pages/create/CreatePage'
-import { DiscoverPage } from './pages/DiscoverPage'
-import { FeedPage } from './pages/FeedPage'
-import { HostPage as HostProfilePage } from './pages/host/HostPage'
-import { MePage } from './pages/me/MePage'
-import { PlayerPage } from './pages/player/PlayerPage'
-import { RadioPage } from './pages/radio/RadioPage'
-import { SongDetailPage } from './pages/song-detail/SongDetailPage'
-import { TaskPage } from './pages/TaskPage'
-import { SearchPage } from './pages/SearchPage'
 import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
 import { resolveAssetUrl } from './utils/asset'
 import type { NavKey } from './utils/constants'
-import { AdminPage } from './pages/admin/AdminPage'
+
+const AdminPage = lazy(() => import('./pages/admin/AdminPage').then((module) => ({ default: module.AdminPage })))
+const AuthPage = lazy(() => import('./pages/auth/AuthPage').then((module) => ({ default: module.AuthPage })))
+const CreateFormPage = lazy(() => import('./pages/create/CreateFormPage').then((module) => ({ default: module.CreateFormPage })))
+const CreatePage = lazy(() => import('./pages/create/CreatePage').then((module) => ({ default: module.CreatePage })))
+const DiscoverPage = lazy(() => import('./pages/DiscoverPage').then((module) => ({ default: module.DiscoverPage })))
+const FeedPage = lazy(() => import('./pages/FeedPage').then((module) => ({ default: module.FeedPage })))
+const HostProfilePage = lazy(() => import('./pages/host/HostPage').then((module) => ({ default: module.HostPage })))
+const MePage = lazy(() => import('./pages/me/MePage').then((module) => ({ default: module.MePage })))
+const PlayerPage = lazy(() => import('./pages/player/PlayerPage').then((module) => ({ default: module.PlayerPage })))
+const PosterModal = lazy(() => import('./components/PosterModal').then((module) => ({ default: module.PosterModal })))
+const RadioPage = lazy(() => import('./pages/radio/RadioPage').then((module) => ({ default: module.RadioPage })))
+const SearchPage = lazy(() => import('./pages/SearchPage').then((module) => ({ default: module.SearchPage })))
+const SongDetailPage = lazy(() => import('./pages/song-detail/SongDetailPage').then((module) => ({ default: module.SongDetailPage })))
+const TaskPage = lazy(() => import('./pages/TaskPage').then((module) => ({ default: module.TaskPage })))
 
 type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player' | 'host' | 'search'
 
@@ -205,6 +207,7 @@ function UserApp() {
   const [publishSubmitting, setPublishSubmitting] = useState(false)
   const [createTask, setCreateTask] = useState<CreateTaskState | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isBuffering, setIsBuffering] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackDuration, setPlaybackDuration] = useState(0)
   const [pendingPlaySongId, setPendingPlaySongId] = useState<string | null>(null)
@@ -1213,7 +1216,16 @@ function UserApp() {
     if (!audio) return
 
     const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
+    const handlePlaying = () => {
+      setIsPlaying(true)
+      setIsBuffering(false)
+    }
+    const handlePause = () => {
+      setIsPlaying(false)
+      setIsBuffering(false)
+    }
+    const handleBuffering = () => setIsBuffering(true)
+    const handleCanPlay = () => setIsBuffering(false)
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
     const handleLoadedMetadata = () => setPlaybackDuration(audio.duration || currentSong?.duration || 0)
     const handleEnded = () => {
@@ -1235,14 +1247,26 @@ function UserApp() {
     }
 
     audio.addEventListener('play', handlePlay)
+    audio.addEventListener('playing', handlePlaying)
     audio.addEventListener('pause', handlePause)
+    audio.addEventListener('loadstart', handleBuffering)
+    audio.addEventListener('waiting', handleBuffering)
+    audio.addEventListener('stalled', handleBuffering)
+    audio.addEventListener('canplay', handleCanPlay)
+    audio.addEventListener('error', handleCanPlay)
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
     audio.addEventListener('ended', handleEnded)
 
     return () => {
       audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('loadstart', handleBuffering)
+      audio.removeEventListener('waiting', handleBuffering)
+      audio.removeEventListener('stalled', handleBuffering)
+      audio.removeEventListener('canplay', handleCanPlay)
+      audio.removeEventListener('error', handleCanPlay)
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('ended', handleEnded)
@@ -1258,6 +1282,7 @@ function UserApp() {
       audio.removeAttribute('src')
       audio.load()
       setIsPlaying(false)
+      setIsBuffering(false)
       setCurrentTime(0)
       setPlaybackDuration(0)
       clearPlayerVisualizer()
@@ -1461,6 +1486,7 @@ function UserApp() {
         <PlayerPage
           song={currentSong}
           isPlaying={isPlaying}
+          isBuffering={isBuffering}
           repeatMode={repeatMode}
           shuffleEnabled={shuffleEnabled}
           currentTime={currentTime}
@@ -1494,6 +1520,7 @@ function UserApp() {
         queueSongs={currentQueueSongs}
         currentSongId={currentSongId}
         isPlaying={isPlaying}
+        isBuffering={isBuffering}
         repeatMode={repeatMode}
         shuffleEnabled={shuffleEnabled}
         progress={playbackProgress}
@@ -1661,9 +1688,17 @@ function UserApp() {
 
 function App() {
   if (window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/')) {
-    return <AdminPage />
+    return (
+      <Suspense fallback={<LoadingState title="正在加载管理后台" description="请稍候…" />}>
+        <AdminPage />
+      </Suspense>
+    )
   }
-  return <UserApp />
+  return (
+    <Suspense fallback={<LoadingState title="正在加载页面" description="请稍候…" />}>
+      <UserApp />
+    </Suspense>
+  )
 }
 
 export default App

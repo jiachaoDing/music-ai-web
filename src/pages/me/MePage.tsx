@@ -17,6 +17,7 @@ import type { Playlist } from '../../types/playlist'
 import type { Song } from '../../types/song'
 import type { InviteCode, User } from '../../types/user'
 import { resolveAssetUrl } from '../../utils/asset'
+import { CoverImage } from '../../components/CoverImage'
 import { MeAccountPanel, MeHero, MeLedgerPanel } from './MeShared'
 import { meStyles } from './meStyles'
 
@@ -703,7 +704,7 @@ export function MePage({ user, songs, onOpenSong, onPlaySong }: MePageProps) {
                   <div key={song.id} className="me-playlist-song-row">
                     <button type="button" onClick={() => handlePlayPlaylist(song.id)}>
                       <span className="me-playlist-song-row__cover">
-                        {song.coverUrl ? <img src={resolveAssetUrl(song.coverUrl)} alt="" loading="lazy" decoding="async" /> : <i>{song.title.slice(0, 1)}</i>}
+                        {song.coverUrl ? <CoverImage src={song.coverUrl} thumbnail alt="" loading="lazy" decoding="async" /> : <i>{song.title.slice(0, 1)}</i>}
                         <b aria-hidden="true">▶</b>
                       </span>
                       <span className="me-playlist-song-row__copy">

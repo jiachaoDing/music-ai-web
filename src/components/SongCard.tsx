@@ -1,6 +1,7 @@
 import type { CSSProperties, MouseEvent } from 'react'
 import type { Song } from '../types/song'
 import { resolveAssetUrl } from '../utils/asset'
+import { CoverImage } from './CoverImage'
 import { formatCount, formatDuration } from '../utils/format'
 
 type SongCardProps = {
@@ -34,7 +35,7 @@ export function SongCard({
           className={`song-cover${coverAspect === 'portrait' ? ' song-cover--portrait' : ''}`}
           style={coverStyle}
         >
-          {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : null}
+          {coverUrl ? <CoverImage className="song-cover__image" src={song.coverUrl} thumbnail alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : null}
           <span className="song-cover__eyebrow">{song.mode}</span>
           <span className="ai-generated-badge">AI生成</span>
           <button

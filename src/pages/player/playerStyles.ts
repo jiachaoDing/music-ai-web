@@ -287,6 +287,10 @@ export const playerStyles = `
   font-size: 19px;
 }
 
+.immersive-player__control--play.is-buffering {
+  cursor: wait;
+}
+
 .immersive-player__meta {
   display: flex;
   align-items: center;
