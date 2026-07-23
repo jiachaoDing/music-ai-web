@@ -86,7 +86,7 @@ export function CreatePage({ onOpenForm }: CreatePageProps) {
       <section className="create-producer-card">
         <div>
           <span className="create-producer-label">Producer Suite</span>
-          <strong>AI 音乐制作人</strong>
+          <strong>AI 专辑制作人</strong>
           <p>输入一个主题，一次生成 2～6 首相关歌曲，并自动整理为一张专辑（EP）。</p>
         </div>
         <button type="button" onClick={() => onOpenForm('album')}>

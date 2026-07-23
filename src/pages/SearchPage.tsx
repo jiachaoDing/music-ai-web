@@ -8,13 +8,18 @@ type SearchPageProps = {
   songs: Song[]
   loading: boolean
   error: string
+  onBack: () => void
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
 }
 
-export function SearchPage({ query, songs, loading, error, onOpenSong, onPlaySong }: SearchPageProps) {
+export function SearchPage({ query, songs, loading, error, onBack, onOpenSong, onPlaySong }: SearchPageProps) {
   return (
     <section className="page-stack search-page">
+      <button className="search-page__back" type="button" onClick={onBack}>
+        <span aria-hidden="true">←</span>
+        返回上一页
+      </button>
       <header className="search-page__heading">
         <span>Search</span>
         <h1>搜索结果</h1>
@@ -26,7 +31,7 @@ export function SearchPage({ query, songs, loading, error, onOpenSong, onPlaySon
       {!loading && !error && songs.length ? (
         <>
           <div className="search-page__summary">找到 {songs.length} 首作品</div>
-          <div className="card-list">
+          <div className="card-list search-page__results">
             {songs.map((song) => <SongCard key={song.id} song={song} onOpen={onOpenSong} onPlay={onPlaySong} />)}
           </div>
         </>

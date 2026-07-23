@@ -194,6 +194,7 @@ function UserApp() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Song[]>([])
+  const [searchReturnView, setSearchReturnView] = useState<AppView>('feed')
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [createMode, setCreateMode] = useState<SongMode>('song')
@@ -384,6 +385,7 @@ function UserApp() {
     const keyword = searchInput.trim()
     if (!keyword) return
 
+    if (activeView !== 'search') setSearchReturnView(activeView)
     setSearchQuery(keyword)
     setSearchLoading(true)
     setSearchError('')
@@ -1576,6 +1578,10 @@ function UserApp() {
             songs={searchResults}
             loading={searchLoading}
             error={searchError}
+            onBack={() => {
+              setActiveView(searchReturnView)
+              window.history.back()
+            }}
             onOpenSong={openSong}
             onPlaySong={(songId) => void handlePlaySong(songId, searchResults, { openPlayer: false })}
           />

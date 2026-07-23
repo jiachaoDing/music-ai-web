@@ -1691,18 +1691,25 @@ export const discoverStyles = `
   }
 
   .insight-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
     gap: 10px;
+    width: 100%;
+    overflow: visible;
+    padding: 0;
+    mask-image: none;
   }
 
   .insight-rail .rail-title {
+    grid-column: 1 / -1;
     padding: 0 4px;
   }
 
   .insight-rail .insight-card {
-    flex: 0 0 142px;
-    width: 142px;
-    min-height: 94px;
+    width: 100%;
+    min-width: 0;
+    min-height: 86px;
     padding: 12px;
   }
 
@@ -2123,9 +2130,22 @@ export const discoverStyles = `
   }
 
   .insight-rail {
-    display: flex;
-    padding: 10px;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  .insight-rail .rail-title {
+    grid-column: 1 / -1;
+  }
+
+  .insight-rail .insight-card {
+    width: 100%;
+    min-width: 0;
   }
 
   .fortune-top-grid {
@@ -2229,6 +2249,18 @@ export const discoverStyles = `
     width: min(330px, calc(100vw - 24px));
     max-height: calc(100dvh - 160px - env(safe-area-inset-bottom));
     padding: 12px;
+  }
+
+  .share-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .share-card-actions button {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 10px;
   }
 
   .share-card-canvas {
@@ -2550,6 +2582,46 @@ export const discoverStyles = `
     line-height: 1.25;
   }
   .discover-suite--battles .battle-rail-left .rail-card small { font-size: 9px; }
+
+  .discover-suite--battles .insight-rail {
+    display: none;
+  }
+
+  .discover-suite--battles .battle-rail-left {
+    order: 0;
+  }
+
+  .discover-suite--battles .battle-stage-card {
+    order: 2;
+  }
+
+  .discover-suite--battles .insight-rail .rail-title {
+    grid-column: 1 / -1;
+    width: auto;
+    min-width: 0;
+    padding: 0 2px;
+  }
+
+  .discover-suite--battles .insight-rail .insight-card {
+    flex: none;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 72px;
+    height: auto;
+    gap: 5px;
+    border-radius: 13px;
+    padding: 10px 11px;
+  }
+
+  .discover-suite--battles .insight-rail .insight-card span {
+    font-size: 10px;
+  }
+
+  .discover-suite--battles .insight-rail .insight-card strong {
+    font-size: 12px;
+    line-height: 1.3;
+  }
 
   .discover-suite--battles .battle-mode-switch { grid-template-columns: repeat(2, minmax(92px, 1fr)); padding: 3px; }
   .discover-suite--battles .battle-mode-switch button { min-height: 32px; padding: 0 11px; font-size: 11px; }

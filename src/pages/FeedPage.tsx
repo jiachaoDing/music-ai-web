@@ -172,7 +172,17 @@ export function FeedPage({
           value={searchValue}
           onChange={(event) => onSearchValueChange(event.target.value)}
         />
-        <button type="submit">搜索</button>
+        {searchValue ? (
+          <button
+            className="search-clear"
+            type="button"
+            aria-label="清空搜索内容"
+            onClick={() => onSearchValueChange('')}
+          >
+            ×
+          </button>
+        ) : null}
+        <button className="search-submit" type="submit">搜索</button>
       </form>
 
       <section className="feed-controls">
