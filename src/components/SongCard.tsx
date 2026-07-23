@@ -34,7 +34,7 @@ export function SongCard({
           className={`song-cover${coverAspect === 'portrait' ? ' song-cover--portrait' : ''}`}
           style={coverStyle}
         >
-          {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} /> : null}
+          {coverUrl ? <img className="song-cover__image" src={coverUrl} alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : null}
           <span className="song-cover__eyebrow">{song.mode}</span>
           <span className="ai-generated-badge">AI生成</span>
           <button

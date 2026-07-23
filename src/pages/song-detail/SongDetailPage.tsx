@@ -346,7 +346,7 @@ export function SongDetailPage({
           onClick={() => (isCurrent ? undefined : onOpenSong?.(node.id))}
         >
           <span className="song-remix-tree__cover">
-            {previewUrl ? <img src={previewUrl} alt={`${node.title} 封面`} /> : <i>{node.mode === 'remix' ? '翻' : '曲'}</i>}
+            {previewUrl ? <img src={previewUrl} alt={`${node.title} 封面`} loading="lazy" decoding="async" /> : <i>{node.mode === 'remix' ? '翻' : '曲'}</i>}
           </span>
           <span className="song-remix-tree__copy">
             <strong>{node.title}</strong>

@@ -46,7 +46,7 @@ function HostSongItem({
       onClick={() => onOpenSong(song.id)}
     >
       <span className="host-song__cover">
-        {coverUrl ? <img src={coverUrl} alt={`${song.title} 封面`} /> : <i aria-hidden="true">E</i>}
+        {coverUrl ? <img src={coverUrl} alt={`${song.title} 封面`} loading="lazy" decoding="async" /> : <i aria-hidden="true">E</i>}
         <b aria-hidden="true">▶</b>
       </span>
       <span className="host-song__body">
