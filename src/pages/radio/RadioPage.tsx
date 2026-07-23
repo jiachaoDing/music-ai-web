@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { generateDjBroadcast, getRadioData, type DjBroadcast, type RadioThemeDto } from '../../api/radio'
 import type { Song } from '../../types/song'
-import { resolveAssetUrl } from '../../utils/asset'
 import { ECHO_COSTS, formatEchoCost } from '../../utils/echoCost'
 import { radioStyles } from './radioStyles'
 
@@ -60,9 +59,10 @@ type RadioPageProps = {
   songs: Song[]
   onOpenSong: (songId: string) => void
   onPlaySong: (songId: string) => void
+  onPlayDj: (songId: string) => void
 }
 
-export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong }: RadioPageProps) {
+export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong, onPlayDj }: RadioPageProps) {
   const [themes, setThemes] = useState<RadioTheme[]>(fallbackThemes)
   const [activeIndex, setActiveIndex] = useState(6)
   const [greeting, setGreeting] = useState('下午好，来点灵感吗？')
@@ -249,7 +249,11 @@ export function RadioPage({ onGenerate, songs, onOpenSong, onPlaySong }: RadioPa
         {djBroadcast ? (
           <div className="radio-dj-result">
             <p>{djBroadcast.text}</p>
-            {djBroadcast.audioUrl ? <audio controls src={resolveAssetUrl(djBroadcast.audioUrl)} /> : null}
+            {djBroadcast.audioUrl ? (
+              <button type="button" onClick={() => djSongId && onPlayDj(djSongId)}>
+                播放完整播报
+              </button>
+            ) : null}
           </div>
         ) : null}
         {djError ? <p className="radio-dj-error">{djError}</p> : null}

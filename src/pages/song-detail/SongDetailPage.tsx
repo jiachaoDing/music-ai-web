@@ -104,6 +104,7 @@ export function SongDetailPage({
 }: SongDetailPageProps) {
   const statusCopy = getStatusCopy(song)
   const coverUrl = resolveAssetUrl(song.coverUrl)
+  const isPublished = song.published && song.status === 'published'
   const canDelete =
     canManage &&
     !song.published &&
@@ -147,6 +148,13 @@ export function SongDetailPage({
   }, [song.id, song.likeCount, song.collectCount, song.commentCount, song.aiReview])
 
   useEffect(() => {
+    if (!isPublished) {
+      setComments([])
+      setCommentsError('')
+      setCommentsLoading(false)
+      return
+    }
+
     async function hydrateComments() {
       setCommentsLoading(true)
       setCommentsError('')
@@ -164,7 +172,7 @@ export function SongDetailPage({
     }
 
     void hydrateComments()
-  }, [song.id])
+  }, [song.id, isPublished])
 
   useEffect(() => {
     async function hydrateTree() {
@@ -510,6 +518,8 @@ export function SongDetailPage({
         <button type="button" className="song-detail-action is-primary" onClick={onPlay}>
           播放作品
         </button>
+        {isPublished ? (
+          <>
         <button
           type="button"
           className="song-detail-action is-soft"
@@ -549,7 +559,22 @@ export function SongDetailPage({
         <button type="button" className="song-detail-action" onClick={onOpenPoster}>
           查看海报
         </button>
+          </>
+        ) : (
+          <span className="song-detail-draft-notice">
+            草稿发布后可使用二创、AI DJ、点赞、收藏、评论和分享
+          </span>
+        )}
       </section>
+      {djLoading ? (
+        <div className="song-detail-dj-preparing" role="status" aria-live="polite">
+          <i aria-hidden="true" />
+          <span>
+            <strong>正在准备 AI DJ 播报</strong>
+            <small>正在生成专属开场白与主持人语音，请稍候...</small>
+          </span>
+        </div>
+      ) : null}
 
       <section className="song-detail-grid">
         <div className="song-detail-stack">
@@ -632,6 +657,7 @@ export function SongDetailPage({
               <strong className="song-detail-hole__count">{formatCount(commentCount)} 条</strong>
             </div>
 
+            {isPublished ? (
             <div className="song-detail-hole-form">
               <textarea
                 value={commentText}
@@ -661,6 +687,11 @@ export function SongDetailPage({
                 </button>
               </div>
             </div>
+            ) : (
+              <p className="song-detail-draft-message">
+                草稿仅自己可见，发布到社区后才可接收评论。
+              </p>
+            )}
 
             {commentsLoading ? <p>正在读取留言...</p> : null}
             {commentsError ? <p>{commentsError}</p> : null}
