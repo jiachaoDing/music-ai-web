@@ -218,6 +218,18 @@ export const hostStyles = `
   line-height: 1.05;
 }
 
+.host-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #ffffff;
+  background: var(--host-theme);
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .host-topic-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));

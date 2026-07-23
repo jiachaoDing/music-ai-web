@@ -671,6 +671,11 @@ export const songDetailStyles = `
 .song-detail-comments {
   display: grid;
   gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(234, 76, 137, 0.34) transparent;
 }
 
 .song-detail-comment {
@@ -732,11 +737,35 @@ export const songDetailStyles = `
   font-weight: 900;
 }
 
+.song-detail-comment__meta span.is-ai {
+  color: #ffffff;
+  background: var(--theme);
+}
+
 .song-detail-comment__body p {
   margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
   color: var(--text);
   font-size: 14px;
   line-height: 1.7;
+}
+
+.song-detail-comments-more {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  border: 1px solid rgba(234, 76, 137, 0.2);
+  color: var(--theme-dark);
+  background: rgba(234, 76, 137, 0.06);
+  box-shadow: none;
+  font-weight: 850;
+}
+
+.song-detail-comments-more:hover {
+  color: #ffffff;
+  background: var(--theme);
+  border-color: var(--theme);
 }
 
 .song-detail-comment__body small {

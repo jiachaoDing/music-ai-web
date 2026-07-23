@@ -8,7 +8,7 @@ import type { AlbumSummary, FeedTab, ResonanceFeedResponse } from './api/song'
 import { deleteSong, getFeed, getGenerateTaskStatus, getMySongs, getResonanceFeed, getSongDetail, publishSong, recordSongPlay, searchSongs, submitAlbumTask, submitGenerateTask, submitRemixTask } from './api/song'
 import { AppLayout } from './components/AppLayout'
 import { BackButton } from './components/BackButton'
-import { LoadingState } from './components/LoadingState'
+import { LoadingState, PageLoadingState } from './components/LoadingState'
 import type { CreateChallengeContext, CreateSubmission } from './pages/create/CreateFormPage'
 import type { Song, SongMode } from './types/song'
 import type { User } from './types/user'
@@ -19,6 +19,7 @@ const AdminPage = lazy(() => import('./pages/admin/AdminPage').then((module) => 
 const AuthPage = lazy(() => import('./pages/auth/AuthPage').then((module) => ({ default: module.AuthPage })))
 const CreateFormPage = lazy(() => import('./pages/create/CreateFormPage').then((module) => ({ default: module.CreateFormPage })))
 const CreatePage = lazy(() => import('./pages/create/CreatePage').then((module) => ({ default: module.CreatePage })))
+const CommentsPage = lazy(() => import('./pages/comments/CommentsPage').then((module) => ({ default: module.CommentsPage })))
 const DiscoverPage = lazy(() => import('./pages/DiscoverPage').then((module) => ({ default: module.DiscoverPage })))
 const FeedPage = lazy(() => import('./pages/FeedPage').then((module) => ({ default: module.FeedPage })))
 const HostProfilePage = lazy(() => import('./pages/host/HostPage').then((module) => ({ default: module.HostPage })))
@@ -30,7 +31,7 @@ const SearchPage = lazy(() => import('./pages/SearchPage').then((module) => ({ d
 const SongDetailPage = lazy(() => import('./pages/song-detail/SongDetailPage').then((module) => ({ default: module.SongDetailPage })))
 const TaskPage = lazy(() => import('./pages/TaskPage').then((module) => ({ default: module.TaskPage })))
 
-type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'player' | 'host' | 'search'
+type AppView = NavKey | 'auth' | 'createForm' | 'task' | 'songDetail' | 'comments' | 'player' | 'host' | 'search'
 
 type AuthMode = 'login' | 'register'
 
@@ -1449,7 +1450,7 @@ function UserApp() {
       <>
         {audioElement}
         <main className="standalone-shell">
-          <LoadingState title="正在进入 Echo" description="正在加载你的音乐空间" />
+          <PageLoadingState />
         </main>
       </>
     )
@@ -1467,7 +1468,7 @@ function UserApp() {
   }
 
   const activeNavKey =
-    activeView === 'player' || activeView === 'songDetail'
+    activeView === 'player' || activeView === 'songDetail' || activeView === 'comments'
       ? 'feed'
       : activeView === 'host'
         ? 'discover'
@@ -1674,8 +1675,17 @@ function UserApp() {
               onSetPrivate={() => void handlePublishSong(false)}
               onDelete={() => handleDeleteSong(detailSong.id)}
               onOpenSong={openSong}
+              onOpenAllComments={() => setActiveView('comments')}
               onSongUpdate={syncSong}
             />
+          </>
+        ) : null}
+        {activeView === 'comments' && detailSong ? (
+          <>
+            <div className="page-back-row">
+              <BackButton label="返回歌曲详情" onClick={() => setActiveView('songDetail')} />
+            </div>
+            <CommentsPage song={detailSong} />
           </>
         ) : null}
         {posterOpen && (detailSong ?? currentSong) ? (
@@ -1695,7 +1705,7 @@ function App() {
     )
   }
   return (
-    <Suspense fallback={<LoadingState title="正在加载页面" description="请稍候…" />}>
+    <Suspense fallback={<PageLoadingState />}>
       <UserApp />
     </Suspense>
   )
